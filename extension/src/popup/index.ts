@@ -1,6 +1,5 @@
 import { CONTRACT_VERSION, isRecord, type MainSurface } from "@syllab/contracts";
 
-import "./popup.css";
 import { mergeCandidateRecords } from "../ai/client";
 import {
   addUserBriefItem,

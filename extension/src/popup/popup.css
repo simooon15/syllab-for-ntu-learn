@@ -1,17 +1,150 @@
+/* ==========================================================================
+   Syllab for NTU Learn — popup surface
+
+   Warm paper, pale green panels, flat throughout — no shadows, no gradient,
+   no ornament. A panel is separated from the page by its own value and a
+   hairline, and the ink comes in three steps far enough apart to read as
+   three. Fraunces carries the character; everything else is quiet.
+
+   Rules of the house:
+   · flat: no shadows, no gradients. Value and hairlines do the work
+   · hierarchy comes from structure, never from making text fainter — faint
+     text on a light ground is what turns a page into mush
+   · no mid-tone green fills; filled means deep, outlined means quiet
+   · the warm accent is never a filled block, only a hairline or a 5px mark
+   · whitespace separates; hairlines are a last resort
+   · no ornament that does not carry information
+   ========================================================================== */
+
+/* --- typefaces -----------------------------------------------------------
+   Bundled with the extension (extension/public/fonts, copied to dist/fonts
+   by the build) so the popup never touches the network. URLs are relative
+   to dist/popup.css. Licences: fonts/OFL.txt.
+   ------------------------------------------------------------------------ */
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/fraunces-var-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/fraunces-var-italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/plus-jakarta-sans-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/plus-jakarta-sans-500.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/plus-jakarta-sans-600.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Space Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/space-mono-400.woff2") format("woff2");
+}
+
 :root {
   color-scheme: light;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
+
+  /* --- surfaces: three planes you can tell apart -------------------------
+     A pale green panel on warm paper, told apart by value and a hairline —
+     no shadow, no gradient. The gap is deliberately small: the panel reads
+     as a tinted region of the same sheet rather than an object sitting on
+     it, which is what keeps the popup from looking assembled. */
+  --page: #fdfcf8;
+  --surface: #f0f4ea;
+  --sunken: #e2ebd9;
+
+  /* --- ink: three steps with real gaps between them ---------------------
+     Adjacent steps sit ~1.6x apart in luminance; any closer and they read
+     as one colour, which is what turns a page into mush.
+     Which step you may use depends on the ground: --ink-3 clears 4.5:1 on
+     the page, but on a panel it only reaches 4.8:1 — passing, yet hard to
+     read over a tint. So --ink-3 is for text on the page, and anything on
+     a panel starts at --ink-2. */
+  --ink: #191f18;
+  --ink-2: #434c3d;
+  --ink-3: #5d6656;
+
+  /* --- lines ------------------------------------------------------------ */
+  --line: #e6ecdc;
+  --line-strong: #c7d5bb;
+  --line-soft: #eef2e7;
+
+  /* --- the accent, and the one thing that gets to interrupt -------------
+     Two rules about green, both learned the hard way:
+     1. No mid-tone fills. A desaturated green in the middle of the range
+        reads dated; the two ends — a pale clean tint, or the deep ink — do
+        not. So filled shapes take --green-deep with light type, quiet
+        shapes take a hairline outline, and the pale tint is only a hover.
+     2. Keep the accent hue in the forest range (~131deg), not emerald
+        (~150deg). 149deg is what "too jade" looks like; it also sat 65deg
+        away from the warm panel, which is why the fills clashed. */
+  --green: #3c6a45;
+  --green-deep: #305537;
+  --green-tint: #e2efe4;
+  /* --- the one thing that gets to interrupt -----------------------------
+     A clean terracotta, not a brown. The accent has to be a real colour:
+     pulled toward brown it turns muddy, and the mud is worse the moment it
+     sits on green.
+     The wash is deliberately OPAQUE. A translucent warm tint composited
+     over a green panel mixes to a grey-olive every time — measure it before
+     trusting it (rgb(150 112 63 / 9%) over #f0f4ea lands on #e8e8db). */
+  --clay: #bd6a3f;
+  --clay-wash: #f7e8de;
+
+  /* --- radii ------------------------------------------------------------ */
+  --r-card: 14px;
+  --r-ctl: 10px;
+  --r-sm: 8px;
+
+  /* --- type ------------------------------------------------------------- */
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-ui:
+    "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
-  color: #18201c;
-  background: #f7f8f7;
+  --font-mono: "Space Mono", ui-monospace, "SF Mono", Menlo, "Courier New", monospace;
+
+  --ease: cubic-bezier(0.2, 0.75, 0.2, 1);
 }
+
+/* ==========================================================================
+   the page
+   ========================================================================== */
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  background-color: var(--page);
 }
 
 body {
@@ -19,81 +152,151 @@ body {
   min-width: 380px;
   min-height: 500px;
   margin: 0;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* grain. This is the whole of the page's texture, so it has to be visible:
+   at 5% multiply the tooth reads on a toned page, and the darker it gets the
+   stronger it looks. */
+body::after {
+  position: fixed;
+  z-index: 99;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  content: "";
 }
 
 main {
   min-height: 500px;
-  padding: 22px;
+  padding: 20px 20px 26px;
+  animation: settle 0.22s var(--ease) both;
 }
+
+::selection {
+  background: var(--green-tint);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 8px;
+  background-clip: content-box;
+  background-color: #c9cfba;
+}
+
+/* ==========================================================================
+   masthead
+   ========================================================================== */
 
 .masthead {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 13px;
 }
 
+/* A small white sheet, like the cards: a tint of green here would sink into
+   the page, and a solid green block would compete with the primary action. */
 .brand-mark {
   display: grid;
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
+  width: 42px;
+  height: 42px;
+  flex: none;
   place-items: center;
-  border-radius: 8px;
-  color: #fff;
-  background: #285f46;
-  font-weight: 750;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--green-deep);
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.heading-group {
+  min-width: 0;
 }
 
 .eyebrow {
-  margin: 0 0 3px;
-  color: #627068;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  margin: 0 0 2px;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
 }
 
 h1 {
   margin: 0;
-  font-size: 24px;
-  line-height: 1.1;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 500;
+  line-height: 1.22;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
 }
 
+/* The lede, and anything else that is prose rather than control, is set in
+   Fraunces too. Its opsz axis is applied automatically, so the headings get
+   the sharp display cut; prose pins itself to 11 instead, the end of the
+   axis intended for reading, which gives a sturdier stroke at this size.
+   Serif body also wants a little more leading than the sans does. */
 .lede {
-  margin: 14px 0 18px;
-  color: #59645e;
-  font-size: 13px;
-  line-height: 1.5;
+  margin: 14px 0 0;
+  color: var(--ink-2);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 400;
+  font-variation-settings: "opsz" 11;
+  line-height: 1.62;
+  text-wrap: pretty;
 }
+
+/* ==========================================================================
+   the four surfaces — where you are, and nothing more.
+   (This strip is a status indicator, not a menu: no boxes, no borders, just
+   one green mark on the current section.)
+   ========================================================================== */
 
 .surface-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  margin: 22px 0 0 -9px;
   padding: 0;
-  border: 1px solid #d4dad6;
-  border-radius: 8px;
-  overflow: hidden;
   list-style: none;
 }
 
-.surface-list li:nth-child(odd) {
-  border-right: 1px solid #d4dad6;
-}
-
-.surface-list li:nth-child(-n + 2) {
-  border-bottom: 1px solid #d4dad6;
-}
-
 .surface-list button {
-  width: 100%;
-  padding: 8px 10px;
+  padding: 5px 9px;
   border: 0;
-  color: #737d77;
-  background: #fff;
-  font: inherit;
-  font-size: 12px;
-  text-align: left;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  line-height: 1.4;
+  cursor: default;
 }
 
 .surface-list button:disabled {
@@ -101,172 +304,727 @@ h1 {
 }
 
 .surface-list button[aria-current="page"] {
-  color: #163f2d;
-  background: #eaf2ed;
-  font-weight: 700;
+  background: var(--green-deep);
+  color: #f2f6ee;
+  font-weight: 600;
 }
+
+/* ==========================================================================
+   buttons
+   ========================================================================== */
 
 .primary-action {
+  display: block;
   width: 100%;
-  margin-top: 16px;
-  padding: 12px 14px;
+  margin-top: 22px;
+  padding: 14px 18px;
   border: 0;
-  border-radius: 8px;
-  color: #fff;
-  background: #285f46;
-  font: inherit;
-  font-weight: 700;
-}
-
-.secondary-action {
-  border: 1px solid #d4dad6;
-  background: transparent;
-  color: #18201c;
-  padding: 10px 12px;
-  border-radius: 8px;
-  font: inherit;
+  border-radius: var(--r-ctl);
+  background: var(--green);
+  color: #f4f8f1;
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
   cursor: pointer;
+  transition:
+    background-color 0.18s var(--ease),
+    transform 0.18s var(--ease);
 }
 
-.permission-origin {
-  overflow-wrap: anywhere;
-  padding: 12px;
-  border: 1px solid #d4dad6;
-  border-radius: 8px;
+.primary-action:hover:not(:disabled) {
+  background: var(--green-deep);
 }
 
-.permission-actions {
-  display: grid;
-  gap: 8px;
+.primary-action:active:not(:disabled) {
+  transform: translateY(1px);
 }
+
+.primary-action:disabled {
+  background: #b6bfa9;
+  cursor: default;
+}
+
+/* A control is a lighter plane than the panel it sits on, so it takes the
+   page's value rather than the panel's. */
+.secondary-action {
+  padding: 9px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-ctl);
+  background: var(--page);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 0.16s var(--ease),
+    border-color 0.16s var(--ease),
+    color 0.16s var(--ease);
+}
+
+.secondary-action:hover:not(:disabled) {
+  border-color: var(--green);
+  background: var(--green-tint);
+  color: var(--green-deep);
+}
+
+.secondary-action:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.secondary-action:disabled {
+  color: var(--ink-3);
+  cursor: default;
+  opacity: 0.65;
+}
+
+/* a standalone action on the page keeps the full measure */
+#app > .secondary-action {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 13px 16px;
+}
+
+/* editing a confirmed fact is a quiet, repeated act: a note, not a command */
+.brief-card > .secondary-action,
+.brief-child > .secondary-action {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--green-deep);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: #8fae86;
+  text-underline-offset: 3px;
+}
+
+.brief-card > .secondary-action:hover:not(:disabled),
+.brief-child > .secondary-action:hover:not(:disabled) {
+  border: 0;
+  background: none;
+  color: var(--green-deep);
+  text-decoration-color: var(--green);
+}
+
+/* "Add …" is an empty line waiting to be filled in */
+.brief-section > .secondary-action {
+  border-style: dashed;
+  border-color: #d3dac6;
+  background: none;
+  color: var(--ink-3);
+}
+
+.brief-section > .secondary-action:hover:not(:disabled) {
+  border-style: dashed;
+  border-color: var(--green);
+  background: var(--green-tint);
+  color: var(--green-deep);
+}
+
+/* ==========================================================================
+   section headings
+   ========================================================================== */
+
+.review-content > h2,
+.brief-section > h2,
+.calendar-export > h2,
+.scan-issues > h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.006em;
+}
+
+/* ==========================================================================
+   cards
+   ========================================================================== */
 
 .review-content,
 .brief-content {
   display: grid;
   gap: 10px;
-  margin-top: 16px;
-}
-
-.review-content h2,
-.brief-content h2,
-.review-card h3 {
-  margin: 0;
-  text-transform: capitalize;
-}
-
-.review-card,
-.brief-card {
-  padding: 12px;
-  border: 1px solid #d4dad6;
-  border-radius: 8px;
-  background: #fff;
-}
-
-.review-card pre,
-.brief-card pre {
-  overflow: auto;
-  white-space: pre-wrap;
-  font: inherit;
-  font-size: 12px;
-}
-
-.relationship-context {
-  margin: 8px 0;
-  color: #285f46;
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.brief-child {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #e2e7e3;
-}
-
-.brief-child h3 {
-  margin: 0;
-  color: #285f46;
-  font-size: 11px;
+  margin-top: 22px;
 }
 
 .brief-section {
   display: grid;
-  gap: 8px;
-  margin-top: 16px;
+  gap: 10px;
+  margin-top: 26px;
 }
 
-.brief-section > h2 {
-  margin: 0;
-  font-size: 14px;
+.review-content > h2:not(:first-child) {
+  margin-top: 12px;
+}
+
+.review-card,
+.brief-card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+/* the kind of fact, set as a quiet caption */
+.review-card h3,
+.brief-child h3 {
+  margin: 0 0 10px;
+  color: var(--ink-2);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+/* a requirement nested under an assessment */
+.brief-child {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.relationship-context {
+  display: inline-block;
+  margin: 12px 0 0;
+  padding: 3px 9px;
+  border-radius: var(--r-sm);
+  background: var(--green-tint);
+  color: var(--green-deep);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 .review-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 16px;
 }
+
+/* Most candidates get declined, not confirmed, so the row defaults to quiet
+   links and only two kinds of thing earn a box: the relationship tags and
+   Confirm. index.ts appends the tags first and then Confirm, Edit, Ignore,
+   Skip for now and View source, so the five decisions are always the last
+   five children — if that order changes, everything just falls back to
+   looking like a link. */
+.review-actions > .secondary-action {
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-decoration-color: #b4c9ab;
+  text-underline-offset: 3px;
+}
+
+.review-actions > .secondary-action:hover:not(:disabled) {
+  border: 0;
+  background: none;
+  color: var(--green-deep);
+  text-decoration-color: var(--green);
+}
+
+.review-actions > .secondary-action:nth-last-child(n + 6) {
+  padding: 4px 10px;
+  border: 1px solid #b9cdb1;
+  border-radius: 999px;
+  background: none;
+  color: var(--green-deep);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.review-actions > .secondary-action:nth-last-child(n + 6):hover:not(:disabled) {
+  background: var(--green-tint);
+}
+
+.review-actions > .secondary-action:nth-last-child(5) {
+  padding: 8px 15px;
+  border: 0;
+  border-radius: var(--r-ctl);
+  background: var(--green-deep);
+  color: #f2f6ee;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.review-actions > .secondary-action:nth-last-child(5):hover:not(:disabled) {
+  background: var(--green);
+}
+
+/* ==========================================================================
+   something the reader has to settle
+   ========================================================================== */
+
+/* A question the reader still has to settle. It reads as a band across the
+   card, not a chip sitting on it: full width, a wash, and a bar in the
+   margin. Shrinking it to fit its own text was the mistake — that turned a
+   marking on the card into an object placed on it, and a filled object in
+   the one foreign colour read as a slab bolted on. */
+.unresolved-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 10px 12px 10px 13px;
+  border-left: 2px solid var(--clay);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--clay-wash);
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* a bare sentence of explanation stays plain */
+.review-card > .unresolved-field {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+}
+
+.unresolved-field .secondary-action {
+  border-color: #e0c1a8;
+  background: var(--page);
+  color: var(--ink-2);
+}
+
+.unresolved-field .secondary-action:hover:not(:disabled) {
+  border-color: var(--clay);
+  background: var(--page);
+  color: var(--clay);
+}
+
+/* ==========================================================================
+   specimen data
+   ========================================================================== */
+
+/* The raw value is the card's actual content, so it is set in the darkest
+   ink — the one place in the popup where that is true. Over a tinted panel
+   the right move is not "enough contrast" but comfortably more of it: a
+   coloured ground costs legibility even at a ratio that passes. A hanging
+   rule groups it without putting a second rectangle inside the card. */
+.review-card pre,
+.brief-card pre,
+.brief-child pre {
+  overflow: auto;
+  max-height: 168px;
+  margin: 0;
+  padding: 0 0 0 12px;
+  border: 0;
+  border-left: 2px solid var(--line-strong);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.72;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ==========================================================================
+   evidence
+   ========================================================================== */
 
 .evidence {
+  margin: 12px 0 0;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.7;
   white-space: pre-line;
   overflow-wrap: anywhere;
-  font-size: 11px;
 }
 
-.empty-state,
-.unresolved-field {
-  color: #59645e;
+details {
+  margin-top: 14px;
+}
+
+summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-2);
   font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
 }
 
-.primary-action:disabled {
-  opacity: 0.55;
+summary::-webkit-details-marker {
+  display: none;
 }
 
-.primary-action:focus-visible,
-.surface-list button:focus-visible {
-  outline: 3px solid #a8c7b6;
-  outline-offset: 2px;
+/* a drawn caret, so it never depends on a glyph being present in the face */
+summary::before {
+  width: 0;
+  height: 0;
+  flex: none;
+  border-top: 3.5px solid transparent;
+  border-bottom: 3.5px solid transparent;
+  border-left: 5px solid currentColor;
+  content: "";
+  transition: transform 0.2s var(--ease);
 }
+
+details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+summary:hover {
+  color: var(--green-deep);
+}
+
+/* ==========================================================================
+   saved courses
+   ========================================================================== */
+
+.saved-courses-content {
+  display: grid;
+  gap: 9px;
+  margin-top: 22px;
+}
+
+.saved-course-card {
+  display: block;
+  width: 100%;
+  padding: 15px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.16s var(--ease),
+    background-color 0.16s var(--ease);
+}
+
+.saved-course-card:hover {
+  border-color: var(--line-strong);
+  background: #f4f7ef;
+}
+
+.saved-course-card:active {
+  background: var(--green-tint);
+}
+
+/* ==========================================================================
+   calendar export
+   ========================================================================== */
+
+.calendar-export {
+  display: grid;
+  gap: 2px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+.calendar-export > h2 {
+  margin-bottom: 8px;
+}
+
+.calendar-export label {
+  display: grid;
+  grid-template-columns: 19px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 9px 10px;
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 400;
+  font-variation-settings: "opsz" 11;
+  line-height: 1.55;
+  cursor: pointer;
+  transition: background-color 0.14s var(--ease);
+}
+
+.calendar-export label:hover {
+  background: var(--sunken);
+}
+
+.calendar-export input[type="checkbox"] {
+  position: relative;
+  width: 17px;
+  height: 17px;
+  margin: 1px 0 0;
+  appearance: none;
+  border: 1px solid #ccd4c0;
+  border-radius: 5px;
+  background: var(--page);
+  cursor: pointer;
+  transition:
+    background-color 0.16s var(--ease),
+    border-color 0.16s var(--ease);
+}
+
+.calendar-export input[type="checkbox"]:hover {
+  border-color: var(--green);
+}
+
+.calendar-export input[type="checkbox"]:checked {
+  border-color: var(--green);
+  background: var(--green);
+}
+
+.calendar-export input[type="checkbox"]::after {
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 4px;
+  height: 8px;
+  border: solid #f4f8f1;
+  border-width: 0 1.5px 1.5px 0;
+  opacity: 0;
+  transform: rotate(42deg) scale(0.7);
+  content: "";
+  transition:
+    transform 0.18s var(--ease),
+    opacity 0.18s var(--ease);
+}
+
+.calendar-export input[type="checkbox"]:checked::after {
+  opacity: 1;
+  transform: rotate(42deg) scale(1);
+}
+
+.calendar-export > .secondary-action {
+  justify-self: start;
+  margin-top: 10px;
+}
+
+.calendar-export > .primary-action {
+  margin-top: 10px;
+}
+
+/* ==========================================================================
+   permission
+   ========================================================================== */
+
+.permission-origin {
+  margin: 22px 0 0;
+  padding: 13px 14px;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.permission-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.permission-actions > .primary-action {
+  margin-top: 0;
+}
+
+/* ==========================================================================
+   scan issues
+   ========================================================================== */
+
+.scan-issues {
+  margin-top: 22px;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.scan-issues ul {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scan-issues li {
+  position: relative;
+  padding: 5px 0 5px 16px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.scan-issues li::before {
+  position: absolute;
+  top: 12px;
+  left: 2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--clay);
+  content: "";
+}
+
+/* ==========================================================================
+   the scan, step by step
+   ========================================================================== */
 
 .task-list {
-  margin: 16px 0 0;
-  padding: 8px 12px 8px 34px;
-  border: 1px solid #d4dad6;
-  border-radius: 8px;
-  background: #fff;
-  color: #657069;
-  font-size: 12px;
-  line-height: 1.8;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.task-list li[data-state="complete"] {
-  color: #224d38;
-  font-weight: 650;
+.task-list li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border-radius: var(--r-ctl);
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
+.task-list li::before {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 50%;
+  content: "";
+}
+
+/* a tick drawn with two borders, so it never depends on a glyph */
+.task-list li::after {
+  position: absolute;
+  top: 50%;
+  left: 17px;
+  width: 4px;
+  height: 8px;
+  border: solid #f4f8f1;
+  border-width: 0 1.5px 1.5px 0;
+  opacity: 0;
+  transform: translateY(-62%) rotate(42deg);
+  content: "";
+  transition: opacity 0.2s var(--ease);
+}
+
+.task-list li[data-state="complete"]::before {
+  border-color: var(--green);
+  background: var(--green);
+}
+
+.task-list li[data-state="complete"]::after {
+  opacity: 1;
+}
+
+.task-list li[data-state="active"] {
+  background: var(--green-tint);
+  color: var(--green-deep);
+  font-weight: 500;
+}
+
+/* The row that is working right now: a conventional spinner — a thin ring
+   with one green quarter, turning with a gentle speed variation. The ring is
+   the same 16px circle the other two states use, so the three states stay one
+   family.
+   The easing must not have zero slope at either end, or the turn visibly
+   stalls at the loop seam: ease-in-out and friends drop to 16% of peak speed
+   there. This curve runs at half speed at the seam and never stops — measured
+   frame-to-frame movement varies between 44% and 100% of peak, against 82% for
+   linear and 16% for ease-in-out. */
+.task-list li[data-state="active"]::before {
+  border-color: var(--line-strong);
+  border-top-color: var(--green);
+  animation: turn 0.9s cubic-bezier(0.4, 0.2, 0.6, 0.8) infinite;
+}
+
+/* ==========================================================================
+   empty states
+   ========================================================================== */
+
+.empty-state {
+  margin: 0;
+  padding: 22px 10px;
+  color: var(--ink-2);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 400;
+  font-variation-settings: "opsz" 11;
+  line-height: 1.55;
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* ==========================================================================
+   status, in the margin at the foot of the page
+   ========================================================================== */
+
+/* the machine's own account of itself, set apart from the content above */
 .status {
   display: grid;
-  grid-template-columns: 80px 1fr;
-  gap: 10px;
-  margin: 16px 0 0;
-  padding-top: 12px;
-  border-top: 1px solid #d4dad6;
+  gap: 5px;
+  margin: 30px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
 }
 
 .status-label {
-  color: #285f46;
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  line-height: 1.5;
-  text-transform: uppercase;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  font-weight: 500;
 }
 
 .status-text {
-  overflow-wrap: anywhere;
-  color: #657069;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
   font-size: 10px;
-  line-height: 1.5;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+/* ==========================================================================
+   motion — the page settles once, then everything else answers a hand
+   ========================================================================== */
+
+/* the scan's working marker: one constant turn every 0.9s */
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

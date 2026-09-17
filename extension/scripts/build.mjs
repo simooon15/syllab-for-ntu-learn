@@ -35,6 +35,9 @@ for (const [entry, outfile, format] of entries) {
 }
 
 await cp(resolve(extensionRoot, "public/manifest.json"), resolve(outputDirectory, "manifest.json"));
+await cp(resolve(extensionRoot, "public/fonts"), resolve(outputDirectory, "fonts"), {
+  recursive: true
+});
 await cp(resolve(extensionRoot, "popup.html"), resolve(outputDirectory, "popup.html"));
 await cp(resolve(extensionRoot, "offscreen.html"), resolve(outputDirectory, "offscreen.html"));
 await cp(resolve(extensionRoot, "src/popup/popup.css"), resolve(outputDirectory, "popup.css"));

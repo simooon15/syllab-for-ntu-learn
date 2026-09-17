@@ -71,7 +71,7 @@ No Chat, Reminder, multi-course dashboard, automatic change detection, Ignore me
 - Category-level `Confirm all assessment` confirmed four detected assessments.
 - An Assessment-specific Rule was confirmed and appeared nested under its parent Assessment in Course Brief.
 - A course-level Rule remained top-level, and Source stayed collapsed by default.
-- Category-level `Confirm all important date` confirmed 11 detected dates. Calendar exposed only the 9 facts containing a structured confirmed date; the exported `.ics` contained 9 valid `VEVENT` blocks with UID, DTSTART and SUMMARY.
+- Category-level `Confirm all important date` confirmed 11 detected dates. Calendar exposed 9 of them, and the exported `.ics` contained 9 valid `VEVENT` blocks with UID, DTSTART and SUMMARY. The reading recorded at the time — that the other two facts contained no structured confirmed date — was wrong; see E1 for the real cause.
 - Closing and reopening the popup did not cancel an active Scan again. Explicit Cancel produced Interrupted without clearing the existing Brief, and Continue resumed the same saved Discovery checkpoint.
 - On the NTU Learn course shelf, the popup entered Saved Courses, showed the saved course and its pending-review count, and reopened the existing Brief without starting a scan.
 - A same-source, different-locator contamination bug in assessment risk routing was reproduced, fixed to use exact `sourceId + locator`, migration-tested and revalidated by the full CI suite.

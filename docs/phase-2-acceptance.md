@@ -2,6 +2,8 @@
 
 Status: automated implementation complete; installed bundle reload pending
 
+> **Historical checkpoint.** The pending real-browser work recorded here was subsequently completed through the consolidated acceptance run. Current authority: `docs/final-acceptance-v0.1.0.md` — v0.1.0 implementation complete, Gate D PASS.
+
 ## Scope
 
 Current course detection and Entry routing only. This phase does not discover sources, fetch

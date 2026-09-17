@@ -1,7 +1,10 @@
 # Syllab — Technical Design Handoff 包说明 — v0.1.0
 
-> **产品版本**：v0.1.0  
-> **用途**：交给 Codex 进入技术设计与实现计划阶段  
+> **HISTORICAL INPUT · SUPERSEDED**
+> 本包对应的 Technical Design、Implementation Plan 与 Formal MVP Coding 已完成，v0.1.0 已 Gate D PASS。保留正文作为当时交接记录，不作为当前执行入口。
+
+> **产品版本**：v0.1.0
+> **用途**：交给 Codex 进入技术设计与实现计划阶段
 > **本轮边界**：完成 Technical Design + Implementation Plan + 产品审阅摘要；完成后停止，不开始正式编码
 
 ---

@@ -1,10 +1,13 @@
 # Syllab — 产品交接说明 — v0.1.0
 
-> **产品版本**：v0.1.0  
-> **交接日期**：2026-09-16  
-> **当前阶段**：Formal MVP Coding 进行中；Rule Association Product Alignment（D-014）已通过  
-> **Technical Spike**：`PASS WITH KNOWN RISKS`  
-> **下一位负责人**：Codex  
+> **HISTORICAL INPUT · SUPERSEDED**
+> 本文件保留 2026-09-16 的开工交接语境，不是当前执行入口。v0.1.0 已实现并于 2026-09-17 通过 Gate D。当前状态见 `../docs/final-acceptance-v0.1.0.md`，产品交接见 `../Syllab_MVP_Delivery_v0.1.0/01_PRODUCT_HANDOFF_v0.1.0.md`。
+
+> **产品版本**：v0.1.0
+> **交接日期**：2026-09-16
+> **当前阶段**：Formal MVP Coding 进行中；Rule Association Product Alignment（D-014）已通过
+> **Technical Spike**：`PASS WITH KNOWN RISKS`
+> **下一位负责人**：Codex
 > **下一阶段任务**：继续当前 Phase 5–9 Milestone；先落地 D-014 Rule Association delta，再完成该 Milestone Gate
 
 ---
@@ -780,5 +783,4 @@ Final Delta Alignment Check: PASS
 > 不删除，保留并在 preflight 汇报中列出。
 
 Cleanup 完成后，Codex 应简短列出已删除的 stale handoff 文件和保留的 canonical handoff 文件，然后按 `12_RULE_ASSOCIATION_HANDOFF_v0.1.0.md` 继续当前 Milestone，不需要再向产品侧请求确认。
-
 

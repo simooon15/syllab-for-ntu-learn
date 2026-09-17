@@ -1,8 +1,11 @@
 # Syllab — Important Rules Product Alignment Handoff — v0.1.0
 
-> 产品版本：v0.1.0  
-> 日期：2026-09-17  
-> 类型：窄范围、非阻塞 Product Alignment Delta  
+> **HISTORICAL PRODUCT ALIGNMENT INPUT · SUPERSEDED**
+> D-015 已进入 v0.1.0 正式基线，v0.1.0 已 Gate D PASS。保留本文作为当时对齐证据，不按其启动新一轮实现。
+
+> 产品版本：v0.1.0
+> 日期：2026-09-17
+> 类型：窄范围、非阻塞 Product Alignment Delta
 > 主题：Course-level Important Rules 的 Grade Impact 收录边界
 
 ## 1. 本轮结论
@@ -193,4 +196,3 @@ python 14_apply_product_alignment_delta_v0.1.0.py .
 - AI 仍只提出 Candidate，不能直接写 Course Brief；
 - Assessment-specific Rule 的已有处理方式不变；
 - 本轮只收紧 course-level Important Rule 的语义边界。
-

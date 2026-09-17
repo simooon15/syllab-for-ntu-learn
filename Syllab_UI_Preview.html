@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Syllab — popup design sheet</title>
+    <!--
+      A review sheet for the popup redesign. Open this file in Chrome to see
+      every surface at its real 380px width. It reads the built stylesheet
+      from extension/dist (so the bundled fonts resolve), which means
+      `npm run build` — or an extension reload — must have run at least once.
+      Throwaway: delete this file once the design is settled.
+    -->
+    <link rel="stylesheet" href="extension/dist/popup.css" />
+  </head>
+  <body>
+    <main id="app" aria-live="polite"></main>
+
+    <script>
+      // ---- the popup DOM, reproduced from extension/src/popup/index.ts ----
+      const el = (tag, cls, text) => {
+        const node = document.createElement(tag);
+        if (cls) node.className = cls;
+        if (text !== undefined) node.textContent = text;
+        return node;
+      };
+      const primary = (text) => {
+        const b = el("button", "primary-action", text);
+        b.type = "button";
+        return b;
+      };
+      const secondary = (text) => {
+        const b = el("button", "secondary-action", text);
+        b.type = "button";
+        return b;
+      };
+      const json = (value) => el("pre", null, JSON.stringify(value, null, 2));
+      const surfaces = [
+        { id: "saved-courses", label: "Saved Courses" },
+        { id: "scan", label: "Scan" },
+        { id: "review", label: "Review" },
+        { id: "course-brief", label: "Course Brief" }
+      ];
+
+      function skeleton(active, copy, routeLabel) {
+        const app = document.getElementById("app");
+        app.replaceChildren();
+        const header = el("header", "masthead");
+        const brand = el("div", "brand-mark", "S");
+        brand.setAttribute("aria-hidden", "true");
+        const group = el("div", "heading-group");
+        group.append(el("p", "eyebrow", "Syllab / NTU Learn"), el("h1", null, copy.title));
+        header.append(brand, group);
+        const list = el("ul", "surface-list");
+        list.setAttribute("aria-label", "Syllab sections");
+        for (const s of surfaces) {
+          const li = el("li");
+          const b = el("button", null, s.label);
+          b.type = "button";
+          b.setAttribute("aria-current", s.id === active ? "page" : "false");
+          b.disabled = s.id !== active;
+          li.append(b);
+          list.append(li);
+        }
+        const status = el("p", "status");
+        status.append(
+          el("span", "status-label", copy.statusLabel),
+          el("span", "status-text", routeLabel)
+        );
+        app.append(header, el("p", "lede", copy.lede), list);
+        return status;
+      }
+
+      const states = {
+        "saved-courses": () => {
+          const status = skeleton(
+            "saved-courses",
+            {
+              title: "Your course shelf",
+              lede: "Open an NTU Learn course to scan it, or return to a course brief you have already built.",
+              statusLabel: "Current context"
+            },
+            "Entry route: saved-courses"
+          );
+          const content = el("div", "saved-courses-content");
+          for (const label of ["MA6084 · 3 to review", "RE6005", "BU8201 · 1 to review"]) {
+            content.append(el("button", "saved-course-card", label));
+          }
+          document.getElementById("app").append(status);
+          document.getElementById("app").insertBefore(content, status);
+        },
+        "saved-empty": () => {
+          const status = skeleton(
+            "saved-courses",
+            {
+              title: "Your course shelf",
+              lede: "Open an NTU Learn course to scan it, or return to a course brief you have already built.",
+              statusLabel: "Current context"
+            },
+            "Open a course in NTU Learn to begin"
+          );
+          const content = el("div", "saved-courses-content");
+          content.append(
+            el(
+              "p",
+              "empty-state",
+              "No saved courses yet. Open an NTU Learn course to start a scan."
+            )
+          );
+          document.getElementById("app").append(status);
+          document.getElementById("app").insertBefore(content, status);
+        },
+        "scan-ready": () => {
+          const status = skeleton(
+            "scan",
+            {
+              title: "Scan this course",
+              lede: "Find pages, announcements, assignments and supported documents. Nothing becomes a fact until you review it.",
+              statusLabel: "Ready"
+            },
+            "Entry route: scan · ready"
+          );
+          document.getElementById("app").append(primary("Scan this course"), status);
+        },
+        "scan-running": () => {
+          const status = skeleton(
+            "scan",
+            {
+              title: "Scan in progress",
+              lede: "Syllab is following the course structure and saving each completed step as it goes.",
+              statusLabel: "Scan record"
+            },
+            "Discovery Complete · 34 sources · 2 issues · 18 content pages · 41 content details · 7 announcements · 12 assignments · 9 attachments · attachment origins ntulearn.ntu.edu.sg · pagination observed"
+          );
+          const tasks = el("ol", "task-list");
+          [
+            "Finding course pages",
+            "Finding announcements",
+            "Finding assignments",
+            "Preparing documents",
+            "Extracting course information"
+          ].forEach((label, i) => {
+            const li = el("li", null, label);
+            li.dataset.state = i < 3 ? "complete" : i === 3 ? "active" : "pending";
+            tasks.append(li);
+          });
+          const app = document.getElementById("app");
+          app.append(tasks, secondary("Cancel scan"), primary("Continue to parse"), status);
+          app.insertBefore(secondary("View issues"), status);
+        },
+        permission: () => {
+          const status = skeleton(
+            "scan",
+            {
+              title: "Permission needed",
+              lede: "One attachment host needs access. You can allow this exact site or continue with the other sources.",
+              statusLabel: "Waiting for permission"
+            },
+            "Choose how to handle this attachment host"
+          );
+          const actions = el("div", "permission-actions");
+          actions.append(primary("Allow access"), secondary("Continue without them"));
+          document
+            .getElementById("app")
+            .append(
+              el("p", "permission-origin", "https://ntulearn.ntu.edu.sg · 6 sources"),
+              actions,
+              status
+            );
+        },
+        review: () => {
+          const status = skeleton(
+            "review",
+            {
+              title: "Review course facts",
+              lede: "Check uncertain items first, then confirm detected facts by category or one at a time.",
+              statusLabel: "Review progress"
+            },
+            "6 of 29 reviewed"
+          );
+          const content = el("div", "review-content");
+          content.append(secondary("Retry extraction"), el("h2", null, "Needs Review"));
+          const a = el("article", "review-card");
+          a.append(
+            el("h3", null, "important date"),
+            json({
+              what: "CA1 Batch 1 in-class presentation",
+              when: "Friday of week 8, in class",
+              date: "2026-10-23",
+              source: "LG-1",
+              page: 4
+            }),
+            el("p", "relationship-context", "Applies to CA1"),
+            el("p", "unresolved-field", "date: Needs review")
+          );
+          const aa = el("div", "review-actions");
+          for (const t of [
+            "Applies to CA1",
+            "Applies to CA2",
+            "Applies to Exam",
+            "Course-level",
+            "Confirm",
+            "Edit",
+            "Ignore",
+            "Skip for now",
+            "View source"
+          ])
+            aa.append(secondary(t));
+          a.append(aa);
+          content.append(a, el("h2", null, "Detected"));
+          content.append(
+            secondary("Confirm all assessment"),
+            secondary("Confirm all important date")
+          );
+          for (const value of [
+            {
+              kind: "assessment",
+              body: {
+                identifier: "CA1",
+                name: "Continuous Assessment 1",
+                weight: "20%",
+                format: "in-class presentation"
+              }
+            },
+            {
+              kind: "important rule",
+              body: { scope: "submission", rule: "Late submissions are not accepted." },
+              evidence: "assignment-page-3 · body > section:nth-child(4)"
+            }
+          ]) {
+            const card = el("article", "review-card");
+            card.append(el("h3", null, value.kind), json(value.body));
+            const actions = el("div", "review-actions");
+            for (const t of ["Confirm", "Edit", "Ignore", "Skip for now", "View source"])
+              actions.append(secondary(t));
+            card.append(actions);
+            if (value.evidence) card.append(el("p", "evidence", value.evidence));
+            content.append(card);
+          }
+          const app = document.getElementById("app");
+          app.append(status);
+          app.insertBefore(content, status);
+        },
+        "review-empty": () => {
+          const status = skeleton(
+            "review",
+            {
+              title: "Review course facts",
+              lede: "Check uncertain items first, then confirm detected facts by category or one at a time.",
+              statusLabel: "Review progress"
+            },
+            "Entry route: review · ready"
+          );
+          const content = el("div", "review-content");
+          content.append(
+            el("h2", null, "Needs Review"),
+            el("p", "empty-state", "No items in this section.")
+          );
+          const app = document.getElementById("app");
+          app.append(status);
+          app.insertBefore(content, status);
+        },
+        brief: () => {
+          const status = skeleton(
+            "course-brief",
+            {
+              title: "Course brief",
+              lede: "Confirmed course facts stay here. Sources remain available when you need to check the evidence.",
+              statusLabel: "Brief status"
+            },
+            "Entry route: course-brief"
+          );
+          const app = document.getElementById("app");
+          const content = el("div", "brief-content");
+          const cal = el("section", "calendar-export");
+          cal.append(el("h2", null, "Calendar export"));
+          for (const line of [
+            "CA1 Batch 1 in-class presentation · 2026-10-23",
+            "CA1 Batch 2 in-class presentation · 2026-10-30",
+            "Final exam · 2026-11-25 09:00"
+          ]) {
+            const label = el("label");
+            const box = document.createElement("input");
+            box.type = "checkbox";
+            box.checked = true;
+            label.append(box, line);
+            cal.append(label);
+          }
+          cal.append(secondary("Select none"), primary("Export .ics"));
+          content.append(
+            cal,
+            secondary("Scan again"),
+            el("p", "unresolved-field", "3 items need review")
+          );
+
+          const source = () => {
+            const d = document.createElement("details");
+            d.append(
+              el("summary", null, "Source"),
+              el("p", "evidence", "assignment-page-3 · body > section:nth-child(4)")
+            );
+            return d;
+          };
+          const section = el("section", "brief-section");
+          section.append(el("h2", null, "Assessments"), secondary("Add assessment"));
+          const card = el("article", "brief-card");
+          card.append(
+            json({ identifier: "CA1", name: "Continuous Assessment 1", weight: "20%" }),
+            secondary("Edit")
+          );
+          const unresolved = el("div", "unresolved-field");
+          unresolved.append(
+            "weight: Needs review",
+            secondary('Use "20%"'),
+            secondary('Use "20% of final grade"')
+          );
+          card.append(unresolved);
+          const child = el("section", "brief-child");
+          child.append(
+            el("h3", null, "Important date"),
+            json({ what: "CA1 Batch 1 in-class presentation", date: "2026-10-23" }),
+            secondary("Edit"),
+            source()
+          );
+          card.append(child, source());
+          section.append(card);
+          content.append(section);
+
+          const rules = el("section", "brief-section");
+          rules.append(el("h2", null, "Important Rules"), secondary("Add important rule"));
+          const ruleCard = el("article", "brief-card");
+          ruleCard.append(
+            json({ scope: "submission", rule: "Late submissions are not accepted." }),
+            secondary("Edit")
+          );
+          rules.append(ruleCard);
+          content.append(rules);
+
+          app.append(status);
+          app.insertBefore(content, status);
+        }
+      };
+
+      const state = new URLSearchParams(location.search).get("state");
+      if (state) {
+        states[state]();
+      } else {
+        // gallery mode: the stylesheet is written for the 380px popup, so the
+        // page chrome below is injected only when it is not a popup frame
+        document.getElementById("app").remove();
+        const style = document.createElement("style");
+        style.textContent = `
+          body { width: auto; min-width: 0; min-height: 0; background: var(--page); }
+          body::before, body::after { display: none; }
+          .sheet { max-width: 1180px; margin: 0 auto; padding: 48px 32px 72px; }
+          .sheet-head { border-bottom: 1px solid var(--line); padding-bottom: 18px; }
+          .sheet-head h1 {
+            font-family: var(--font-display); font-size: 34px; font-weight: 400; margin: 0 0 8px;
+          }
+          .sheet-head p {
+            margin: 0; max-width: 62ch; color: var(--ink-2); font-size: 13px; line-height: 1.6;
+          }
+          .swatches { display: flex; flex-wrap: wrap; gap: 14px; margin: 22px 0 0; }
+          .swatch { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono);
+            font-size: 10px; color: var(--ink-2); }
+          .swatch i { width: 20px; height: 20px; border: 1px solid var(--line);
+            border-radius: 5px; }
+          .frames { display: grid; gap: 40px 28px;
+            grid-template-columns: repeat(auto-fit, minmax(392px, 1fr)); margin-top: 36px; }
+          figure { margin: 0; }
+          figcaption { font-family: var(--font-ui); font-size: 11.5px; font-weight: 500;
+            color: var(--ink-3); margin-bottom: 10px; }
+          iframe { width: 380px; display: block; border: 1px solid var(--line);
+            border-radius: var(--r-card); background: var(--page);
+            box-shadow: 0 4px 16px rgb(27 33 25 / 7%); }
+        `;
+        document.head.append(style);
+
+        const sheet = document.createElement("div");
+        sheet.className = "sheet";
+        const head = document.createElement("div");
+        head.className = "sheet-head";
+        head.append(el("h1", null, "Syllab — popup design sheet"));
+        head.append(
+          el(
+            "p",
+            null,
+            "Warm paper, pale green panels, flat throughout — no shadows, no gradients. Frames render at the popup's real 380px width from the built stylesheet."
+          )
+        );
+        const swatches = document.createElement("div");
+        swatches.className = "swatches";
+        for (const [name, hex] of [
+          ["page", "#fdfcf8"],
+          ["surface", "#f0f4ea"],
+          ["sunken", "#e2ebd9"],
+          ["green", "#3c6a45"],
+          ["green-deep", "#305537"],
+          ["green-tint", "#e2efe4"],
+          ["clay (kraft)", "#96703f"],
+          ["ink", "#191f18"]
+        ]) {
+          const s = el("span", "swatch");
+          const dot = document.createElement("i");
+          dot.style.background = hex;
+          s.append(dot, `${name} ${hex}`);
+          swatches.append(s);
+        }
+        head.append(swatches);
+        sheet.append(head);
+
+        const gallery = document.createElement("div");
+        gallery.className = "frames";
+        const frames = [
+          ["saved-courses", "Saved Courses — three courses", 520],
+          ["saved-empty", "Saved Courses — nothing yet", 520],
+          ["scan-ready", "Scan — ready to start", 520],
+          ["scan-running", "Scan — four of five steps done", 720],
+          ["permission", "Scan — an attachment host needs a decision", 520],
+          ["review", "Review — a fact needing review, then detected facts", 1620],
+          ["review-empty", "Review — section empty", 520],
+          ["brief", "Course Brief — confirmed facts and calendar export", 1780]
+        ];
+        for (const [name, caption, height] of frames) {
+          const figure = document.createElement("figure");
+          const frame = document.createElement("iframe");
+          frame.src = `Syllab_UI_Preview.html?state=${name}`;
+          frame.height = String(height);
+          frame.title = caption;
+          figure.append(el("figcaption", null, caption), frame);
+          gallery.append(figure);
+        }
+        sheet.append(gallery);
+        document.body.append(sheet);
+      }
+    </script>
+  </body>
+</html>

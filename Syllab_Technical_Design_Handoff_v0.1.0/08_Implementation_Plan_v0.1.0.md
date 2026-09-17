@@ -3,6 +3,7 @@
 > 产品版本：v0.1.0  
 > 依据：`07_Technical_Design_v0.1.0.md`  
 > 执行原则：先跑通最小完整闭环，再扩大来源与格式覆盖；每阶段独立验收，不用后续阶段掩盖前序缺陷。
+> 状态：`EXECUTION COMPLETE · GATE A–D PASS · NOT A CURRENT EXECUTION ENTRY POINT`
 
 ## 1. 执行策略与阶段 Gate
 
@@ -645,7 +646,17 @@ Chrome 生命周期竞争、重复 worker、事务提交一半、恢复时页面
 
 ## 19. Implementation Plan Gate
 
-> **IMPLEMENTATION PLAN ACTIVE — FORMAL MVP CODING IN PROGRESS**
+> **IMPLEMENTATION PLAN COMPLETE — FORMAL MVP GATE D PASS**
 
-Formal MVP Coding 已经开始。当前真实 vertical slice 已运行到 Review；D-014 Rule Association Alignment 已通过。继续当前 Phase 5–9 Milestone，不重启阶段 1。
+本计划的 15 个 Phase 已全部执行完毕，不再是当前执行入口。
 
+| Gate | Phases | 结果 |
+|---|---|---|
+| A | 1–4 | PASS |
+| B | 5–9 | PASS |
+| C | 10–12 | PASS |
+| D | 13–15 | PASS（2026-09-17） |
+
+最终自动化结果为 Contracts 2、Extension 124（27 个文件）、Backend 20（5 个文件），其余 CI 门禁零失败。两门真实 NTU Learn 课程的完整闭环、精确权限、失败/恢复与日历导入已通过。真实 PPTX、DOCX、legacy Office、超大、无文本与损坏样本保留 `NOT TESTED`。KR-07、KR-08 是开放缺陷。
+
+v0.1.1 或下一版工作必须在产品侧形成新决定后由新的 Implementation Plan 承接；不得在本文档上继续追加执行阶段。

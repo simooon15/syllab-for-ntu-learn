@@ -1,5 +1,8 @@
 # Syllab — Coding Start Prompt — v0.1.0
 
+> **HISTORICAL PROMPT · DO NOT RUN**
+> 该启动提示词对应的 Formal MVP Coding 已完成，Gate D 已 PASS。当前状态见 `../docs/final-acceptance-v0.1.0.md`；本文下方指令仅作历史记录。
+
 我们现在继续 Syllab for NTU Learn 的 Formal MVP Coding。
 
 当前产品版本：
@@ -179,4 +182,3 @@ Candidate relationship schema
 完成阶段 15 Final acceptance 后也必须停止，提交完整验收证据，由产品侧决定下一步。
 
 完成下面的 Handoff Cleanup Preflight，并确认已完整阅读上述文件后，直接开始阶段 1 Project foundation：Extension Foundation + Backend Foundation。
-

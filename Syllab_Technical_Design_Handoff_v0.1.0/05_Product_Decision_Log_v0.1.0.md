@@ -1,8 +1,9 @@
 # Syllab — 产品决策记录 — v0.1.0
 
-> **产品版本**：v0.1.0  
-> **更新时间**：2026-09-16  
-> 本文档记录会影响产品行为、交互边界或后续技术设计的正式产品决定。  
+> **产品版本**：v0.1.0
+> **更新时间**：2026-09-17
+> **Lifecycle**：`v0.1.0 IMPLEMENTED · GATE D PASS · D-001–D-015 BASELINE PRESERVED`
+> 本文档记录会影响产品行为、交互边界或后续技术设计的正式产品决定。
 > 已确认决定不得由后续开发自行改写；如果技术条件与已确认产品方向冲突，应回到产品侧确认。
 
 ---
@@ -872,3 +873,17 @@ MVP Important Rules 的核心收录标准为：
 - Phase 7 AI Extraction 的 Prompt、产品边界过滤和 Evaluation 按本决定收窄。
 
 **决定日期**：2026-09-17
+
+---
+
+# 4. Post-v0.1.0 decisions pending
+
+以下是 Gate D 后证据支持的产品评审议题，**不是新的已确认决定**：
+
+1. Canonical Assessment identity：可能影响 D-014 中 relationship 与 parent identity 的解读。
+2. Important Rules 的产品用途与收录边界：可能影响 D-015。
+3. Active Scan 入口优先级与返回旧 Course Brief 的路径。
+4. Scan 的自动推进、暂停、Continue、Retry、Restart 和 Scan again 语义。
+5. Course Brief / Review 的信息架构、归属表达与去重责任。
+
+详细证据和产品问题见 `../docs/product-design-review-input-post-v0.1.0.md`。产品侧形成正式结论后，应新增 D-016 起的决定；若修改 D-014 或 D-015，必须明确记录 `supersedes` 的具体范围。

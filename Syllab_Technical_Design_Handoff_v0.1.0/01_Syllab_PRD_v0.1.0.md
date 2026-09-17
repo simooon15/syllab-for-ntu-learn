@@ -1,11 +1,13 @@
 # Syllab for NTU Learn — 产品需求文档（PRD） — v0.1.0
 
-> **产品版本**：v0.1.0  
-> **阶段**：MVP 详细交互与信息架构已完成核心对齐，下一阶段进入技术设计  
-> **产品形态**：Chrome 浏览器扩展  
-> **目标平台**：NTU Learn（Blackboard）  
-> **技术验证结论**：`PASS WITH KNOWN RISKS`  
+> **产品版本**：v0.1.0
+> **阶段**：`v0.1.0 IMPLEMENTED · GATE D PASS · ACCEPTED BASELINE`
+> **产品形态**：Chrome 浏览器扩展
+> **目标平台**：NTU Learn（Blackboard）
+> **技术验证结论**：`PASS WITH KNOWN RISKS`
 > **本文档用途**：作为 Syllab 当前产品需求事实源。后续交互规范、技术设计、实现计划、MVP 开发与验收必须以本文档为产品边界；若实现与本文档冲突，应回到产品侧确认，不应自行扩大或修改范围。
+
+> **Lifecycle Note**：本文档是 v0.1.0 已实现、已验收的产品基线，不是下一版的变更草案。Gate D 后的产品反馈、候选方向与待决策问题集中记录在 `../docs/product-design-review-input-post-v0.1.0.md`；在产品侧形成新的正式决定前，不改变本文档的规范性需求。
 
 ---
 
@@ -2139,7 +2141,7 @@ Course Brief
 Saved Courses / 后续主动重新扫描
 ```
 
-当前项目推进顺序：
+本版实际完成路径：
 
 ```text
 需求对齐
@@ -2165,7 +2167,12 @@ MVP 详细交互与信息架构
 真实课程验收
 ```
 
-当前下一阶段不是继续 Technical Spike，也不是直接开发，而是：
+## 31.1 Implementation validation outcome
 
-> **以已确认的 MVP 交互与信息架构规范为基础，形成新的产品交接文档，然后进入技术设计。**
+- Phase 1–15 与 Gate A–D 全部完成；Gate D 于 2026-09-17 PASS。
+- 两门真实 NTU Learn 课程完成 Scan → Review → Course Brief → Calendar 闭环验收。
+- 真实 PDF 与 ZIP 已端到端验证；真实 PPTX、DOCX、legacy Office、超大、无文本和损坏样本仍为 `NOT TESTED`。
+- KR-07（Calendar 可静默漏掉已确认日期）与 KR-08（`Retry extraction` 可重跑付费提取）是开放缺陷，不改变 Gate D 结果。
+- 完整验收事实源为 `../docs/final-acceptance-v0.1.0.md`。
 
+当前下一步是产品交接与 post-v0.1.0 决策，不是重开 Technical Spike 或继续 v0.1.0 Coding。

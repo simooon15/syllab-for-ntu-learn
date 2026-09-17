@@ -1,10 +1,12 @@
 # Syllab for NTU Learn v0.1.0 — Gate D Testing Handoff
 
 Date: 2026-09-17  
-Current phase: Phase 13–15 consolidated testing and final acceptance  
-Status: **IN PROGRESS — continue current Gate D run; do not restart coding**
+Current phase: Product handoff after completed Phase 13–15 acceptance
+Status: **COMPLETE · SUPERSEDED BY FINAL ACCEPTANCE**
 
-## 1. Instruction to the next Agent
+> **Historical handoff.** Gate D passed on 2026-09-17. Do not use the continuation instructions or suggested opening message below as current work. They are retained to preserve the test procedure and the state from which the completed run resumed. Current authority: `docs/final-acceptance-v0.1.0.md`.
+
+## 1. Historical instruction to the testing Agent
 
 Continue the existing Formal MVP Gate D testing and closure from the current workspace.
 
@@ -191,8 +193,10 @@ Stop and return a Product-impacting Technical Conflict only if continuing requir
 
 After Phase 15 Final acceptance is complete, stop and return the complete evidence package to Product. Do not begin production deployment or the deferred artistic visual reconstruction in the same run.
 
-## 11. Suggested opening message to the user
+## 11. Historical opening message — do not reuse
 
 ```text
 我已接手当前 Gate D 测试，不会重跑已经通过的项目。现在从 Backend 断开测试的恢复半程继续：请先确认刚才 Extraction Failed 后旧 Course Brief 是否仍完整保留；然后重启 Backend，并点击 Retry extraction。把“旧 Brief 是否保留”和“Retry 是否回到 Review”告诉我即可。
 ```
+
+The recovery half, forced Service Worker termination, entry-priority fixes, second Calendar client and final CI all subsequently passed. The completed evidence is recorded in `docs/gate-d-consolidated-acceptance.md` and `docs/final-acceptance-v0.1.0.md`.

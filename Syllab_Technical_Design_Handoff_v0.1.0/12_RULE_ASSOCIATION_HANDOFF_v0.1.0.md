@@ -1,8 +1,11 @@
 # Syllab — Rule Association Coding Handoff — v0.1.0
 
-> 产品版本：v0.1.0  
-> 状态：`RULE ASSOCIATION ALIGNMENT: PASS`  
-> 正式决定：D-014｜Assessment-specific Date / Rule Ownership  
+> **HISTORICAL INPUT · SUPERSEDED**
+> 本文件保留 D-014 对齐后的 Phase 5–9 实现语境。D-014 仍是 v0.1.0 基线，但该 Coding handoff 已随 Gate D PASS 完成使命，不得作为当前执行入口。
+
+> 产品版本：v0.1.0
+> 状态：`RULE ASSOCIATION ALIGNMENT: PASS`
+> 正式决定：D-014｜Assessment-specific Date / Rule Ownership
 > Coding：继续当前 Phase 5–9 Milestone，不重启 Phase 1
 
 ## 1. 当前真实状态

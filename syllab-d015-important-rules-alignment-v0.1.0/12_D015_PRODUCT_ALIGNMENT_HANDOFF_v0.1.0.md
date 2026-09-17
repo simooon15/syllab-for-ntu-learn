@@ -1,8 +1,11 @@
 # Syllab — D-015 Product Alignment Handoff — v0.1.0
 
-> 产品版本：v0.1.0  
-> 范围：MVP `course-level Important Rules` 收录边界  
-> 性质：窄范围产品对齐；不重开 PRD / IA / Review / Course Brief / D-014；不扩大 MVP  
+> **HISTORICAL PRODUCT ALIGNMENT INPUT · SUPERSEDED**
+> D-015 已进入 v0.1.0 正式基线，v0.1.0 已 Gate D PASS。保留本文作为当时对齐证据，不按其启动新一轮实现。
+
+> 产品版本：v0.1.0
+> 范围：MVP `course-level Important Rules` 收录边界
+> 性质：窄范围产品对齐；不重开 PRD / IA / Review / Course Brief / D-014；不扩大 MVP
 > 开发状态：现有 MVP Coding 继续；D-015 只进入当前 AI Extraction 的相关路径
 
 ## 1. 实例结论

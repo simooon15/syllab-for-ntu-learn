@@ -1,7 +1,8 @@
 # Syllab — 产品技术评审摘要 — v0.1.0
 
-> 面向产品负责人  
-> 用途：记录正式开发中的产品/技术 Alignment 结论；当前已加入 D-014 Assessment-specific Date / Rule Ownership。
+> 面向产品负责人
+> 用途：保留 v0.1.0 开发中的产品/技术 Alignment 结论，并记录最终实现结果。
+> 状态：`v0.1.0 SUMMARY · GATE D PASS · NOT A POST-v0.1.0 DECISION`
 
 ## 1. 最终准备怎么搭这个 MVP
 
@@ -138,7 +139,12 @@ D-014 已完成产品侧确认，不需要再次做同一轮 Alignment。后续�
 
 ## 10. 当前 Coding 状态
 
-Formal MVP Coding 已进行到真实 vertical slice：Discovery → Fetch → Parse → Normalize → DeepSeek Extraction → Review 已可运行。
+Formal MVP Coding 已完成，Gate D 于 2026-09-17 PASS。Discovery → Fetch → Parse → Normalize → DeepSeek Extraction → Review → Course Brief → Calendar 已在两门真实 NTU Learn 课程上跑通。
 
-当前按 D-014 完成 relationship schema、Review context、Brief persistence / no-duplication 与 Scan again matching，然后继续 Phase 5–9 Milestone；不要重启 Phase 1。阶段内测试通过后继续执行，到 Milestone Gate 再做产品侧 Review。
+D-014 当时的对齐记录保留为 v0.1.0 基线，不因 Gate D 后出现新问题而静默改写。
 
+## 11. Gate D 后的产品评审输入
+
+真实验收记录了五类下一版输入：Scan 路径和动作语义过于复杂、Course Brief 信息架构不可读、Important Rules 边界不足、Assessment 身份碎片化，以及缺少可用于工具栏的 mark。
+
+这些是评审输入，不是本文档已确认的产品决定。证据、候选方向与待决问题见 `../docs/product-design-review-input-post-v0.1.0.md`；最终验收见 `../docs/final-acceptance-v0.1.0.md`。

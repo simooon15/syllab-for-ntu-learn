@@ -1,12 +1,12 @@
 # Syllab for NTU Learn — MVP 交互与信息架构规范 — v0.1.0
 
-> **产品版本**：v0.1.0  
-> **当前阶段**：MVP 详细交互设计 / 信息架构  
-> **状态**：产品设计已对齐  
-> **产品形态**：Chrome 扩展  
-> **目标平台**：NTU Learn（Blackboard）  
-> **上游产品事实源**：`01_Syllab_PRD_v0.1.0.md`  
-> **技术验证状态**：`PASS WITH KNOWN RISKS`  
+> **产品版本**：v0.1.0
+> **当前阶段**：v0.1.0 实现后验证
+> **状态**：`v0.1.0 IMPLEMENTED AND VALIDATED · BASELINE PRESERVED`
+> **产品形态**：Chrome 扩展
+> **目标平台**：NTU Learn（Blackboard）
+> **上游产品事实源**：`01_Syllab_PRD_v0.1.0.md`
+> **技术验证状态**：`PASS WITH KNOWN RISKS`
 > **文档用途**：定义 MVP 的界面结构、导航关系、核心交互、状态、异常处理和完整用户流程，作为进入技术设计前的产品设计事实源。本文档不定义代码、API、数据库、模型、Prompt、Parser 或具体工程实现。
 
 ---
@@ -1886,3 +1886,16 @@ MVP 的主体验可以压缩成一句话：
 
 > **在当前课程中扫描信息 → 低成本确认 → 形成可信的 Course Brief → 按需导出日期；任何未完成、失败或不确定状态都明确可见，但不阻断已经获得的价值。**
 
+---
+
+# 22. Post-implementation validation note（non-normative）
+
+Gate D 真实使用确认了 v0.1.0 闭环，也暴露了下一版需要重新评审的产品问题：
+
+- 四个 surface 的顶部表达是状态轨道，无法承担跨 surface 导航。
+- Active Scan 优先入口保护了可恢复工作，但会增加返回旧 Course Brief 的摩擦。
+- 首次 Scan 的阶段点击与近义动作过多，且操作后果不够清楚。
+- Course Brief 的事实呈现、Assessment 归组、日期聚合和归属表达不足以支持舒适阅读。
+- Review 暴露过多 Assessment 别名和身份清理工作，用户承担了本应由系统预处理的责任。
+
+这些是 post-v0.1.0 评审输入，不修改本文档的 v0.1.0 规范性行为。证据、候选方向与待决问题见 `../docs/product-design-review-input-post-v0.1.0.md`。

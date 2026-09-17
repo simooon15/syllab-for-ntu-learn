@@ -1,5 +1,8 @@
 # Syllab v0.1.0 · Important Rule Scope Product Discussion Prompt
 
+> **HISTORICAL PROMPT · DO NOT USE AS CURRENT INSTRUCTION**
+> This prompt was written while Formal MVP Coding was still in progress. v0.1.0 is now implemented and Gate D has passed. D-015 remains the accepted baseline; the unresolved post-v0.1.0 category question is now framed in `product-design-review-input-post-v0.1.0.md`.
+
 我们正在完成 Syllab for NTU Learn v0.1.0 Formal MVP。
 
 当前已确认：

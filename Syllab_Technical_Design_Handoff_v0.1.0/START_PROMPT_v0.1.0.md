@@ -1,5 +1,8 @@
 # Syllab — Technical Design + Implementation Plan 启动提示词 — v0.1.0
 
+> **HISTORICAL PROMPT · DO NOT RUN**
+> 该提示词对应的技术设计、实现计划与 Formal MVP Coding 已完成，Gate D 已 PASS。下方内容仅作历史记录。
+
 我们现在继续推进 **Syllab for NTU Learn**。
 
 你正在接手一个已经完成产品需求、真实 Technical Spike、MVP 详细交互设计和信息架构的项目。

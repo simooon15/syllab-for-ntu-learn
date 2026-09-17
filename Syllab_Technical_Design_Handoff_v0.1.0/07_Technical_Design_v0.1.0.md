@@ -1,9 +1,11 @@
 # Syllab — Technical Design — v0.1.0
 
-> 产品版本：v0.1.0  
-> 阶段：Technical Design  
-> 上游事实源：`01_Syllab_PRD_v0.1.0.md`、`04_Spike_Report_v0.1.0.md`、`05_Product_Decision_Log_v0.1.0.md`、`06_MVP_Interaction_IA_Spec_v0.1.0.md`  
-> 结论：可进入正式 MVP Coding；本文件不包含正式实现代码
+> 产品版本：v0.1.0
+> 阶段：`IMPLEMENTED · GATE D PASS · HISTORICAL DESIGN BASELINE`
+> 上游事实源：`01_Syllab_PRD_v0.1.0.md`、`04_Spike_Report_v0.1.0.md`、`05_Product_Decision_Log_v0.1.0.md`、`06_MVP_Interaction_IA_Spec_v0.1.0.md`
+> 结论：本设计已完成实现并通过 Gate D；本文件保留为 v0.1.0 历史设计基线
+
+> **Lifecycle Note**：本文件中的“待 Coding / Testing 验证”表述保留其当时语境。当前实现与验收状态以 `../docs/final-acceptance-v0.1.0.md` 为准；post-v0.1.0 产品问题在正式决策前不构成本技术设计的变更。
 
 ## 1. 设计目标与边界
 
@@ -589,15 +591,15 @@ Calendar Export 由 Popup 临时交互生成：
 
 ## 18. 外部技术依据
 
-- Chrome 官方说明：`chrome.permissions.request()` 需要从用户手势内调用；运行时发现 host 可在 `optional_host_permissions` 声明范围后按 origin 请求。  
+- Chrome 官方说明：`chrome.permissions.request()` 需要从用户手势内调用；运行时发现 host 可在 `optional_host_permissions` 声明范围后按 origin 请求。
   https://developer.chrome.com/docs/extensions/reference/api/permissions
-- Chrome 官方说明：Extension Service Worker 会被回收，不能依赖全局变量，状态应写入 `chrome.storage` / IndexedDB。  
+- Chrome 官方说明：Extension Service Worker 会被回收，不能依赖全局变量，状态应写入 `chrome.storage` / IndexedDB。
   https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle
-- Chrome 官方说明：IndexedDB 可用于 Service Worker 的结构化持久化；扩展 origin 的存储在各扩展组件间共享。  
+- Chrome 官方说明：IndexedDB 可用于 Service Worker 的结构化持久化；扩展 origin 的存储在各扩展组件间共享。
   https://developer.chrome.com/docs/extensions/develop/concepts/storage-and-cookies
-- DeepSeek 官方说明：当前正式模型名为 `deepseek-flash`，OpenAI 兼容 base URL 为 `https://api.deepseek.com`，API 使用 Bearer Authentication。  
+- DeepSeek 官方说明：当前正式模型名为 `deepseek-flash`，OpenAI 兼容 base URL 为 `https://api.deepseek.com`，API 使用 Bearer Authentication。
   https://api-docs.deepseek.com/zh-cn/
-- DeepSeek 官方错误码：400 / 401 / 402 / 422 / 429 / 500 / 503 需要在 Backend 映射并区分可重试与不可重试情况。  
+- DeepSeek 官方错误码：400 / 401 / 402 / 422 / 429 / 500 / 503 需要在 Backend 映射并区分可重试与不可重试情况。
   https://api-docs.deepseek.com/zh-cn/quick_start/error_codes/
 
 ## 19. Technical Design Gate
@@ -606,7 +608,14 @@ Calendar Export 由 Popup 临时交互生成：
 
 结论：
 
-> **TECHNICAL DESIGN COMPLETE — FINAL DELTA ALIGNMENT CHECK PASSED — READY FOR FORMAL MVP CODING**
+> **TECHNICAL DESIGN IMPLEMENTED — GATE D PASS — v0.1.0 BASELINE PRESERVED**
 
-正式 Coding 尚未开始；下一轮从 Implementation Plan Phase 1 开始。
+## 19.1 Implementation outcome
 
+- v0.1.0 实现完成，Gate D 于 2026-09-17 PASS。
+- 最终自动化结果：Contracts 2、Extension 124（27 个文件）、Backend 20（5 个文件），构建、严格类型检查、ESLint、Prettier、Manifest 校验与 Secret scan 通过。
+- 两门真实课程的 Scan → Review → Course Brief → Calendar 闭环、精确权限拒绝、后端不可用恢复与 Service Worker 强制中断已验证。
+- 真实 PPTX、DOCX、legacy Office、超大、无文本与损坏样本仍为 `NOT TESTED`。
+- E3（内部 course id 命名）、E4（Service Worker 启动时的 stale-snapshot 整表回写）与 E5（schema mismatch 恢复路径的 unhandled rejection）保留为工程发现；本文件不反向改写原设计。
+
+详细证据和开放缺陷见 `../docs/final-acceptance-v0.1.0.md`。

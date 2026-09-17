@@ -1,8 +1,11 @@
 # Syllab — Coding Handoff README — v0.1.0
 
-> 产品版本：v0.1.0  
-> 下一阶段：继续 Formal MVP Coding 当前 Milestone  
-> 当前 Gate：RULE ASSOCIATION ALIGNMENT: PASS — D-014 APPROVED  
+> **HISTORICAL INPUT · DO NOT USE AS CURRENT CODING HANDOFF**
+> 本文件保留 Phase 5–9 时的执行上下文。v0.1.0 已实现并于 2026-09-17 通过 Gate D。当前事实源是 `../docs/final-acceptance-v0.1.0.md`；不要按本文档继续 Coding。
+
+> 产品版本：v0.1.0
+> 下一阶段：继续 Formal MVP Coding 当前 Milestone
+> 当前 Gate：RULE ASSOCIATION ALIGNMENT: PASS — D-014 APPROVED
 > 重要：不要重启 Phase 1。下一位 Codex 完成 handoff cleanup preflight 后，按 `12_RULE_ASSOCIATION_HANDOFF_v0.1.0.md` 继续当前 Phase 5–9 Milestone。
 
 ## 1. 当前项目状态
@@ -254,4 +257,3 @@ D-013 和 Required Fixes 属于技术接入与路由收口，不修改：
 - `01_Syllab_PRD_v0.1.0.md`；
 - `04_Spike_Report_v0.1.0.md`；
 - `06_MVP_Interaction_IA_Spec_v0.1.0.md`。
-

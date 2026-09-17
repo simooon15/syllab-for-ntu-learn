@@ -2,13 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { extname, join, relative, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const ignoredDirectories = new Set([
-  ".git",
-  ".spike-backups",
-  "node_modules",
-  "coverage",
-  "Syllab_Technical_Design_Handoff_v0.1.0"
-]);
+const ignoredDirectories = new Set([".git", ".spike-backups", "node_modules", "coverage"]);
 const allowedExtensions = new Set([
   ".ts",
   ".js",

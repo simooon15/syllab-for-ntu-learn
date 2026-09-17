@@ -4,12 +4,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: [
-      "**/dist/**",
-      "**/coverage/**",
-      "Syllab_Technical_Design_Handoff_v0.1.0/**",
-      ".spike-backups/**"
-    ]
+    ignores: ["**/dist/**", "**/coverage/**", ".spike-backups/**"]
   },
   eslint.configs.recommended,
   ...tseslint.configs.strictTypeChecked,

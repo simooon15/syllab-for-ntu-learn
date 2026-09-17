@@ -68,5 +68,40 @@ contain Agent instructions, Coding continuation prompts, temporary release-choic
 repository takeover notes. Preserve evidence and unresolved facts without turning candidate
 next-version directions into approved Product decisions.
 
+## Temporary transfer-package cleanup
+
+Only packages assembled temporarily for a specific handoff may be considered for cleanup after
+they become obsolete. This category includes Handoff packages, Delivery packages, Transfer bundles,
+Agent takeover packages, and complete copied or packaged material sets prepared to transfer work
+between Product and Development. These packages may be removed from the local project only after the
+handoff is complete, a newer handoff has replaced them, and the package contains no unique source of
+truth. The purpose of this cleanup is to prevent the project directory from accumulating duplicate
+transfer copies, not to erase historical records.
+
+This cleanup rule never applies to formal historical archives. Preserve, at minimum:
+
+- `PRD_vX.X.X.md`;
+- `PRODUCT_HANDOFF_vX.X.X.md`;
+- `README_vX.X.X.md`;
+- formal Decision Logs;
+- formal Acceptance and Validation records;
+- durable project rules; and
+- Product or engineering fact documents archived with a historical version.
+
+The end of a version does not make these records disposable. Do not remove them merely because a
+version is old, closed or superseded by later product work.
+
+Before deleting any temporary transfer package, confirm all of the following:
+
+1. The handoff is complete.
+2. Every still-valid item in the package also exists in formal project documents, Git history or
+   another reliable archive.
+3. The package contains no unique Product decision, acceptance evidence, test record or user
+   feedback.
+4. Current and foreseeable follow-on work no longer depends on the package.
+
+If any condition cannot be confirmed, retain the package by default. Cleanup authorization for a
+temporary transfer package does not authorize deletion of any formal archive listed above.
+
 Apply this archive model to every later version. Link to this document instead of duplicating its
 rules in version-specific files.

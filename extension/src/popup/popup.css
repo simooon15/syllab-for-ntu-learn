@@ -1,0 +1,280 @@
+:root {
+  color-scheme: light;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: #18201c;
+  background: #f7f8f7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 380px;
+  min-width: 380px;
+  min-height: 500px;
+  margin: 0;
+}
+
+main {
+  min-height: 500px;
+  padding: 22px;
+}
+
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 8px;
+  color: #fff;
+  background: #285f46;
+  font-weight: 750;
+}
+
+.eyebrow {
+  margin: 0 0 3px;
+  color: #627068;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.lede {
+  margin: 14px 0 18px;
+  color: #59645e;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.surface-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #d4dad6;
+  border-radius: 8px;
+  overflow: hidden;
+  list-style: none;
+}
+
+.surface-list li:nth-child(odd) {
+  border-right: 1px solid #d4dad6;
+}
+
+.surface-list li:nth-child(-n + 2) {
+  border-bottom: 1px solid #d4dad6;
+}
+
+.surface-list button {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  color: #737d77;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.surface-list button:disabled {
+  opacity: 1;
+}
+
+.surface-list button[aria-current="page"] {
+  color: #163f2d;
+  background: #eaf2ed;
+  font-weight: 700;
+}
+
+.primary-action {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  background: #285f46;
+  font: inherit;
+  font-weight: 700;
+}
+
+.secondary-action {
+  border: 1px solid #d4dad6;
+  background: transparent;
+  color: #18201c;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.permission-origin {
+  overflow-wrap: anywhere;
+  padding: 12px;
+  border: 1px solid #d4dad6;
+  border-radius: 8px;
+}
+
+.permission-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.review-content,
+.brief-content {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.review-content h2,
+.brief-content h2,
+.review-card h3 {
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.review-card,
+.brief-card {
+  padding: 12px;
+  border: 1px solid #d4dad6;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.review-card pre,
+.brief-card pre {
+  overflow: auto;
+  white-space: pre-wrap;
+  font: inherit;
+  font-size: 12px;
+}
+
+.relationship-context {
+  margin: 8px 0;
+  color: #285f46;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.brief-child {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e7e3;
+}
+
+.brief-child h3 {
+  margin: 0;
+  color: #285f46;
+  font-size: 11px;
+}
+
+.brief-section {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.brief-section > h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.evidence {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+
+.empty-state,
+.unresolved-field {
+  color: #59645e;
+  font-size: 12px;
+}
+
+.primary-action:disabled {
+  opacity: 0.55;
+}
+
+.primary-action:focus-visible,
+.surface-list button:focus-visible {
+  outline: 3px solid #a8c7b6;
+  outline-offset: 2px;
+}
+
+.task-list {
+  margin: 16px 0 0;
+  padding: 8px 12px 8px 34px;
+  border: 1px solid #d4dad6;
+  border-radius: 8px;
+  background: #fff;
+  color: #657069;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.task-list li[data-state="complete"] {
+  color: #224d38;
+  font-weight: 650;
+}
+
+.status {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid #d4dad6;
+}
+
+.status-label {
+  color: #285f46;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.status-text {
+  overflow-wrap: anywhere;
+  color: #657069;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

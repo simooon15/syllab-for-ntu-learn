@@ -1,0 +1,37 @@
+{
+  "name": "syllab-for-ntu-learn",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "extension",
+    "backend"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build -w @syllab/contracts && npm run build -w @syllab/extension && npm run build -w @syllab/backend",
+    "typecheck": "npm run build -w @syllab/contracts && npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run build -w @syllab/contracts && npm run test --workspaces --if-present",
+    "validate:manifest": "node scripts/validate-manifest.mjs",
+    "secret:scan": "node scripts/secret-scan.mjs",
+    "ci": "npm run format:check && npm run build && npm run typecheck && npm run lint && npm test && npm run validate:manifest && npm run secret:scan"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "@types/chrome": "^0.1.1",
+    "@types/node": "^24.3.1",
+    "esbuild": "^0.25.9",
+    "eslint": "^9.35.0",
+    "globals": "^16.3.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.42.0",
+    "vitest": "^3.2.4"
+  }
+}

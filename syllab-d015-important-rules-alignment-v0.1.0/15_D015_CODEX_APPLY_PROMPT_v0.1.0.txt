@@ -1,0 +1,31 @@
+Apply D-015 Important Rules alignment only.
+
+Read only:
+- `13_D015_CHANGE_MANIFEST_v0.1.0.md`
+- `12_D015_PRODUCT_ALIGNMENT_HANDOFF_v0.1.0.md`
+
+From the project root run:
+
+`python3 <handoff-folder>/14_apply_D015_alignment_v0.1.0.py .`
+
+Do not manually diff the formal docs first. The script auto-locates the formal-doc directory and generates exact line numbers.
+
+If it prints `D-015 DOCS DELTA: SUCCESS`:
+- do not re-diff the four formal docs;
+- use `D015_APPLIED_CHANGE_REPORT_v0.1.0.md` as the line-level record;
+- implement only the current AI Extraction D-015 path:
+  1. extraction prompt Grade-Impact gate;
+  2. conservative local boundary validator / existing product-boundary filter;
+  3. D-015 regression/evaluation cases.
+- keep DeepSeek / `deepseek-flash`, JSON mode, one-source normalized-unit batching, Candidate Merger, Review, Course Brief, IA, schema and D-014 unchanged.
+- continue unrelated MVP Coding normally.
+
+If it prints `BLOCKED BEFORE WRITE`, do not guess and do not manually patch. Return the exact message.
+
+Return only:
+1. Delta applied successfully: Yes/No
+2. Generated change-report path
+3. Prompt updated: Yes/No
+4. Local boundary validator updated: Yes/No
+5. D-015 evaluation/regression: Pass/Fail/Not reached
+6. Product-impacting Technical Conflict: None / exact conflict

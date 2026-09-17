@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Syllab NTU Learn — Technical Spike",
+  "description": "Debug-only evidence collector for the Syllab Technical Spike. Not an MVP build.",
+  "version": "0.10.0",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "action": {
+    "default_title": "Syllab Spike",
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "webRequest",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://ntulearn.ntu.edu.sg/*",
+    "https://alt-5dcb73f79ba4c.blackboard.com/*",
+    "https://prod01-apse1-prod01-xythos.prod.files.blackboard.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://*.blackboard.com/*"
+  ]
+}

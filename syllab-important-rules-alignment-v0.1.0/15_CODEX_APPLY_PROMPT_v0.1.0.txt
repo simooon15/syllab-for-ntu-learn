@@ -1,0 +1,24 @@
+You are applying a narrow Product Alignment Delta to the existing Syllab for NTU Learn v0.1.0 Formal MVP workspace.
+
+This is NOT a new product-design task and NOT a reason to restart Coding.
+
+Do exactly this:
+
+1. Read only `13_CHANGE_MANIFEST_v0.1.0.md` first. Do not diff or reread the full product document set.
+2. From the project root, run:
+
+   python 14_apply_product_alignment_delta_v0.1.0.py .
+
+3. If the script succeeds, accept the four edited formal documents as the new v0.1.0 baseline. Do not manually re-check their unchanged sections.
+4. Read `12_PRODUCT_ALIGNMENT_HANDOFF_v0.1.0.md` only for the implementation behavior of D-015.
+5. Continue the CURRENT Coding phase. Do not restart from Phase 1 and do not pause the MVP closure merely because this delta arrived.
+6. If AI Extraction has not been implemented yet, implement D-015 when Phase 7 is reached.
+7. If AI Extraction already exists, patch only the Important Rule portion of the extraction prompt and its evaluation/tests. Do not redesign the prompt, schema, pipeline, UI, IA, Review flow, Provider, Model, backend, or D-014.
+8. Do not add a broad keyword blacklist or a generic policy classifier.
+9. Stop and return a Product-impacting Technical Conflict only if the apply script fails because a required anchor no longer matches, D-015 is already occupied by another decision, or the current implementation makes D-015 impossible without changing confirmed product behavior.
+
+After applying, report only:
+- whether the delta applied successfully;
+- the actual changed line numbers printed by the script;
+- whether AI Extraction is not yet reached or whether prompt/evaluation code was patched;
+- any genuine blocking conflict.

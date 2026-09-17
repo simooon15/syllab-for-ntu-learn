@@ -1,0 +1,20 @@
+node_modules/
+*.log
+dist/
+coverage/
+.DS_Store
+
+# Server-side secrets must never be committed.
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+*.secret
+*.secrets
+secrets/
+
+# Real course captures stay outside the repository.
+syllab-spike-*.json
+fixtures/private/
+evidence/private/

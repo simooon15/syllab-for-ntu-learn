@@ -38,7 +38,8 @@ describe("entry routing", () => {
   it.each([
     ["Scanning", "scanning"],
     ["WaitingForPermission", "waiting-for-permission"],
-    ["Interrupted", "interrupted"]
+    ["Interrupted", "interrupted"],
+    ["Failed", "interrupted"]
   ] as const)("prioritizes %s over an old Course Brief", (status, state) => {
     expect(
       resolveEntryRoute(

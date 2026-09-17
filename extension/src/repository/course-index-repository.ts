@@ -9,6 +9,13 @@ function readArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+// A failed stage keeps its completed checkpoint on disk, so it is resumed the same way an
+// interrupted scan is. A failure that cannot be resumed (for example a discovery failure that
+// never produced a usable checkpoint) carries `recoverable: false` and stays unreachable here.
+function isResumableStatus(status: ScanSummary["status"]): boolean {
+  return status === "Interrupted" || status === "Failed";
+}
+
 export class CourseIndexRepository {
   constructor(private readonly storage: StorageArea) {}
 
@@ -37,16 +44,23 @@ export class CourseIndexRepository {
 
   async findEntryScan(courseId: string): Promise<ScanSummary | null> {
     const result = await this.storage.get(SCAN_SUMMARIES_KEY);
-    const scans = readArray<ScanSummary>(result[SCAN_SUMMARIES_KEY]);
-    return (
-      scans.find(
-        (scan) =>
-          scan.courseId === courseId &&
-          (scan.status === "Scanning" ||
-            scan.status === "WaitingForPermission" ||
-            (scan.status === "Interrupted" && scan.recoverable))
-      ) ?? null
+    const scans = readArray<ScanSummary>(result[SCAN_SUMMARIES_KEY]).filter(
+      (scan) => scan.courseId === courseId
     );
+    const isRunning = (scan: ScanSummary): boolean =>
+      scan.status === "Scanning" || scan.status === "WaitingForPermission";
+    const isResumable = (scan: ScanSummary): boolean =>
+      isResumableStatus(scan.status) && scan.recoverable;
+
+    // Summaries are stored newest first, so the newest entry is where the course actually stands:
+    // a live scan, or a scan whose checkpoint is still the course's current one. A merely resumable
+    // scan is therefore only offered while it is still that newest entry. Once a newer scan exists,
+    // an old interrupted checkpoint must not shadow the course's real state or its finished Brief.
+    const newest = scans[0];
+    if (newest && (isRunning(newest) || isResumable(newest))) return newest;
+
+    // A scan that never stopped is still running, whatever else was written after it.
+    return scans.find(isRunning) ?? null;
   }
 
   async listScans(): Promise<ScanSummary[]> {
@@ -61,7 +75,7 @@ export class CourseIndexRepository {
   async resumeScan(scanId: string): Promise<ScanSummary | null> {
     const scans = await this.listScans();
     const target = scans.find((scan) => scan.scanId === scanId);
-    if (!target || target.status !== "Interrupted" || !target.recoverable) return null;
+    if (!target || !isResumableStatus(target.status) || !target.recoverable) return null;
     const resumed: ScanSummary = { ...target, status: "Scanning", recoverable: true };
     await this.replaceScans(scans.map((scan) => (scan.scanId === scanId ? resumed : scan)));
     return resumed;

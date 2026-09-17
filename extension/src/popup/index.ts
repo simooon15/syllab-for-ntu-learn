@@ -23,6 +23,7 @@ import {
 } from "../review/state";
 import { resolveCurrentEntry } from "./entry-runtime";
 import type { EntryRoute } from "./entry-router";
+import { scanErrorFrom } from "./scan-errors";
 import { calendarEventsFromBrief } from "../calendar/query";
 import { serializeCalendar } from "../calendar/ics";
 
@@ -193,11 +194,7 @@ async function beginFetch(route: Extract<EntryRoute, { surface: "scan" }>): Prom
     scanId: route.scanId
   });
   if (!isRecord(response) || typeof response.error === "string") {
-    throw new Error(
-      isRecord(response) && typeof response.error === "string"
-        ? response.error
-        : "Source fetch could not start"
-    );
+    throw scanErrorFrom(response, "Source fetch could not start");
   }
   const state = parseFetchState(response.state);
   const waiting = response.outcome === "WaitingForPermission";
@@ -224,9 +221,7 @@ async function beginParse(route: Extract<EntryRoute, { surface: "scan" }>): Prom
     scanId: route.scanId
   });
   if (!isRecord(response) || typeof response.error === "string" || !isRecord(response.state)) {
-    throw new Error(
-      isRecord(response) && typeof response.error === "string" ? response.error : "Parse failed"
-    );
+    throw scanErrorFrom(response, "Parse failed");
   }
   const state = parseParseState(response.state);
   if (!state) throw new Error("Parse returned an invalid state");
@@ -248,9 +243,7 @@ async function beginNormalize(route: Extract<EntryRoute, { surface: "scan" }>): 
     scanId: route.scanId
   });
   if (!isRecord(response) || typeof response.error === "string" || !isRecord(response.state)) {
-    throw new Error(
-      isRecord(response) && typeof response.error === "string" ? response.error : "Normalize failed"
-    );
+    throw scanErrorFrom(response, "Normalize failed");
   }
   const state = parseNormalizeState(response.state);
   if (!state) throw new Error("Normalize returned an invalid state");
@@ -269,11 +262,7 @@ async function beginExtraction(route: Extract<EntryRoute, { surface: "scan" }>):
     scanId: route.scanId
   });
   if (!isRecord(response) || typeof response.error === "string" || !isRecord(response.state)) {
-    throw new Error(
-      isRecord(response) && typeof response.error === "string"
-        ? response.error
-        : "Extraction failed"
-    );
+    throw scanErrorFrom(response, "Extraction failed");
   }
   const candidateCount =
     typeof response.state.candidateCount === "number" ? response.state.candidateCount : 0;
@@ -556,11 +545,7 @@ async function applyPermission(
     granted
   });
   if (!isRecord(response) || typeof response.error === "string") {
-    throw new Error(
-      isRecord(response) && typeof response.error === "string"
-        ? response.error
-        : "Permission decision could not be saved"
-    );
+    throw scanErrorFrom(response, "Permission decision could not be saved");
   }
   const nextState = parseFetchState(response.state);
   const waiting = response.outcome === "WaitingForPermission";
@@ -591,7 +576,7 @@ async function beginDiscovery(route: Extract<EntryRoute, { surface: "scan" }>): 
     ...(route.phase === "fetch" && route.scanId ? { restartScanId: route.scanId } : {})
   });
   if (!isRecord(response) || typeof response.error === "string") {
-    throw new Error("Course discovery could not start");
+    throw scanErrorFrom(response, "Course discovery could not start");
   }
   const sourceCount = typeof response.sourceCount === "number" ? response.sourceCount : 0;
   const issueCount = typeof response.issueCount === "number" ? response.issueCount : 0;
@@ -912,11 +897,7 @@ function render(
         })
         .then((response: unknown) => {
           if (!isRecord(response) || response.status !== "Scanning") {
-            throw new Error(
-              isRecord(response) && typeof response.error === "string"
-                ? response.error
-                : "Scan could not resume"
-            );
+            throw scanErrorFrom(response, "Scan could not resume");
           }
           render({ ...route, state: "scanning" }, "Continue from the saved checkpoint");
         })

@@ -43,12 +43,25 @@ export class ScanLeaseRepository {
   async interruptExpired(scans: readonly ScanSummary[], now = new Date()): Promise<ScanSummary[]> {
     const current = await this.storage.get(SCAN_LEASES_KEY);
     const leases = leasesFrom(current[SCAN_LEASES_KEY]);
-    return scans.map((scan) => {
+    const consumed: string[] = [];
+    const interrupted: ScanSummary[] = scans.map((scan) => {
       if (scan.status !== "Scanning") return structuredClone(scan);
       const lease = leases[scan.scanId];
       if (!lease || Date.parse(lease.expiresAt) > now.getTime()) return structuredClone(scan);
+      consumed.push(scan.scanId);
       return { ...structuredClone(scan), status: "Interrupted", recoverable: true };
     });
+    // Acting on a lease spends it. If it were left behind, the scan would be marked Interrupted
+    // again every time the user resumed it and the worker restarted, because the stage writers
+    // deliberately refuse to move a scan out of Interrupted.
+    if (consumed.length > 0) {
+      await this.storage.set({
+        [SCAN_LEASES_KEY]: Object.fromEntries(
+          Object.entries(leases).filter(([key]) => !consumed.includes(key))
+        )
+      });
+    }
+    return interrupted;
   }
 }
 

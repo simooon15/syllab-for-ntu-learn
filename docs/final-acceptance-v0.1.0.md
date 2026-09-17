@@ -188,6 +188,32 @@ Two consequences that matter for the next version:
 
 What this implies: the product needs a canonical Assessment identity — parent keys resolved to a single assessment before Review presents them, and the reassignment control offering only canonical assessments rather than every string the model produced. This touches D-014, which this run did not reopen, so it is recorded as a next-version item.
 
+### 5. The product has no mark, and the next version should design one
+
+Product's ask, recorded as given: the next version should design a logo.
+
+Where it stands today. There is no logo. Two different stand-ins are doing the job, and neither is a
+mark:
+
+- **The toolbar shows Chrome's placeholder.** `extension/public/manifest.json` declares neither
+  `icons` nor `action.default_icon`, so the extension installs and runs as the generic grey puzzle
+  piece. Nothing about this product is visible in the browser chrome.
+- **The in-popup mark is a letter, not an idea.** `.brand-mark` renders the first character of the
+  product name — `S` — in Fraunces inside a rounded 42×42 tile. It carries no meaning beyond the
+  initial, and it is the only graphic element in an otherwise entirely typographic interface.
+
+What this implies for the next version:
+
+- The mark has to survive 16px, because that is what a toolbar icon actually is. That constraint
+  rules out fine detail and thin strokes before any other decision is taken.
+- It has to be built the way the rest of the interface is built: flat, no gradient, no shadow, drawn
+  from the accent green rather than alongside it. See `docs/design-system.md`.
+- It needs a family rather than a file — 16/32/48/128 for the extension, plus something lighter for
+  the in-popup monogram, where the full mark would be too heavy at 42px next to a 25px heading.
+- It is the one asset that must work outside the popup's palette: Chrome's dark toolbar, a README, a
+  store listing. So define it as a single ink plus a ground that can invert, rather than baked
+  against the paper.
+
 ## Engineering findings from the Gate D review
 
 Separate from the Product feedback above. These were found by reviewing the implementation and probing real evidence during this run; the Product owner did not raise them. Ordered by severity.

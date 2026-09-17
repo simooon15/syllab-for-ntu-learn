@@ -184,3 +184,44 @@ Two consequences that matter for the next version:
 - **No signal to choose.** The correct answer here is Part 2, and Part 2 is in the list twice, with nothing distinguishing it from the twelve wrong options.
 
 What this implies: the product needs a canonical Assessment identity — parent keys resolved to a single assessment before Review presents them, and the reassignment control offering only canonical assessments rather than every string the model produced. This touches D-014, which this run did not reopen, so it is recorded as a next-version item.
+
+## Engineering findings from the Gate D review
+
+Separate from the Product feedback above. These were found by reviewing the implementation and probing real evidence during this run; the Product owner did not raise them. Ordered by severity.
+
+### E1. Calendar export silently drops dates when the fact also carries a prose `when` field — confirmed against real data
+
+`calendarEventsFromBrief` picks the date with `firstString(item.currentValue, /(?:date|deadline|due|when|start)/i)`. That returns the first entry whose **key name** matches the pattern, not the first whose **value** actually parses as a date, and it never falls back to the next matching field. In a fact shaped `{ what, when, venue, label, date, note }`, `when` precedes `date` in insertion order, so the prose field shadows the machine-readable one.
+
+Two of MA6084's eleven confirmed dates are dropped for exactly this reason. They are CA1 Batch 1 and Batch 2 — the two in-class presentation-and-role-play sessions, which are the dates a student must physically attend:
+
+| Fact        | Field matched first | Its value                             | Result                                                                      |
+| ----------- | ------------------- | ------------------------------------- | --------------------------------------------------------------------------- |
+| CA1 Batch 1 | `when`              | `23 October 2026, 3.30 pm to 6.20 pm` | unparseable, so dropped — although the same fact holds `date: "2026-10-23"` |
+| CA1 Batch 2 | `when`              | `30 October 2026, 3.30 pm to 6.20 pm` | unparseable, so dropped — although the same fact holds `date: "2026-10-30"` |
+
+Verified by replaying `normalizedDate` and `firstString` from `extension/src/calendar/query.ts` against the exact confirmed values; the other nine facts resolve correctly, which is why the export showed 9 of 11.
+
+This also **corrects an explanation that is already wrong in the record**: the earlier session concluded that Calendar "exposed only the 9 facts containing a structured confirmed date". Those two facts did contain structured ISO dates. They were removed by field selection, not by missing data, so the known-risk note that rested on that conclusion understates the problem.
+
+Same root cause, second consequence: because `when` is treated as a date field, an Unresolved `when` will suppress export of a fact even when its `date` field is perfectly good.
+
+### E2. Review offers `Retry extraction` exactly when re-running is most destructive
+
+`popup/index.ts` renders a `Retry extraction` button whenever `savedProgress.reviewed === 0`, and that button calls `START_EXTRACTION` again. `startExtraction` only refuses once `reviewed > 0`. So in the state immediately following a successful extraction — `0 of 29 reviewed`, precisely what MA6084's Review showed — the button is offered, reads like a recovery action, and in fact re-runs the whole paid AI extraction and replaces the saved candidate set. Any `Ignore` or `Skip for now` decisions taken in that session before reviewing anything are lost, and the user is billed for the same course twice.
+
+### E3. Saved courses and exported calendars are named by internal course id
+
+Nothing ever writes `courseCode` or `courseName` into the course index. `extraction-runner` only carries forward a value that already exists, and `entry-runtime` reads `context.courseCode` but never stores it. Both courses therefore fall back to the raw Blackboard id: Saved Courses showed `_2707107_1` and `_2707113_1`, and the export downloads as `_2707113_1-syllab.ics`. A person cannot tell their own courses apart on the shelf, and the calendar file they keep carries a meaningless name.
+
+### E4. `initialize()` overwrites the whole scan list from a stale snapshot
+
+`background/index.ts` runs on every Service Worker start: it reads the scan list, computes `interruptExpired`, then writes the entire array back through `replaceScans`. That is a read-modify-write with no re-read, and it runs concurrently with message handlers that also write scan summaries. A summary written inside that window is silently lost.
+
+Recorded as a hazard rather than a proven cause. It is a plausible explanation for an observation made earlier in this run — that a `Failed` scan summary never appeared in storage — but that link was not demonstrated.
+
+### E5. A storage-schema mismatch disables recovery silently
+
+`initialize()` awaits `ensureStorageSchema`, which throws on a version mismatch. The call site is a bare `void initialize()` at module scope, so the rejection is unhandled: the Service Worker keeps serving messages while `interruptExpired` never runs, so interrupted scans are never recovered and the user is shown nothing. Low probability, and there is no diagnostic to tell anyone it happened.
+
+Of these five, E1 and E2 have confirmed user impact on real data and are the two worth fixing if a further v0.1.0 patch is in scope. E3 is cosmetic but cheap. E4 and E5 are robustness work with no observed incident.

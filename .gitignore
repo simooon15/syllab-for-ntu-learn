@@ -14,6 +14,11 @@ coverage/
 *.secrets
 secrets/
 
+# Machine-local agent state. Per-machine, regenerated, not part of the project,
+# and easy to sweep into a commit by accident with `git add -A`.
+.claude/
+.codex/
+
 # Real course captures stay outside the repository.
 syllab-spike-*.json
 fixtures/private/

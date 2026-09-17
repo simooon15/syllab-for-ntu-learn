@@ -53,12 +53,15 @@ No Chat, Reminder, multi-course dashboard, automatic change detection, Ignore me
 
 ## Known risks and limitations
 
-- KR-01: multiple real courses have discovery/fetch evidence, but final human baseline comparison is pending.
-- KR-02: real PDF path is evidenced; real PPTX and DOCX end-to-end identity is still not established.
+- KR-01: resolved for both real courses. The human baseline comparison is recorded in this document, covering Assessments, important dates, grade-impact rules, parent relationships, important sources and the observed Review effort for MA6084 and MA6081.
+- KR-02: partly resolved. Real PDF and real ZIP are now evidenced end to end (`Fetch Complete · 8 pdf, 2 zip`, parsed with `0 unsupported · 0 failed`); real PPTX and DOCX end-to-end identity is still not established.
 - KR-03: legacy Office is intentionally Unsupported and non-retryable; its real frequency remains unknown.
 - KR-04: depth and pagination were observed, but no universal completeness claim is made.
-- KR-05: exact-origin mechanics passed automated tests; the full Allow/Deny/reopen/repeat-prompt gesture matrix is pending.
-- KR-06: parser limits exist; representative real large/corrupt-file evidence is pending.
+- KR-05: resolved. The exact-permission interaction matrix passed on Gate A for real user-gesture Allow, Deny continuation, popup close/reopen and same-Fetch repeated-request suppression; the Deny run recorded 10 source-specific permission issues and continued as Partial with zero failed sources.
+- KR-06: parser limits are now measured rather than assumed. MA6084 produced `Parse Complete · 4 parsed · 6 partial · 0 unsupported · 0 failed` across ten real attachments, so six attachments were only partially parsed and no large, no-text or corrupt sample was available to test.
+- KR-07: **Calendar export can silently omit a confirmed date.** `calendarEventsFromBrief` selects the first field whose _name_ looks like a date rather than the first value that actually parses, so a fact holding both a prose `when` and a machine-readable `date` loses its date whenever the prose cannot be parsed. Confirmed on MA6084: CA1 Batch 1 (2026-10-23) and Batch 2 (2026-10-30) were missing from the export although both facts carried ISO dates. The same mechanism will also suppress a fact whose `when` is Unresolved even when its `date` is good. See E1; recorded for the next version.
+- KR-08: **`Retry extraction` can re-run a paid extraction.** It is offered whenever nothing has been reviewed, which includes the moment right after a successful extraction; clicking it re-runs the whole extraction and replaces the saved candidate set, discarding any decisions taken earlier in that session. See E2; recorded for the next version.
+- E3, E4 and E5 remain recorded only as findings: internal-id naming for saved courses and exported files, a read-modify-write over the scan list during Service Worker start, and an unhandled rejection that would silently disable interrupted-scan recovery on a storage-schema mismatch.
 - The development extension targets `http://127.0.0.1:8787`; production packaging requires an HTTPS `SYLLAB_BACKEND_URL`.
 - Backend installation and usage state is currently process-memory backed. Restart recovery works by re-registration, but production-grade durable counters/disablement require a deployment adapter.
 - The default development protection values (`10` requests/minute and `100000` installation units) are intentionally conservative and rejected this real 25-batch course on retry. Local acceptance passed with bounded raised values (`60` requests/minute, `500000` installation units, `2000000` global units); production limits must be sized explicitly rather than inheriting development defaults.
@@ -225,3 +228,5 @@ Recorded as a hazard rather than a proven cause. It is a plausible explanation f
 `initialize()` awaits `ensureStorageSchema`, which throws on a version mismatch. The call site is a bare `void initialize()` at module scope, so the rejection is unhandled: the Service Worker keeps serving messages while `interruptExpired` never runs, so interrupted scans are never recovered and the user is shown nothing. Low probability, and there is no diagnostic to tell anyone it happened.
 
 Of these five, E1 and E2 have confirmed user impact on real data and are the two worth fixing if a further v0.1.0 patch is in scope. E3 is cosmetic but cheap. E4 and E5 are robustness work with no observed incident.
+
+**Decision recorded.** These findings are documented for the next version. No code change was made in response to them during this run, and none of them reopens a confirmed decision or changes the Gate D result. E1 and E2 are carried forward as known defects in the risks list below, because a person using v0.1.0 as it stands can be affected by both.

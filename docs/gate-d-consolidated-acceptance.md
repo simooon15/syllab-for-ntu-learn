@@ -118,6 +118,14 @@ Fixed in two places, as agreed with the user. `ScanLeaseRepository.interruptExpi
 
 The four-surface strip is a status rail, not a menu (`popup/index.ts` sets `button.disabled = surface.id !== active`, and the active button has no handler), so while a scan sits at a checkpoint the only way to reach the Course Brief is to switch to a non-NTU-Learn tab, let the popup fall back to Saved Courses, and open the course card. During §8A the user had to do exactly that. This is not a functional failure of any required item — Saved Courses navigation and entry priority both behave correctly — but it is real Review-effort friction and belongs in the human baseline. It is a layout/navigation concern, and the artistic visual reconstruction is intentionally deferred for this run, so it is recorded and not changed.
 
+### Post-closure review — five further findings, recorded and not fixed
+
+An independent review after Gate D closed — reading the implementation and replaying real confirmed values through it — produced five further findings, recorded in `docs/final-acceptance-v0.1.0.md` under "Engineering findings from the Gate D review" and deliberately kept separate from the Product owner's feedback. None of them changes a Gate D result, and no code change was made in response to any of them in this run. Two are carried into that document's risks list because a person using v0.1.0 as it stands can be affected:
+
+- **E1 revises one Gate D evidence figure.** Calendar export showed 9 of MA6084's 11 confirmed dates. The reason recorded at the time — that the other two held no structured confirmed date — is wrong. Both carried ISO dates and were dropped because `calendarEventsFromBrief` selects the first date-_looking field name_ rather than the first _parseable value_, so the prose `when` shadowed the `date` stored beside it. Carried forward as KR-07.
+- **E2:** Review offers `Retry extraction` whenever nothing has been reviewed, which is exactly the state right after a successful extraction; the button re-runs the paid extraction and replaces the saved candidate set. Carried forward as KR-08.
+- **E3, E4 and E5** are internal-id naming for saved courses and exported files, a read-modify-write over the scan list during Service Worker start, and an unhandled rejection that would silently disable interrupted-scan recovery on a storage-schema mismatch. Recorded as findings only.
+
 The run produces one table with each item marked `PASS`, `FAIL`, `NOT TESTED` or `BLOCKED`, plus evidence path, product impact and known-risk update. Gate D is `PASS` only when all mandatory items pass; unavailable format samples may remain `NOT TESTED` only where the Implementation Plan explicitly permits that status and their impact is documented.
 
 After this report, stop and return the full acceptance evidence to Product. Do not begin D-015, production deployment or visual reconstruction as part of the same test.

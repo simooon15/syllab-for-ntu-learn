@@ -7,7 +7,7 @@
 > **技术验证结论**：`PASS WITH KNOWN RISKS`
 > **本文档用途**：作为 Syllab 当前产品需求事实源。后续交互规范、技术设计、实现计划、MVP 开发与验收必须以本文档为产品边界；若实现与本文档冲突，应回到产品侧确认，不应自行扩大或修改范围。
 
-> **Lifecycle Note**：本文档是 v0.1.0 已实现、已验收的产品基线，不是下一版的变更草案。Gate D 后的产品反馈、候选方向与待决策问题集中记录在 `../docs/product-design-review-input-post-v0.1.0.md`；在产品侧形成新的正式决定前，不改变本文档的规范性需求。
+> **Lifecycle Note**：本文档是 v0.1.0 已实现、已验收的产品基线，不是下一版的变更草案。Gate D 后的产品反馈、候选方向与待决策问题集中记录在 `product-design-review-input-post-v0.1.0.md`；在产品侧形成新的正式决定前，不改变本文档的规范性需求。
 
 ---
 
@@ -2173,6 +2173,6 @@ MVP 详细交互与信息架构
 - 两门真实 NTU Learn 课程完成 Scan → Review → Course Brief → Calendar 闭环验收。
 - 真实 PDF 与 ZIP 已端到端验证；真实 PPTX、DOCX、legacy Office、超大、无文本和损坏样本仍为 `NOT TESTED`。
 - KR-07（Calendar 可静默漏掉已确认日期）与 KR-08（`Retry extraction` 可重跑付费提取）是开放缺陷，不改变 Gate D 结果。
-- 完整验收事实源为 `../docs/final-acceptance-v0.1.0.md`。
+- 完整验收事实源为 `final-acceptance-v0.1.0.md`。
 
 当前下一步是产品交接与 post-v0.1.0 决策，不是重开 Technical Spike 或继续 v0.1.0 Coding。

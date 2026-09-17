@@ -1898,4 +1898,4 @@ Gate D 真实使用确认了 v0.1.0 闭环，也暴露了下一版需要重新�
 - Course Brief 的事实呈现、Assessment 归组、日期聚合和归属表达不足以支持舒适阅读。
 - Review 暴露过多 Assessment 别名和身份清理工作，用户承担了本应由系统预处理的责任。
 
-这些是 post-v0.1.0 评审输入，不修改本文档的 v0.1.0 规范性行为。证据、候选方向与待决问题见 `../docs/product-design-review-input-post-v0.1.0.md`。
+这些是 post-v0.1.0 评审输入，不修改本文档的 v0.1.0 规范性行为。证据、候选方向与待决问题见 `product-design-review-input-post-v0.1.0.md`。

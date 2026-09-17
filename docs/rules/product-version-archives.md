@@ -6,12 +6,30 @@ These rules define the durable Product record for every Syllab version.
 
 When work on a new version begins:
 
-1. Preserve the previous version's root README as `README_vX.X.X.md`.
-2. Archive that snapshot with the rest of the previous version's material.
-3. Continue using the root `README.md` for the new current version.
+1. Before changing the root `README.md`, copy its completed old-version content unchanged to
+   `docs/versions/<old-version>/README_<old-version>.md`.
+2. Treat that renamed, version-suffixed file as the fixed README snapshot for the old version.
+3. Only after the old snapshot is safely archived, update the root `README.md` for the new current
+   version.
+
+Do not build an old-version snapshot from the new README after the root page has already been
+updated. Each `README_vX.X.X.md` must preserve the root README that was current when that exact
+version closed.
 
 The root README's public content and screenshot rules live in
 [`public-readme-and-screenshots.md`](public-readme-and-screenshots.md).
+
+## Repository version directories
+
+Store every version-specific Product or engineering fact document under
+`docs/versions/vX.X.X/`. The version number is the archive directory name; do not scatter a new
+version's PRD, Product Handoff, README snapshot, Decision Log, implementation plan, acceptance
+records or validation evidence across the repository root or temporary handoff-package directories.
+
+The version directory is an append-only historical archive after that version closes. A later
+version gets a new sibling directory and must not overwrite, relocate into a temporary package or
+delete the older version's records. Durable cross-version rules remain under `docs/rules/` (or their
+existing durable location) rather than being copied into each version directory.
 
 ## Three core Product archives
 
@@ -25,9 +43,8 @@ Each product version must leave Product with three core long-term archives:
   explicit carry-over and final version status.
 - `README_vX.X.X.md` preserves the public description of the product as that version closed.
 
-Keep the three files with the corresponding version archive under `docs/` or the established
-version directory. The root `README.md` is the deliberate exception to version-suffixed archive
-names because it always represents the current product.
+Keep the three files together in `docs/versions/vX.X.X/`. The root `README.md` is the deliberate
+exception to version-suffixed archive names because it always represents the current product.
 
 ## Feishu product archive synchronization
 

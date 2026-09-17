@@ -5,7 +5,7 @@
 > 上游事实源：`01_Syllab_PRD_v0.1.0.md`、`04_Spike_Report_v0.1.0.md`、`05_Product_Decision_Log_v0.1.0.md`、`06_MVP_Interaction_IA_Spec_v0.1.0.md`
 > 结论：本设计已完成实现并通过 Gate D；本文件保留为 v0.1.0 历史设计基线
 
-> **Lifecycle Note**：本文件中的“待 Coding / Testing 验证”表述保留其当时语境。当前实现与验收状态以 `../docs/final-acceptance-v0.1.0.md` 为准；post-v0.1.0 产品问题在正式决策前不构成本技术设计的变更。
+> **Lifecycle Note**：本文件中的“待 Coding / Testing 验证”表述保留其当时语境。当前实现与验收状态以 `final-acceptance-v0.1.0.md` 为准；post-v0.1.0 产品问题在正式决策前不构成本技术设计的变更。
 
 ## 1. 设计目标与边界
 
@@ -618,4 +618,4 @@ Calendar Export 由 Popup 临时交互生成：
 - 真实 PPTX、DOCX、legacy Office、超大、无文本与损坏样本仍为 `NOT TESTED`。
 - E3（内部 course id 命名）、E4（Service Worker 启动时的 stale-snapshot 整表回写）与 E5（schema mismatch 恢复路径的 unhandled rejection）保留为工程发现；本文件不反向改写原设计。
 
-详细证据和开放缺陷见 `../docs/final-acceptance-v0.1.0.md`。
+详细证据和开放缺陷见 `final-acceptance-v0.1.0.md`。

@@ -2,7 +2,7 @@
 
 Status: **AUTOMATED PASS · CONSOLIDATED REAL-BROWSER MATRIX PENDING**
 
-> **Historical checkpoint.** The pending recovery, Calendar and Scan-again matrix was subsequently completed. Current authority: `docs/final-acceptance-v0.1.0.md` — v0.1.0 implementation complete, Gate D PASS.
+> **Historical checkpoint.** The pending recovery, Calendar and Scan-again matrix was subsequently completed. Current authority: `final-acceptance-v0.1.0.md` — v0.1.0 implementation complete, Gate D PASS.
 
 ## Phase 10 — Error / Partial / Interrupted
 

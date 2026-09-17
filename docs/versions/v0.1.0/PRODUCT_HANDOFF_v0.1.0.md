@@ -244,9 +244,9 @@ Review 在 `0 reviewed` 时显示 `Retry extraction`，包括刚成功提取完�
 
 | 事实 | 事实源 |
 |---|---|
-| v0.1.0 计划范围 | `Syllab_Technical_Design_Handoff_v0.1.0/01_Syllab_PRD_v0.1.0.md` |
-| 正式产品决定 | `Syllab_Technical_Design_Handoff_v0.1.0/05_Product_Decision_Log_v0.1.0.md` |
-| 最终验收、已知风险、产品反馈与 E1–E5 | `records/final-acceptance-v0.1.0.md` |
-| Gate D 逐项结果 | `records/gate-d-consolidated-acceptance.md` |
-| Gate 状态 | `records/implementation-gates.md` |
-| Post-v0.1.0 产品评审输入 | `04_PRODUCT_DESIGN_REVIEW_INPUT_post-v0.1.0.md` |
+| v0.1.0 计划范围 | `PRD_v0.1.0.md` |
+| 正式产品决定 | `Product_Decision_Log_v0.1.0.md` |
+| 最终验收、已知风险、产品反馈与 E1–E5 | `final-acceptance-v0.1.0.md` |
+| Gate D 逐项结果 | `gate-d-consolidated-acceptance.md` |
+| Gate 状态 | `implementation-gates.md` |
+| Post-v0.1.0 产品评审输入 | `product-design-review-input-post-v0.1.0.md` |

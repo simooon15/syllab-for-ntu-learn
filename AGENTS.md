@@ -60,9 +60,9 @@ when the correct branch is unclear.
   rejected visual directions. Read it before changing anything visual.
 - [`docs/fixture-policy.md`](docs/fixture-policy.md) — fixture privacy and rules for real acceptance
   evidence.
-- [`docs/final-acceptance-v0.1.0.md`](docs/final-acceptance-v0.1.0.md) — current accepted baseline,
+- [`docs/versions/v0.1.0/final-acceptance-v0.1.0.md`](docs/versions/v0.1.0/final-acceptance-v0.1.0.md) — current accepted baseline,
   known risks and Product feedback that later work must account for.
-- [`docs/implementation-gates.md`](docs/implementation-gates.md) — implementation phases and gate
+- [`docs/versions/v0.1.0/implementation-gates.md`](docs/versions/v0.1.0/implementation-gates.md) — implementation phases and gate
   definitions.
 
 Version-specific PRDs, Product Handoffs, acceptance records and engineering handoffs are evidence

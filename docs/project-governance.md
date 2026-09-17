@@ -3,8 +3,9 @@
 This is the index for Syllab's durable project rules. `AGENTS.md` remains the short entry point for
 repository-wide hard rules; detailed long-term rules are grouped by subject here:
 
-- [`rules/product-version-archives.md`](rules/product-version-archives.md) — version transitions,
-  the three core Product archives and the boundary between Product archives and engineering records.
+- [`rules/product-version-archives.md`](rules/product-version-archives.md) — version directories,
+  version transitions, the three core Product archives and the boundary between Product archives
+  and engineering records.
 - [`rules/public-readme-and-screenshots.md`](rules/public-readme-and-screenshots.md) — the current
   public README, historical README snapshots and the README screenshot lifecycle.
 - [`design-system.md`](design-system.md) — interface tokens, typography, components and rejected

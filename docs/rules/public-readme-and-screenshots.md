@@ -38,6 +38,8 @@ Keep only the display-ready evidence needed to communicate the product:
 
 Do not create or retain large screenshot sets for ordinary development intermediate states.
 
-Store README screenshots in a stable documentation or README-assets location and use clear,
-stable filenames. At version closeout, reuse the collected images whenever they still represent the
-released product; recapture only images that have become outdated.
+Store each released version's README screenshots under
+`docs/versions/vX.X.X/images/` and use clear, stable filenames. The current root README may point to
+the latest version's assets. At version closeout, reuse the collected images whenever they still
+represent the released product; recapture only images that have become outdated. Never overwrite an
+older version's screenshot assets when preparing a later release.

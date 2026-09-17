@@ -2,7 +2,7 @@
 
 Status: **AUTOMATED PASS · REAL NTU LEARN / DEEPSEEK MATRIX PENDING**
 
-> **Historical checkpoint.** The pending real NTU Learn / DeepSeek, Review and Course Brief evidence was subsequently completed. Current authority: `docs/final-acceptance-v0.1.0.md` — v0.1.0 implementation complete, Gate D PASS.
+> **Historical checkpoint.** The pending real NTU Learn / DeepSeek, Review and Course Brief evidence was subsequently completed. Current authority: `final-acceptance-v0.1.0.md` — v0.1.0 implementation complete, Gate D PASS.
 
 ## Implemented
 

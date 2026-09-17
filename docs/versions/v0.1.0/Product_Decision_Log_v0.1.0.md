@@ -886,4 +886,4 @@ MVP Important Rules 的核心收录标准为：
 4. Scan 的自动推进、暂停、Continue、Retry、Restart 和 Scan again 语义。
 5. Course Brief / Review 的信息架构、归属表达与去重责任。
 
-详细证据和产品问题见 `../docs/product-design-review-input-post-v0.1.0.md`。产品侧形成正式结论后，应新增 D-016 起的决定；若修改 D-014 或 D-015，必须明确记录 `supersedes` 的具体范围。
+详细证据和产品问题见 `product-design-review-input-post-v0.1.0.md`。产品侧形成正式结论后，应新增 D-016 起的决定；若修改 D-014 或 D-015，必须明确记录 `supersedes` 的具体范围。

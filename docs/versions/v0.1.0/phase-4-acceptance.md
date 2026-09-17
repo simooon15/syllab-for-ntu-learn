@@ -2,7 +2,7 @@
 
 Status: **AUTOMATED PASS · REAL NTU LEARN GATE PENDING**
 
-> **Historical checkpoint.** The pending exact-permission Allow/Deny, continuation and recovery work was subsequently completed. Current authority: `docs/final-acceptance-v0.1.0.md` — v0.1.0 implementation complete, Gate D PASS.
+> **Historical checkpoint.** The pending exact-permission Allow/Deny, continuation and recovery work was subsequently completed. Current authority: `final-acceptance-v0.1.0.md` — v0.1.0 implementation complete, Gate D PASS.
 
 ## Implemented
 

@@ -4,7 +4,7 @@ Date: 2026-09-17
 Current phase: Product handoff after completed Phase 13–15 acceptance
 Status: **COMPLETE · SUPERSEDED BY FINAL ACCEPTANCE**
 
-> **Historical handoff.** Gate D passed on 2026-09-17. Do not use the continuation instructions or suggested opening message below as current work. They are retained to preserve the test procedure and the state from which the completed run resumed. Current authority: `docs/final-acceptance-v0.1.0.md`.
+> **Historical handoff.** Gate D passed on 2026-09-17. Do not use the continuation instructions or suggested opening message below as current work. They are retained to preserve the test procedure and the state from which the completed run resumed. Current authority: `final-acceptance-v0.1.0.md`.
 
 ## 1. Historical instruction to the testing Agent
 
@@ -21,9 +21,9 @@ Continue the existing Formal MVP Gate D testing and closure from the current wor
 
 Read these working acceptance records first:
 
-1. `docs/gate-d-consolidated-acceptance.md`
-2. `docs/final-acceptance-v0.1.0.md`
-3. `docs/implementation-gates.md`
+1. `gate-d-consolidated-acceptance.md`
+2. `final-acceptance-v0.1.0.md`
+3. `implementation-gates.md`
 
 Read implementation files only when a reported result requires diagnosis.
 
@@ -171,9 +171,9 @@ The second-course evidence already exposed and fixed relationship handling; reco
 
 Update these files as results arrive:
 
-- `docs/gate-d-consolidated-acceptance.md`
-- `docs/final-acceptance-v0.1.0.md`
-- `docs/implementation-gates.md`
+- `gate-d-consolidated-acceptance.md`
+- `final-acceptance-v0.1.0.md`
+- `implementation-gates.md`
 
 Use `PASS`, `FAIL`, `NOT TESTED` or `BLOCKED`; never turn missing evidence into PASS.
 
@@ -199,4 +199,4 @@ After Phase 15 Final acceptance is complete, stop and return the complete eviden
 我已接手当前 Gate D 测试，不会重跑已经通过的项目。现在从 Backend 断开测试的恢复半程继续：请先确认刚才 Extraction Failed 后旧 Course Brief 是否仍完整保留；然后重启 Backend，并点击 Retry extraction。把“旧 Brief 是否保留”和“Retry 是否回到 Review”告诉我即可。
 ```
 
-The recovery half, forced Service Worker termination, entry-priority fixes, second Calendar client and final CI all subsequently passed. The completed evidence is recorded in `docs/gate-d-consolidated-acceptance.md` and `docs/final-acceptance-v0.1.0.md`.
+The recovery half, forced Service Worker termination, entry-priority fixes, second Calendar client and final CI all subsequently passed. The completed evidence is recorded in `gate-d-consolidated-acceptance.md` and `final-acceptance-v0.1.0.md`.

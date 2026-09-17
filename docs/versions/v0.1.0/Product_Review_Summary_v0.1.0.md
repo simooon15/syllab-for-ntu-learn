@@ -147,4 +147,4 @@ D-014 当时的对齐记录保留为 v0.1.0 基线，不因 Gate D 后出现新�
 
 真实验收记录了五类下一版输入：Scan 路径和动作语义过于复杂、Course Brief 信息架构不可读、Important Rules 边界不足、Assessment 身份碎片化，以及缺少可用于工具栏的 mark。
 
-这些是评审输入，不是本文档已确认的产品决定。证据、候选方向与待决问题见 `../docs/product-design-review-input-post-v0.1.0.md`；最终验收见 `../docs/final-acceptance-v0.1.0.md`。
+这些是评审输入，不是本文档已确认的产品决定。证据、候选方向与待决问题见 `product-design-review-input-post-v0.1.0.md`；最终验收见 `final-acceptance-v0.1.0.md`。

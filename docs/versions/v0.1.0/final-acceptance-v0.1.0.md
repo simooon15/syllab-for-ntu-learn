@@ -38,7 +38,7 @@ The `ff76a239…` hash stays recorded above because it is the hash that was veri
 
 ### Pre-existing CI finding resolved during Gate D
 
-The committed handoff document `15_GATE_D_TESTING_HANDOFF_v0.1.0.md` failed `secret:scan` because its backend start command contained a literal key assignment (the key's environment-variable name, then an equals sign, then the pasted value), matching the repository's key-assignment pattern `/DEEPSEEK_API_KEY[ \t]*=[ \t]*[^\s#][^\r\n]*/`. The previously recorded `npm run ci: PASS` did not hold against the committed working tree. The scan pattern and its ignore list were **not** changed; the document's command was rewritten to assemble the variable name on its own line (semantics unchanged, still copy-pasteable) so the scan still covers every file. Recorded here rather than silently corrected.
+The committed handoff document `GATE_D_TESTING_HANDOFF_v0.1.0.md` failed `secret:scan` because its backend start command contained a literal key assignment (the key's environment-variable name, then an equals sign, then the pasted value), matching the repository's key-assignment pattern `/DEEPSEEK_API_KEY[ \t]*=[ \t]*[^\s#][^\r\n]*/`. The previously recorded `npm run ci: PASS` did not hold against the committed working tree. The scan pattern and its ignore list were **not** changed; the document's command was rewritten to assemble the variable name on its own line (semantics unchanged, still copy-pasteable) so the scan still covers every file. Recorded here rather than silently corrected.
 
 ## Implemented MVP boundary
 
@@ -120,7 +120,7 @@ Omissions, false positives and Review effort on MA6084: the real parse produced 
 
 **MA6081 (second, structurally different course).** Three Assessments (`Part 1: Group Presentation` 25%, `Part 2: Multiple Choice Quiz` 25%, `Part 3: In-Class Scenario-Based Case Study` 10%) and one important date (`Part 2 Multiple Choice Quiz`, 2026-11-14, 3.30 pm – 6.20 pm, LT-2A). No course-level Rule is confirmed; the attendance rule sits as a Requirement nested beneath `Part 2` because of a confirmed selection error, not candidate identity swapping. **62 candidates are pending review and none have been reviewed**, which is the largest single piece of outstanding Review effort across both courses. This course is also where relationship handling was originally exercised: an unresolved model-supplied parent key entered Needs Review instead of disappearing, a missing parent was exposed as an explicit `Applies to …` reassignment, and a newly confirmed child attached to an Assessment retained from an earlier scan.
 
-**Known-risk update.** KR-01 is now satisfied for both courses at the level of detail above. KR-02 is partly closed: real PDF and real ZIP are evidenced end to end, but real PPTX and DOCX remain unestablished. KR-03 and KR-06 remain open with no real sample. KR-04 and KR-05 keep their existing wording. One further defect was found and fixed during real testing: a lease left behind by a killed Service Worker could lock a scan out permanently and surface the raw code `SCAN_INTERRUPTED`. See `docs/gate-d-consolidated-acceptance.md` for the mechanism and the fix.
+**Known-risk update.** KR-01 is now satisfied for both courses at the level of detail above. KR-02 is partly closed: real PDF and real ZIP are evidenced end to end, but real PPTX and DOCX remain unestablished. KR-03 and KR-06 remain open with no real sample. KR-04 and KR-05 keep their existing wording. One further defect was found and fixed during real testing: a lease left behind by a killed Service Worker could lock a scan out permanently and surface the raw code `SCAN_INTERRUPTED`. See `gate-d-consolidated-acceptance.md` for the mechanism and the fix.
 
 ## Consolidated manual acceptance run
 
@@ -134,7 +134,7 @@ Use the freshly built unpacked extension and a running backend. Perform this onc
 6. Run Scan again. Verify identical facts do not repeat, changed/new/relationship-changed facts do, ignored facts may reappear, missing sources delete nothing, and the edited/user-added facts are unchanged.
 7. Reopen Chrome/reload the extension and verify Saved Courses, Review progress, Brief relationships and recovery state persist.
 
-Record the course code, outcome and a redacted screenshot/export for each required item. This matrix was completed on 2026-09-17 across MA6084 and MA6081; the per-item results, the evidence and the three defects it exposed are recorded in `docs/gate-d-consolidated-acceptance.md`.
+Record the course code, outcome and a redacted screenshot/export for each required item. This matrix was completed on 2026-09-17 across MA6084 and MA6081; the per-item results, the evidence and the three defects it exposed are recorded in `gate-d-consolidated-acceptance.md`.
 
 ## Product feedback recorded at Gate D closure
 

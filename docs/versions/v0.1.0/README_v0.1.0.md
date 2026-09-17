@@ -30,9 +30,9 @@ Syllab 是一款面向 NTU Learn（Blackboard Ultra）的 Chrome 扩展。它把
 
 以下截图来自 v0.1.0 当前扩展界面的实际构建结果，不是设计稿或生成式示意图。
 
-| Course Brief                                                                                | Review                                                                          |
-| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| ![Syllab Course Brief 实际页面](docs/versions/v0.1.0/images/syllab-course-brief-v0.1.0.png) | ![Syllab Review 实际页面](docs/versions/v0.1.0/images/syllab-review-v0.1.0.png) |
+| Course Brief                                                                | Review                                                          |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| ![Syllab Course Brief 实际页面](images/syllab-course-brief-v0.1.0.png) | ![Syllab Review 实际页面](images/syllab-review-v0.1.0.png) |
 
 ### Demo / 使用方法
 
@@ -62,8 +62,8 @@ v0.1.0 暂无在线 Demo。Syllab 需要已登录的 NTU Learn 浏览器会话�
   `Retry extraction` 可能重复产生一次付费提取。
 
 本版本的最终交付范围、验证证据、已知风险和 Carry Over 见
-[PRODUCT_HANDOFF_v0.1.0.md](docs/versions/v0.1.0/PRODUCT_HANDOFF_v0.1.0.md)，详细验收记录见
-[docs/versions/v0.1.0/final-acceptance-v0.1.0.md](docs/versions/v0.1.0/final-acceptance-v0.1.0.md)。
+[PRODUCT_HANDOFF_v0.1.0.md](PRODUCT_HANDOFF_v0.1.0.md)，详细验收记录见
+[final-acceptance-v0.1.0.md](final-acceptance-v0.1.0.md)。
 
 ### 技术栈
 
@@ -169,9 +169,9 @@ keeps source evidence, and requires confirmation before information enters the C
 These screenshots come from the current v0.1.0 extension build. They are not design mockups or
 generated illustrations.
 
-| Course Brief                                                                              | Review                                                                             |
-| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| ![Actual Syllab Course Brief](docs/versions/v0.1.0/images/syllab-course-brief-v0.1.0.png) | ![Actual Syllab Review page](docs/versions/v0.1.0/images/syllab-review-v0.1.0.png) |
+| Course Brief                                                              | Review                                                             |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| ![Actual Syllab Course Brief](images/syllab-course-brief-v0.1.0.png) | ![Actual Syllab Review page](images/syllab-review-v0.1.0.png) |
 
 ### Demo / usage
 
@@ -203,8 +203,8 @@ Current limitations:
   export, and `Retry extraction` can repeat a paid extraction before Review begins.
 
 For the final delivered scope, evidence, known risks and carry-over, see
-[PRODUCT_HANDOFF_v0.1.0.md](docs/versions/v0.1.0/PRODUCT_HANDOFF_v0.1.0.md). The detailed
-acceptance record is in [docs/versions/v0.1.0/final-acceptance-v0.1.0.md](docs/versions/v0.1.0/final-acceptance-v0.1.0.md).
+[PRODUCT_HANDOFF_v0.1.0.md](PRODUCT_HANDOFF_v0.1.0.md). The detailed
+acceptance record is in [final-acceptance-v0.1.0.md](final-acceptance-v0.1.0.md).
 
 ### Technology
 

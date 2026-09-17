@@ -165,3 +165,22 @@ Evidence from this run — real candidates classified as important rules include
 - `All written assignments must be submitted via Turnitin/NTULearn.` — submission mechanics.
 
 Each of those is already, or should be, owned by the Assessment itself. The D-015 Grade-Impact Boundary does not by itself exclude them, because format and submission constraints can plausibly affect marks, so the current test discriminates less than the category needs. The product question to settle is what the Important Rules category is for. On the feedback recorded here, the need it serves is closer to "conditions that can cost me marks if I do not notice them", which argues for a stricter test than mere grade impact and for demoting logistics and format specifications onto the owning Assessment. This is recorded as a next-version product decision; D-015 itself was not reopened during this run.
+
+### 4. Assessments are fragmented into many identities, which produces duplicates and an unusable relationship control
+
+The Product owner's description, recorded as given: assessments appear "split too far apart" and can end up duplicated, and the phenomenon is hard to describe from the interface.
+
+What the run actually shows. In MA6081's Review, one `important date` candidate — `Part 3 - Case study Assignment`, 2026-11-14, 3.30 pm – 6.20 pm, LT-2A, Tutorial 8, 1 hr, compulsory attendance — arrived with no matching parent and produced **fifteen `Applies to …` buttons plus `Course-level`**:
+
+`Literature Review Assignment`, `Part 3 (Restricted Open Book exam)`, `Part 1 Assignment (Group Presentation)`, `Part 3 Case Study Assignment (Closed Book)`, `Part 2 (Multiple Choice Quiz)`, `Part 1`, `Multiple Choice Quiz`, `Part 1 (Group Presentation)`, `Part 2`, `Part 3`, `Part 3 (Case study assignment)`, `Restricted Open Book Exam`, `MA6081 Examination`, `Group Presentation`, `Individual Assignment: Project Management Plan Presentation`.
+
+Those fifteen names denote **three** real assessments: Part 1 Group Presentation (five variants), Part 2 Multiple Choice Quiz (three variants) and Part 3 Case Study (five variants). Two of them — `Literature Review Assignment` and `MA6081 Examination` — correspond to nothing in the course at all.
+
+Root cause in the code. The reassignment list is built from every assessment-kind candidate in the current Review batch plus assessments already in the Brief (`popup/index.ts`, the `candidateParents` / `existingParents` loop). Because D-014 makes relationship part of candidate identity, each spelling of the same assessment carries its own `semanticKey` and therefore becomes a separate parent candidate. The control is generated from the mess instead of correcting it, so the more the extraction fragments one assessment, the longer and less usable the list becomes.
+
+Two consequences that matter for the next version:
+
+- **Duplicates.** Confirming an alias button attaches the child to that alias key. If the Brief already holds the real assessment under a different key, the Brief ends up describing one assessment twice. The same candidate also shows how duplicates start: it occupies exactly the slot the confirmed Brief assigns to `Part 2 Multiple Choice Quiz` (2026-11-14, 3.30–6.20 pm, LT-2A, Tutorial 8) while naming Part 3.
+- **No signal to choose.** The correct answer here is Part 2, and Part 2 is in the list twice, with nothing distinguishing it from the twelve wrong options.
+
+What this implies: the product needs a canonical Assessment identity — parent keys resolved to a single assessment before Review presents them, and the reassignment control offering only canonical assessments rather than every string the model produced. This touches D-014, which this run did not reopen, so it is recorded as a next-version item.

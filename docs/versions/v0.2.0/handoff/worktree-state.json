@@ -1,0 +1,1488 @@
+{
+  "frozenAt": "2026-09-19T15:23:00.918Z",
+  "role": "This is a copy of the repository taken for handoff — see COPY_PROVENANCE below.",
+  "copyProvenance": {
+    "repositoryRoot": "/Users/simonluo/Desktop/Syllab for NTU Learn_副本",
+    "branch": "main",
+    "head": "670880fe1dd2076d0a6d571adefe8bd81d164481",
+    "headDate": "2026-09-17T21:36:35+08:00",
+    "headSubject": "chore: remove obsolete handoff packages",
+    "worktreeClean": false,
+    "remotes": [
+      "origin\thttps://github.com/simooon15/syllab-for-ntu-learn.git (fetch)",
+      "origin\thttps://github.com/simooon15/syllab-for-ntu-learn.git (push)"
+    ],
+    "note": "见 remotes。"
+  },
+  "statusCounts": {
+    " M": 27,
+    "D ": 8,
+    "??": 225
+  },
+  "statusEntries": [
+    " M .gitignore",
+    " M .prettierignore",
+    " M README.md",
+    " M backend/package.json",
+    " M docs/design-system.md",
+    " M eslint.config.js",
+    " M extension/package.json",
+    "D  extension/popup.html",
+    " M extension/public/manifest.json",
+    " M extension/scripts/build.mjs",
+    " M extension/src/background/index.ts",
+    " M extension/src/calendar/calendar.test.ts",
+    " M extension/src/calendar/query.ts",
+    " M extension/src/content/index.test.ts",
+    " M extension/src/content/index.ts",
+    " M extension/src/discovery/engine.test.ts",
+    " M extension/src/discovery/engine.ts",
+    "D  extension/src/popup/entry-router.test.ts",
+    "D  extension/src/popup/entry-router.ts",
+    "D  extension/src/popup/entry-runtime.ts",
+    "D  extension/src/popup/index.ts",
+    "D  extension/src/popup/popup.css",
+    "D  extension/src/popup/scan-errors.test.ts",
+    "D  extension/src/popup/scan-errors.ts",
+    " M extension/src/repository/course-index-repository.ts",
+    " M extension/src/repository/local-database.ts",
+    " M extension/src/repository/schema-repository.test.ts",
+    " M extension/src/repository/schema-repository.ts",
+    " M extension/src/shared/storage-schema.ts",
+    " M package-lock.json",
+    " M package.json",
+    " M packages/contracts/package.json",
+    " M packages/contracts/src/index.ts",
+    " M scripts/secret-scan.mjs",
+    " M scripts/validate-manifest.mjs",
+    "?? .real-test.local.example.json",
+    "?? 00_CODEX_START_HERE_v0.2.0.md",
+    "?? CODEX_START_PROMPT_v0.2.0.txt",
+    "?? Interaction_and_Information_Architecture_Spec_v0.2.0.md",
+    "?? PRD_v0.2.0.md",
+    "?? PRODUCT_HANDOFF_v0.2.0.md",
+    "?? \"Run Syllab Real Test.command\"",
+    "?? artifacts/Syllab_Extension_v0.2.0.zip",
+    "?? artifacts/Syllab_v0.2.0_delivery.zip",
+    "?? artifacts/Syllab_v0.2.0_engineering_handoff.zip",
+    "?? artifacts/Syllab_v0.2.0_engineering_handoff.zip.sha256",
+    "?? artifacts/gates/v0.2.0/gate-1/REPORT.md",
+    "?? artifacts/gates/v0.2.0/gate-1/report.json",
+    "?? artifacts/gates/v0.2.0/gate-2/REPORT.md",
+    "?? artifacts/gates/v0.2.0/gate-2/report.json",
+    "?? artifacts/screenshots/v0.2.0/BKP-01.png",
+    "?? artifacts/screenshots/v0.2.0/BKP-02.png",
+    "?? artifacts/screenshots/v0.2.0/BKP-04.png",
+    "?? artifacts/screenshots/v0.2.0/CAL-01.png",
+    "?? artifacts/screenshots/v0.2.0/CRS-01.png",
+    "?? artifacts/screenshots/v0.2.0/CRS-02.png",
+    "?? artifacts/screenshots/v0.2.0/CRS-03.png",
+    "?? artifacts/screenshots/v0.2.0/CRS-04.png",
+    "?? artifacts/screenshots/v0.2.0/CRS-05.png",
+    "?? artifacts/screenshots/v0.2.0/CRS-06.png",
+    "?? artifacts/screenshots/v0.2.0/CRV-01.png",
+    "?? artifacts/screenshots/v0.2.0/CRV-03.png",
+    "?? artifacts/screenshots/v0.2.0/CRV-04.png",
+    "?? artifacts/screenshots/v0.2.0/CRV-05.png",
+    "?? artifacts/screenshots/v0.2.0/IRV-01.png",
+    "?? artifacts/screenshots/v0.2.0/IRV-02.png",
+    "?? artifacts/screenshots/v0.2.0/IRV-03.png",
+    "?? artifacts/screenshots/v0.2.0/IRV-04.png",
+    "?? artifacts/screenshots/v0.2.0/IRV-05.png",
+    "?? artifacts/screenshots/v0.2.0/ISC-01.png",
+    "?? artifacts/screenshots/v0.2.0/ISC-02.png",
+    "?? artifacts/screenshots/v0.2.0/ISC-03.png",
+    "?? artifacts/screenshots/v0.2.0/ISC-04.png",
+    "?? artifacts/screenshots/v0.2.0/ISC-05.png",
+    "?? artifacts/screenshots/v0.2.0/ISC-06.png",
+    "?? artifacts/screenshots/v0.2.0/RBL-01.png",
+    "?? artifacts/screenshots/v0.2.0/RBL-02.png",
+    "?? artifacts/screenshots/v0.2.0/RBL-03.png",
+    "?? artifacts/screenshots/v0.2.0/SEM-01.png",
+    "?? artifacts/screenshots/v0.2.0/SEM-02.png",
+    "?? artifacts/screenshots/v0.2.0/SEM-03.png",
+    "?? artifacts/screenshots/v0.2.0/SEM-04.png",
+    "?? artifacts/screenshots/v0.2.0/SEM-05.png",
+    "?? artifacts/screenshots/v0.2.0/SEM-06.png",
+    "?? artifacts/screenshots/v0.2.0/SEM-07.png",
+    "?? artifacts/screenshots/v0.2.0/SET-01.png",
+    "?? artifacts/screenshots/v0.2.0/SET-02.png",
+    "?? artifacts/screenshots/v0.2.0/SET-04.png",
+    "?? artifacts/screenshots/v0.2.0/SET-05.png",
+    "?? assets/logo/syllab-logo-128px.png",
+    "?? assets/logo/syllab-logo-16px.png",
+    "?? assets/logo/syllab-logo-32px.png",
+    "?? assets/logo/syllab-logo-48px.png",
+    "?? assets/logo/syllab-logo-master.svg",
+    "?? docs/versions/v0.2.0/CURRENT_ENGINEERING_STATE_v0.2.0.md",
+    "?? docs/versions/v0.2.0/DIRECTION_ADJUSTMENTS_v0.2.0.md",
+    "?? docs/versions/v0.2.0/ENGINEERING_CHANGE_MANIFEST_v0.2.0.md",
+    "?? docs/versions/v0.2.0/GATE3_FINDINGS_v0.2.0.md",
+    "?? docs/versions/v0.2.0/IMPLEMENTATION_PLAN_v0.2.0.md",
+    "?? docs/versions/v0.2.0/TECHNICAL_DESIGN_v0.2.0.md",
+    "?? docs/versions/v0.2.0/gate-1-core-loop-acceptance.md",
+    "?? docs/versions/v0.2.0/gate-2-release-acceptance.md",
+    "?? docs/versions/v0.2.0/handoff/00_ENGINEERING_HANDOFF_README.md",
+    "?? docs/versions/v0.2.0/handoff/UNTRACKED_FILES.txt",
+    "?? docs/versions/v0.2.0/handoff/WORKTREE_DIFF.txt",
+    "?? docs/versions/v0.2.0/handoff/WORKTREE_STATE.txt",
+    "?? docs/versions/v0.2.0/handoff/evidence/EVIDENCE_SANITIZATION.md",
+    "?? docs/versions/v0.2.0/handoff/evidence/gate-1/REPORT.md",
+    "?? docs/versions/v0.2.0/handoff/evidence/gate-1/report.json",
+    "?? docs/versions/v0.2.0/handoff/evidence/gate-2/REPORT.md",
+    "?? docs/versions/v0.2.0/handoff/evidence/gate-2/report.json",
+    "?? docs/versions/v0.2.0/handoff/evidence/real-test/REPORT.md",
+    "?? docs/versions/v0.2.0/handoff/evidence/real-test/qa-events.json",
+    "?? docs/versions/v0.2.0/handoff/evidence/real-test/trace.json",
+    "?? docs/versions/v0.2.0/handoff/worktree-state.json",
+    "?? docs/versions/v0.2.0/images/BKP-01.png",
+    "?? docs/versions/v0.2.0/images/BKP-02.png",
+    "?? docs/versions/v0.2.0/images/BKP-04.png",
+    "?? docs/versions/v0.2.0/images/CAL-01.png",
+    "?? docs/versions/v0.2.0/images/CRS-01.png",
+    "?? docs/versions/v0.2.0/images/CRS-02.png",
+    "?? docs/versions/v0.2.0/images/CRS-03.png",
+    "?? docs/versions/v0.2.0/images/CRS-04.png",
+    "?? docs/versions/v0.2.0/images/CRS-05.png",
+    "?? docs/versions/v0.2.0/images/CRS-06.png",
+    "?? docs/versions/v0.2.0/images/CRV-01.png",
+    "?? docs/versions/v0.2.0/images/CRV-03.png",
+    "?? docs/versions/v0.2.0/images/CRV-04.png",
+    "?? docs/versions/v0.2.0/images/CRV-05.png",
+    "?? docs/versions/v0.2.0/images/IRV-01.png",
+    "?? docs/versions/v0.2.0/images/IRV-02.png",
+    "?? docs/versions/v0.2.0/images/IRV-03.png",
+    "?? docs/versions/v0.2.0/images/IRV-04.png",
+    "?? docs/versions/v0.2.0/images/IRV-05.png",
+    "?? docs/versions/v0.2.0/images/ISC-01.png",
+    "?? docs/versions/v0.2.0/images/ISC-02.png",
+    "?? docs/versions/v0.2.0/images/ISC-03.png",
+    "?? docs/versions/v0.2.0/images/ISC-04.png",
+    "?? docs/versions/v0.2.0/images/ISC-05.png",
+    "?? docs/versions/v0.2.0/images/ISC-06.png",
+    "?? docs/versions/v0.2.0/images/RBL-01.png",
+    "?? docs/versions/v0.2.0/images/RBL-02.png",
+    "?? docs/versions/v0.2.0/images/RBL-03.png",
+    "?? docs/versions/v0.2.0/images/SEM-01.png",
+    "?? docs/versions/v0.2.0/images/SEM-02.png",
+    "?? docs/versions/v0.2.0/images/SEM-03.png",
+    "?? docs/versions/v0.2.0/images/SEM-04.png",
+    "?? docs/versions/v0.2.0/images/SEM-05.png",
+    "?? docs/versions/v0.2.0/images/SEM-06.png",
+    "?? docs/versions/v0.2.0/images/SEM-07.png",
+    "?? docs/versions/v0.2.0/images/SET-01.png",
+    "?? docs/versions/v0.2.0/images/SET-02.png",
+    "?? docs/versions/v0.2.0/images/SET-04.png",
+    "?? docs/versions/v0.2.0/images/SET-05.png",
+    "?? extension/app.html",
+    "?? extension/public/icons/syllab-logo-128px.png",
+    "?? extension/public/icons/syllab-logo-16px.png",
+    "?? extension/public/icons/syllab-logo-32px.png",
+    "?? extension/public/icons/syllab-logo-48px.png",
+    "?? extension/sidepanel.html",
+    "?? extension/src/app/app.css",
+    "?? extension/src/app/dom.ts",
+    "?? extension/src/app/index.test.ts",
+    "?? extension/src/app/index.ts",
+    "?? extension/src/app/stylesheet.test.ts",
+    "?? extension/src/v2/ai-context.test.ts",
+    "?? extension/src/v2/ai-context.ts",
+    "?? extension/src/v2/ai-contracts.test.ts",
+    "?? extension/src/v2/ai-contracts.ts",
+    "?? extension/src/v2/ai-fixtures.ts",
+    "?? extension/src/v2/ai-pipeline.test.ts",
+    "?? extension/src/v2/ai-pipeline.ts",
+    "?? extension/src/v2/ai-regression.test.ts",
+    "?? extension/src/v2/assessments.ts",
+    "?? extension/src/v2/backup.test.ts",
+    "?? extension/src/v2/backup.ts",
+    "?? extension/src/v2/blackboard.ts",
+    "?? extension/src/v2/calendar-export.test.ts",
+    "?? extension/src/v2/calendar-export.ts",
+    "?? extension/src/v2/calendar-plan.ts",
+    "?? extension/src/v2/change-reducer.test.ts",
+    "?? extension/src/v2/change-reducer.ts",
+    "?? extension/src/v2/chunking.test.ts",
+    "?? extension/src/v2/chunking.ts",
+    "?? extension/src/v2/contract-coverage.test.ts",
+    "?? extension/src/v2/contract.ts",
+    "?? extension/src/v2/copy.ts",
+    "?? extension/src/v2/course-state.test.ts",
+    "?? extension/src/v2/course-state.ts",
+    "?? extension/src/v2/crypto.ts",
+    "?? extension/src/v2/date-resolution.test.ts",
+    "?? extension/src/v2/date-resolution.ts",
+    "?? extension/src/v2/deepseek-complete.ts",
+    "?? extension/src/v2/deepseek.test.ts",
+    "?? extension/src/v2/deepseek.ts",
+    "?? extension/src/v2/domain.ts",
+    "?? extension/src/v2/e2e-fixtures.disabled.ts",
+    "?? extension/src/v2/e2e-fixtures.ts",
+    "?? extension/src/v2/enrollment.test.ts",
+    "?? extension/src/v2/enrollment.ts",
+    "?? extension/src/v2/errors.ts",
+    "?? extension/src/v2/fingerprint.test.ts",
+    "?? extension/src/v2/fingerprint.ts",
+    "?? extension/src/v2/fixtures.ts",
+    "?? extension/src/v2/handler.ts",
+    "?? extension/src/v2/materialize.ts",
+    "?? extension/src/v2/migration.test.ts",
+    "?? extension/src/v2/migration.ts",
+    "?? extension/src/v2/opportunity.test.ts",
+    "?? extension/src/v2/opportunity.ts",
+    "?? extension/src/v2/product.ts",
+    "?? extension/src/v2/prompts.ts",
+    "?? extension/src/v2/qa-telemetry.disabled.ts",
+    "?? extension/src/v2/qa-telemetry.test.ts",
+    "?? extension/src/v2/qa-telemetry.ts",
+    "?? extension/src/v2/restore.test.ts",
+    "?? extension/src/v2/restore.ts",
+    "?? extension/src/v2/scheduler.ts",
+    "?? extension/src/v2/schema.ts",
+    "?? extension/src/v2/screens/calendar.ts",
+    "?? extension/src/v2/screens/change-review.ts",
+    "?? extension/src/v2/screens/course.ts",
+    "?? extension/src/v2/screens/fixtures.ts",
+    "?? extension/src/v2/screens/initial-review.ts",
+    "?? extension/src/v2/screens/mount.ts",
+    "?? extension/src/v2/screens/patterns.ts",
+    "?? extension/src/v2/screens/rebuild.ts",
+    "?? extension/src/v2/screens/render.test.ts",
+    "?? extension/src/v2/screens/render.ts",
+    "?? extension/src/v2/screens/scan.ts",
+    "?? extension/src/v2/screens/semester.ts",
+    "?? extension/src/v2/screens/settings.ts",
+    "?? extension/src/v2/screens/test-dom.ts",
+    "?? extension/src/v2/settings.test.ts",
+    "?? extension/src/v2/settings.ts",
+    "?? extension/src/v2/staging.ts",
+    "?? extension/src/v2/storage.ts",
+    "?? extension/src/v2/store.test.ts",
+    "?? extension/src/v2/store.ts",
+    "?? extension/src/v2/testing.ts",
+    "?? extension/src/v2/view.test.ts",
+    "?? extension/src/v2/view.ts",
+    "?? extension/src/v2/workflow.test.ts",
+    "?? extension/src/v2/workflow.ts",
+    "?? scripts/backfill-screenshots.mjs",
+    "?? scripts/browser-e2e.mjs",
+    "?? scripts/capture-screenshots.mjs",
+    "?? scripts/evidence-inventory.mjs",
+    "?? scripts/lib/browser-harness.mjs",
+    "?? scripts/lib/gate-report.mjs",
+    "?? scripts/lib/release-markers.mjs",
+    "?? scripts/lib/walkthrough.mjs",
+    "?? scripts/package-delivery.mjs",
+    "?? scripts/package-extension.mjs",
+    "?? scripts/real-test.mjs",
+    "?? scripts/run-gate.mjs",
+    "?? scripts/verify-build-separation.mjs",
+    "?? scripts/verify-documented-facts.mjs",
+    "?? scripts/verify-package.mjs",
+    "?? scripts/verify-readme-backfill.mjs"
+  ],
+  "diffStat": " .gitignore                                         |  11 +\n .prettierignore                                    |   3 +\n README.md                                          | 453 ++++++----\n backend/package.json                               |   4 +-\n docs/design-system.md                              | 191 ++++-\n eslint.config.js                                   |  28 +-\n extension/package.json                             |   5 +-\n extension/public/manifest.json                     |  36 +-\n extension/scripts/build.mjs                        | 102 ++-\n extension/src/background/index.ts                  | 919 ++++++++++++++++-----\n extension/src/calendar/calendar.test.ts            |  14 +\n extension/src/calendar/query.ts                    |  12 +-\n extension/src/content/index.test.ts                |  37 +-\n extension/src/content/index.ts                     |  64 +-\n extension/src/discovery/engine.test.ts             |  39 +\n extension/src/discovery/engine.ts                  |   8 +-\n .../src/repository/course-index-repository.ts      |   8 +\n extension/src/repository/local-database.ts         |  30 +-\n extension/src/repository/schema-repository.test.ts |  10 +-\n extension/src/repository/schema-repository.ts      |   8 +\n extension/src/shared/storage-schema.ts             |   2 +-\n package-lock.json                                  |  56 +-\n package.json                                       |  18 +-\n packages/contracts/package.json                    |   2 +-\n packages/contracts/src/index.ts                    |   2 +\n scripts/secret-scan.mjs                            |   9 +-\n scripts/validate-manifest.mjs                      |  59 +-\n 27 files changed, 1663 insertions(+), 467 deletions(-)\n",
+  "stagedStat": " extension/popup.html                     |   13 -\n extension/src/popup/entry-router.test.ts |   74 --\n extension/src/popup/entry-router.ts      |   51 --\n extension/src/popup/entry-runtime.ts     |   50 --\n extension/src/popup/index.ts             | 1307 ------------------------------\n extension/src/popup/popup.css            | 1038 ------------------------\n extension/src/popup/scan-errors.test.ts  |   33 -\n extension/src/popup/scan-errors.ts       |   30 -\n 8 files changed, 2596 deletions(-)\n",
+  "untracked": {
+    "count": 223,
+    "bytes": 10568280,
+    "files": [
+      {
+        "path": ".real-test.local.example.json",
+        "bytes": 763,
+        "sha256": "b92d0fabd6f790e3f9d0e9856dd7f094d752e3bc11596bad7ca7d6e8662b2427"
+      },
+      {
+        "path": "00_CODEX_START_HERE_v0.2.0.md",
+        "bytes": 14296,
+        "sha256": "4a3b9c53113dea112556faae00e891da6bf908e20a8136aa638331bad0c20074"
+      },
+      {
+        "path": "CODEX_START_PROMPT_v0.2.0.txt",
+        "bytes": 1199,
+        "sha256": "1005cdd2ca8cb806e9ecdbeb318f0fbb4e90f9e765e82edbdbee362368b20476"
+      },
+      {
+        "path": "Interaction_and_Information_Architecture_Spec_v0.2.0.md",
+        "bytes": 58990,
+        "sha256": "bb157897f045388d669c2edd2cde18b7b50031ad884247cbfcd12b6d82526c6f"
+      },
+      {
+        "path": "PRD_v0.2.0.md",
+        "bytes": 60145,
+        "sha256": "293d3e6eb54b2add33ccb9e263724ff31485d3498b6e8c4cc3b45955f5d3ded5"
+      },
+      {
+        "path": "PRODUCT_HANDOFF_v0.2.0.md",
+        "bytes": 42231,
+        "sha256": "3e14dac2d161814f7e72a7e87a9bb2196ddbc341b884f932faa13ae4b63da47f"
+      },
+      {
+        "path": "Run Syllab Real Test.command",
+        "bytes": 773,
+        "sha256": "6d41c0848cd7b94f287b483f948e9e33478fd0057a63de8606de24920d02d440"
+      },
+      {
+        "path": "artifacts/Syllab_Extension_v0.2.0.zip",
+        "bytes": 1089192,
+        "sha256": "06df24f48b8ccedc78a352b4ed2fdff77a5b10c925e62364ee5f8274ec1d1f3d"
+      },
+      {
+        "path": "artifacts/Syllab_v0.2.0_delivery.zip",
+        "bytes": 3170723,
+        "sha256": "18938531ccede8ae55ec7869279b541550fb1ed9df4fdc9b87626ba54ceeaa54"
+      },
+      {
+        "path": "artifacts/gates/v0.2.0/gate-1/REPORT.md",
+        "bytes": 2476,
+        "sha256": "fe78f725852da7af2ea2ef0834adc5266a683e58fad1fcee084527ded7d7fcb1"
+      },
+      {
+        "path": "artifacts/gates/v0.2.0/gate-1/report.json",
+        "bytes": 2827,
+        "sha256": "e51758b9c9285c14b21a2dc0ec234a4970a0e7df3246a9f30fb0fed5d6a0d652"
+      },
+      {
+        "path": "artifacts/gates/v0.2.0/gate-2/REPORT.md",
+        "bytes": 3305,
+        "sha256": "44406726731607eb2bad63469809ec40d36d51339c36a0175804a44b841e5f1e"
+      },
+      {
+        "path": "artifacts/gates/v0.2.0/gate-2/report.json",
+        "bytes": 4340,
+        "sha256": "0f62d5a2aa36333430a22aa3b2531848a0572de28033c62b72dc3caf1ef6a2b2"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/BKP-01.png",
+        "bytes": 98629,
+        "sha256": "f79dee99dc1aa3c78da0b6de792576d92cb92ce4e4854bdf2829ce6f463c5fe9"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/BKP-02.png",
+        "bytes": 129106,
+        "sha256": "c4ba9721c7926d0a30663856b3eded9764308e5730c12f94001a02bfa6e7baba"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/BKP-04.png",
+        "bytes": 19843,
+        "sha256": "3ac90f477dca3a8fbd5a0a5822ad5fdadccef35ae4fbf24464c2510b8a44d4f0"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/CAL-01.png",
+        "bytes": 40320,
+        "sha256": "4315dc78718027c2c410fbc571970bc54efb3c6ce8fc94362df51cbfe1f5a8d2"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/CRS-01.png",
+        "bytes": 103244,
+        "sha256": "3fbee1e6f89d27bb0919ee065d2b0c9a1de5e30e8d3feeb4b84f8d32a1788f6e"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/CRS-02.png",
+        "bytes": 94921,
+        "sha256": "374f64149a5315fb0fb6472b4f7fb72684a0bc604ec408eee880205ac9d76c51"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/CRS-03.png",
+        "bytes": 26989,
+        "sha256": "e6fe1b85760577ac5cadc753b8a442e727bbad210c9e03268db92a90227f15d7"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/CRS-04.png",
+        "bytes": 33758,
+        "sha256": "76927d09af513b806cc149f5101236b0cb94d5c18548cde180f2f88e3fc6b87e"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/CRS-05.png",
+        "bytes": 108948,
+        "sha256": "36b5b1ee5b1359b2c3a4ba9c2f572c6d77a3dc412515da0c0b8d56b4ba274d8a"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/CRS-06.png",
+        "bytes": 103244,
+        "sha256": "3fbee1e6f89d27bb0919ee065d2b0c9a1de5e30e8d3feeb4b84f8d32a1788f6e"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/CRV-01.png",
+        "bytes": 27885,
+        "sha256": "130a7c1d59f2c3a739d341144b7b2445466f5c3af19828d109b3eaef975edeec"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/CRV-03.png",
+        "bytes": 31882,
+        "sha256": "fc6f695c3508f8143297b2bcc82f4abc142d7a76897d344c82fdb43ff0e555f7"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/CRV-04.png",
+        "bytes": 25064,
+        "sha256": "63986fc55f98007f639017564d140114bb98bbc22025447ecf67a2fcdece6d1e"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/CRV-05.png",
+        "bytes": 30008,
+        "sha256": "232077ebf5494705b1b3a819cc745d54c71acf552f0694186585089952531f21"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/IRV-01.png",
+        "bytes": 54373,
+        "sha256": "8ef2e1a40792c29e755ecdb9988ff378d84e999a3c9b0d3e41c075bc5a376c17"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/IRV-02.png",
+        "bytes": 41123,
+        "sha256": "c98c8ab2a3327b0787379982736a42aa4e070e1575527335a7dd587f3500e6e8"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/IRV-03.png",
+        "bytes": 36331,
+        "sha256": "5cd0e47007cc47194c771e10d5dee307fc93b9f4652a61ff6fcc375ea37c540f"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/IRV-04.png",
+        "bytes": 62096,
+        "sha256": "578685c5b103a5c5cf51b2239cc7375a7e40de9c7c13410e3b0a2faf9e481482"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/IRV-05.png",
+        "bytes": 62096,
+        "sha256": "578685c5b103a5c5cf51b2239cc7375a7e40de9c7c13410e3b0a2faf9e481482"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/ISC-01.png",
+        "bytes": 22932,
+        "sha256": "3426755043def7823761ebbebe0631236e2d141815937049ef9a7d4f78a09fbd"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/ISC-02.png",
+        "bytes": 33864,
+        "sha256": "ad6364ff417dee560666308d133f76eb1412318ef6487e15f9c239df9381826c"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/ISC-03.png",
+        "bytes": 24632,
+        "sha256": "25351e4a9f22d9d57642421670fd3b1984e8ec584f446a182074745c1c0ddb52"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/ISC-04.png",
+        "bytes": 23097,
+        "sha256": "1428026bef648a4f4424222a58a4b7fbd1fd9a1a6aa6cdc2b9cce6d49f682f53"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/ISC-05.png",
+        "bytes": 25669,
+        "sha256": "5fd9ad176abaf49a23b91d86ea33d97d2fe2e1c3b4a783d53bc722da4a1e7caa"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/ISC-06.png",
+        "bytes": 32225,
+        "sha256": "5fdc7b94b37b657712ea4a12ef717e57f4337187fd37821d14e81e18605ba827"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/RBL-01.png",
+        "bytes": 31531,
+        "sha256": "d1bdc6d3637f7bdd49c67d05db75061281ec5d11631e283958d14cd3741cb693"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/RBL-02.png",
+        "bytes": 30087,
+        "sha256": "064f7963690a7d3dedb3f3a353b1102ea7faacb20857be704a2d4fb4276a6701"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/RBL-03.png",
+        "bytes": 110497,
+        "sha256": "af9bcb8b61cf93ff18655b1041527752911107ec3f5d2fff5d95184387702ae4"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/SEM-01.png",
+        "bytes": 54719,
+        "sha256": "64ef896c676301fee6ba294a45e4df2564e42e9f1db7f72cbd07789bbc3f2424"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/SEM-02.png",
+        "bytes": 37648,
+        "sha256": "4566cbfe23951a1a24be435e5586d5c07dcda7a2d1c614aecad68fa74bf43896"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/SEM-03.png",
+        "bytes": 63504,
+        "sha256": "c305d027aa4d9e7503fd4cbac2c48548a55a3cec5d7a7fa9ed10db2422282ec9"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/SEM-04.png",
+        "bytes": 54719,
+        "sha256": "64ef896c676301fee6ba294a45e4df2564e42e9f1db7f72cbd07789bbc3f2424"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/SEM-05.png",
+        "bytes": 37648,
+        "sha256": "4566cbfe23951a1a24be435e5586d5c07dcda7a2d1c614aecad68fa74bf43896"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/SEM-06.png",
+        "bytes": 24042,
+        "sha256": "af36b9093971fca095751f8f21fb83daa2e64e55a43396e25e94019ad424af1c"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/SEM-07.png",
+        "bytes": 22932,
+        "sha256": "3426755043def7823761ebbebe0631236e2d141815937049ef9a7d4f78a09fbd"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/SET-01.png",
+        "bytes": 98629,
+        "sha256": "f79dee99dc1aa3c78da0b6de792576d92cb92ce4e4854bdf2829ce6f463c5fe9"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/SET-02.png",
+        "bytes": 98629,
+        "sha256": "f79dee99dc1aa3c78da0b6de792576d92cb92ce4e4854bdf2829ce6f463c5fe9"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/SET-04.png",
+        "bytes": 98629,
+        "sha256": "f79dee99dc1aa3c78da0b6de792576d92cb92ce4e4854bdf2829ce6f463c5fe9"
+      },
+      {
+        "path": "artifacts/screenshots/v0.2.0/SET-05.png",
+        "bytes": 98629,
+        "sha256": "f79dee99dc1aa3c78da0b6de792576d92cb92ce4e4854bdf2829ce6f463c5fe9"
+      },
+      {
+        "path": "assets/logo/syllab-logo-128px.png",
+        "bytes": 2445,
+        "sha256": "b0ac34073ce05b42b4ed89594ab343af89c13de00464921f3ac0cc9a8291ee48"
+      },
+      {
+        "path": "assets/logo/syllab-logo-16px.png",
+        "bytes": 404,
+        "sha256": "201a769e8957be6d3b7bfab52f8fe4bf01953fc8b2b19da26c469344e5207a2a"
+      },
+      {
+        "path": "assets/logo/syllab-logo-32px.png",
+        "bytes": 668,
+        "sha256": "f9763aba0e1d1f89a02c4a3060d1f41c844e7bc89be683a61b3e37e2367cd41b"
+      },
+      {
+        "path": "assets/logo/syllab-logo-48px.png",
+        "bytes": 943,
+        "sha256": "50c346b7e238c4add3634aca51b59412e69efbb36f109a226351f96dc327a1fc"
+      },
+      {
+        "path": "assets/logo/syllab-logo-master.svg",
+        "bytes": 1319,
+        "sha256": "fb3a7706ee23455c5e3f05db15bed8e6b2b7807f9a28bc153a9b4ec5e5d2352b"
+      },
+      {
+        "path": "docs/versions/v0.2.0/CURRENT_ENGINEERING_STATE_v0.2.0.md",
+        "bytes": 27204,
+        "sha256": "34eccfab98d9478c85bd98f0c833d7c1d1f09a55e8dcd06e9678d6f16830ddae"
+      },
+      {
+        "path": "docs/versions/v0.2.0/DIRECTION_ADJUSTMENTS_v0.2.0.md",
+        "bytes": 80411,
+        "sha256": "601f5184c0c1488716b279b4caa32bda3e838cabdaa705f7c665d19fdeb770a7"
+      },
+      {
+        "path": "docs/versions/v0.2.0/ENGINEERING_CHANGE_MANIFEST_v0.2.0.md",
+        "bytes": 21741,
+        "sha256": "c76e7b58af8ba6c7d4f98cdb471c6abe48c62ca145f18a9d04ba1d9961726427"
+      },
+      {
+        "path": "docs/versions/v0.2.0/GATE3_FINDINGS_v0.2.0.md",
+        "bytes": 57421,
+        "sha256": "424976f1461767fba32c09d6713378c047394baf8541da32b066ec3bc9a9d5fe"
+      },
+      {
+        "path": "docs/versions/v0.2.0/IMPLEMENTATION_PLAN_v0.2.0.md",
+        "bytes": 17592,
+        "sha256": "6301bc7b2fd00ad93b51afca0bebb58e2ab555f30ca199d37e0ee09c7b2b479b"
+      },
+      {
+        "path": "docs/versions/v0.2.0/TECHNICAL_DESIGN_v0.2.0.md",
+        "bytes": 34442,
+        "sha256": "f75d868330f7e3d52ba121ec915d836941798355ce77f8db0435d142ac465618"
+      },
+      {
+        "path": "docs/versions/v0.2.0/gate-1-core-loop-acceptance.md",
+        "bytes": 4385,
+        "sha256": "7bed2c37bd588ec20ca738213555eb5867bddc24d106490cb809d5b3605b5dc2"
+      },
+      {
+        "path": "docs/versions/v0.2.0/gate-2-release-acceptance.md",
+        "bytes": 8227,
+        "sha256": "cb03255146fac15136684dd20adeac72e8c6359fe813f2bd332aaef9395ba11f"
+      },
+      {
+        "path": "docs/versions/v0.2.0/handoff/00_ENGINEERING_HANDOFF_README.md",
+        "bytes": 12565,
+        "sha256": "eb1878bf1661caad03080418e988b72812c9c8357ace4026d40bfcc5e4de7079"
+      },
+      {
+        "path": "docs/versions/v0.2.0/handoff/UNTRACKED_FILES.txt",
+        "bytes": 24163,
+        "sha256": "1e4dddb73ec995c0379961391c2832633fd70eb8c776f7293aeb2e6fd9cd41d8"
+      },
+      {
+        "path": "docs/versions/v0.2.0/handoff/WORKTREE_DIFF.txt",
+        "bytes": 218467,
+        "sha256": "eaadd5614da1b33e4c909eb279dc68d2e82911cbe0c598a80d6846f2b230e5eb"
+      },
+      {
+        "path": "docs/versions/v0.2.0/handoff/WORKTREE_STATE.txt",
+        "bytes": 16144,
+        "sha256": "46404b46ae6694ba9f92d4b75ee254071499f825c290a39ce467f653ad86ff19"
+      },
+      {
+        "path": "docs/versions/v0.2.0/handoff/evidence/EVIDENCE_SANITIZATION.md",
+        "bytes": 3014,
+        "sha256": "ca0b1ad101ef4312cf633ffbd86e7013b46c0c4c3c8f8d0536b70677d250fba4"
+      },
+      {
+        "path": "docs/versions/v0.2.0/handoff/evidence/gate-1/REPORT.md",
+        "bytes": 2476,
+        "sha256": "fe78f725852da7af2ea2ef0834adc5266a683e58fad1fcee084527ded7d7fcb1"
+      },
+      {
+        "path": "docs/versions/v0.2.0/handoff/evidence/gate-1/report.json",
+        "bytes": 2827,
+        "sha256": "e51758b9c9285c14b21a2dc0ec234a4970a0e7df3246a9f30fb0fed5d6a0d652"
+      },
+      {
+        "path": "docs/versions/v0.2.0/handoff/evidence/gate-2/REPORT.md",
+        "bytes": 3305,
+        "sha256": "44406726731607eb2bad63469809ec40d36d51339c36a0175804a44b841e5f1e"
+      },
+      {
+        "path": "docs/versions/v0.2.0/handoff/evidence/gate-2/report.json",
+        "bytes": 4340,
+        "sha256": "0f62d5a2aa36333430a22aa3b2531848a0572de28033c62b72dc3caf1ef6a2b2"
+      },
+      {
+        "path": "docs/versions/v0.2.0/handoff/evidence/real-test/REPORT.md",
+        "bytes": 20142,
+        "sha256": "d5790d15437a59124382fae9968410070db0c4db8aa7c138eb573de7d4a639e4"
+      },
+      {
+        "path": "docs/versions/v0.2.0/handoff/evidence/real-test/qa-events.json",
+        "bytes": 35286,
+        "sha256": "e72876d104155fba2773bf4063062e058d9908bd29d7e2f00f24631218aefbcc"
+      },
+      {
+        "path": "docs/versions/v0.2.0/handoff/evidence/real-test/trace.json",
+        "bytes": 594,
+        "sha256": "e36b769c347ef616d894a735da30acd0415dfc8c81acca213cb9929596667c04"
+      },
+      {
+        "path": "docs/versions/v0.2.0/handoff/worktree-state.json",
+        "bytes": 58721,
+        "sha256": "5ec6ff6e16dc6dd7051c2ae8a21266536ca08ba2770b98d46611df8ded0426f4"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/BKP-01.png",
+        "bytes": 98629,
+        "sha256": "f79dee99dc1aa3c78da0b6de792576d92cb92ce4e4854bdf2829ce6f463c5fe9"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/BKP-02.png",
+        "bytes": 129106,
+        "sha256": "c4ba9721c7926d0a30663856b3eded9764308e5730c12f94001a02bfa6e7baba"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/BKP-04.png",
+        "bytes": 19843,
+        "sha256": "3ac90f477dca3a8fbd5a0a5822ad5fdadccef35ae4fbf24464c2510b8a44d4f0"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/CAL-01.png",
+        "bytes": 40320,
+        "sha256": "4315dc78718027c2c410fbc571970bc54efb3c6ce8fc94362df51cbfe1f5a8d2"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/CRS-01.png",
+        "bytes": 103244,
+        "sha256": "3fbee1e6f89d27bb0919ee065d2b0c9a1de5e30e8d3feeb4b84f8d32a1788f6e"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/CRS-02.png",
+        "bytes": 94921,
+        "sha256": "374f64149a5315fb0fb6472b4f7fb72684a0bc604ec408eee880205ac9d76c51"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/CRS-03.png",
+        "bytes": 26989,
+        "sha256": "e6fe1b85760577ac5cadc753b8a442e727bbad210c9e03268db92a90227f15d7"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/CRS-04.png",
+        "bytes": 33758,
+        "sha256": "76927d09af513b806cc149f5101236b0cb94d5c18548cde180f2f88e3fc6b87e"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/CRS-05.png",
+        "bytes": 108948,
+        "sha256": "36b5b1ee5b1359b2c3a4ba9c2f572c6d77a3dc412515da0c0b8d56b4ba274d8a"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/CRS-06.png",
+        "bytes": 103244,
+        "sha256": "3fbee1e6f89d27bb0919ee065d2b0c9a1de5e30e8d3feeb4b84f8d32a1788f6e"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/CRV-01.png",
+        "bytes": 27885,
+        "sha256": "130a7c1d59f2c3a739d341144b7b2445466f5c3af19828d109b3eaef975edeec"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/CRV-03.png",
+        "bytes": 31882,
+        "sha256": "fc6f695c3508f8143297b2bcc82f4abc142d7a76897d344c82fdb43ff0e555f7"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/CRV-04.png",
+        "bytes": 25064,
+        "sha256": "63986fc55f98007f639017564d140114bb98bbc22025447ecf67a2fcdece6d1e"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/CRV-05.png",
+        "bytes": 30008,
+        "sha256": "232077ebf5494705b1b3a819cc745d54c71acf552f0694186585089952531f21"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/IRV-01.png",
+        "bytes": 54373,
+        "sha256": "8ef2e1a40792c29e755ecdb9988ff378d84e999a3c9b0d3e41c075bc5a376c17"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/IRV-02.png",
+        "bytes": 41123,
+        "sha256": "c98c8ab2a3327b0787379982736a42aa4e070e1575527335a7dd587f3500e6e8"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/IRV-03.png",
+        "bytes": 36331,
+        "sha256": "5cd0e47007cc47194c771e10d5dee307fc93b9f4652a61ff6fcc375ea37c540f"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/IRV-04.png",
+        "bytes": 62096,
+        "sha256": "578685c5b103a5c5cf51b2239cc7375a7e40de9c7c13410e3b0a2faf9e481482"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/IRV-05.png",
+        "bytes": 62096,
+        "sha256": "578685c5b103a5c5cf51b2239cc7375a7e40de9c7c13410e3b0a2faf9e481482"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/ISC-01.png",
+        "bytes": 22932,
+        "sha256": "3426755043def7823761ebbebe0631236e2d141815937049ef9a7d4f78a09fbd"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/ISC-02.png",
+        "bytes": 33864,
+        "sha256": "ad6364ff417dee560666308d133f76eb1412318ef6487e15f9c239df9381826c"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/ISC-03.png",
+        "bytes": 24632,
+        "sha256": "25351e4a9f22d9d57642421670fd3b1984e8ec584f446a182074745c1c0ddb52"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/ISC-04.png",
+        "bytes": 23097,
+        "sha256": "1428026bef648a4f4424222a58a4b7fbd1fd9a1a6aa6cdc2b9cce6d49f682f53"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/ISC-05.png",
+        "bytes": 25669,
+        "sha256": "5fd9ad176abaf49a23b91d86ea33d97d2fe2e1c3b4a783d53bc722da4a1e7caa"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/ISC-06.png",
+        "bytes": 32225,
+        "sha256": "5fdc7b94b37b657712ea4a12ef717e57f4337187fd37821d14e81e18605ba827"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/RBL-01.png",
+        "bytes": 31531,
+        "sha256": "d1bdc6d3637f7bdd49c67d05db75061281ec5d11631e283958d14cd3741cb693"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/RBL-02.png",
+        "bytes": 30087,
+        "sha256": "064f7963690a7d3dedb3f3a353b1102ea7faacb20857be704a2d4fb4276a6701"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/RBL-03.png",
+        "bytes": 110497,
+        "sha256": "af9bcb8b61cf93ff18655b1041527752911107ec3f5d2fff5d95184387702ae4"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/SEM-01.png",
+        "bytes": 54719,
+        "sha256": "64ef896c676301fee6ba294a45e4df2564e42e9f1db7f72cbd07789bbc3f2424"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/SEM-02.png",
+        "bytes": 37648,
+        "sha256": "4566cbfe23951a1a24be435e5586d5c07dcda7a2d1c614aecad68fa74bf43896"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/SEM-03.png",
+        "bytes": 63504,
+        "sha256": "c305d027aa4d9e7503fd4cbac2c48548a55a3cec5d7a7fa9ed10db2422282ec9"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/SEM-04.png",
+        "bytes": 54719,
+        "sha256": "64ef896c676301fee6ba294a45e4df2564e42e9f1db7f72cbd07789bbc3f2424"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/SEM-05.png",
+        "bytes": 37648,
+        "sha256": "4566cbfe23951a1a24be435e5586d5c07dcda7a2d1c614aecad68fa74bf43896"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/SEM-06.png",
+        "bytes": 24042,
+        "sha256": "af36b9093971fca095751f8f21fb83daa2e64e55a43396e25e94019ad424af1c"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/SEM-07.png",
+        "bytes": 22932,
+        "sha256": "3426755043def7823761ebbebe0631236e2d141815937049ef9a7d4f78a09fbd"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/SET-01.png",
+        "bytes": 98629,
+        "sha256": "f79dee99dc1aa3c78da0b6de792576d92cb92ce4e4854bdf2829ce6f463c5fe9"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/SET-02.png",
+        "bytes": 98629,
+        "sha256": "f79dee99dc1aa3c78da0b6de792576d92cb92ce4e4854bdf2829ce6f463c5fe9"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/SET-04.png",
+        "bytes": 98629,
+        "sha256": "f79dee99dc1aa3c78da0b6de792576d92cb92ce4e4854bdf2829ce6f463c5fe9"
+      },
+      {
+        "path": "docs/versions/v0.2.0/images/SET-05.png",
+        "bytes": 98629,
+        "sha256": "f79dee99dc1aa3c78da0b6de792576d92cb92ce4e4854bdf2829ce6f463c5fe9"
+      },
+      {
+        "path": "extension/app.html",
+        "bytes": 357,
+        "sha256": "feb98543e2a2c8de3f44b7e9f6854ab29bd4c0f88d855ab3ebf268c5c5d620a3"
+      },
+      {
+        "path": "extension/public/icons/syllab-logo-128px.png",
+        "bytes": 2445,
+        "sha256": "b0ac34073ce05b42b4ed89594ab343af89c13de00464921f3ac0cc9a8291ee48"
+      },
+      {
+        "path": "extension/public/icons/syllab-logo-16px.png",
+        "bytes": 404,
+        "sha256": "201a769e8957be6d3b7bfab52f8fe4bf01953fc8b2b19da26c469344e5207a2a"
+      },
+      {
+        "path": "extension/public/icons/syllab-logo-32px.png",
+        "bytes": 668,
+        "sha256": "f9763aba0e1d1f89a02c4a3060d1f41c844e7bc89be683a61b3e37e2367cd41b"
+      },
+      {
+        "path": "extension/public/icons/syllab-logo-48px.png",
+        "bytes": 943,
+        "sha256": "50c346b7e238c4add3634aca51b59412e69efbb36f109a226351f96dc327a1fc"
+      },
+      {
+        "path": "extension/sidepanel.html",
+        "bytes": 358,
+        "sha256": "f28fc67c43d2c233bb8201f7d695077f1324c32b6349190b722fdf51476148c8"
+      },
+      {
+        "path": "extension/src/app/app.css",
+        "bytes": 30946,
+        "sha256": "ad41cdb8b592689e0d983a314a492c180aa9cbd62a1e376af51ba4c875e1e9aa"
+      },
+      {
+        "path": "extension/src/app/dom.ts",
+        "bytes": 2117,
+        "sha256": "505dac64f7ccd9252039c997a208853254ddbd0ad4f8402c8c8bb63a5d432785"
+      },
+      {
+        "path": "extension/src/app/index.test.ts",
+        "bytes": 5574,
+        "sha256": "3659f9dc7b8c487548fc38930f277c7cb36feb709df9b2a8d73644ca854de4ce"
+      },
+      {
+        "path": "extension/src/app/index.ts",
+        "bytes": 517,
+        "sha256": "01eebcefa73cfaa8ffe91e2772d8989c97dc5c79c56426b89221eb5f46fda5c2"
+      },
+      {
+        "path": "extension/src/app/stylesheet.test.ts",
+        "bytes": 15078,
+        "sha256": "a5abc094d90e090479c149e7a59bfa7baca715a58ef65922c924a3add00d8bf2"
+      },
+      {
+        "path": "extension/src/v2/ai-context.test.ts",
+        "bytes": 12737,
+        "sha256": "f865217e0df274ebb8d7be156166e75d54b4d355579176f422fe73940042c61d"
+      },
+      {
+        "path": "extension/src/v2/ai-context.ts",
+        "bytes": 10788,
+        "sha256": "0fcde5b2c0c37c7caddaa6b19a4e7d4c99aa352830be42a651a01eb69fd87534"
+      },
+      {
+        "path": "extension/src/v2/ai-contracts.test.ts",
+        "bytes": 1248,
+        "sha256": "e2455afa1438a3ac5e538ec4dc0d1a9225ae5f6ae50424612099428d91939f3d"
+      },
+      {
+        "path": "extension/src/v2/ai-contracts.ts",
+        "bytes": 7185,
+        "sha256": "ca0f5230a6826351bfdd90b013997256f575023e6d7dc27fc7238996af083b8c"
+      },
+      {
+        "path": "extension/src/v2/ai-fixtures.ts",
+        "bytes": 47952,
+        "sha256": "15178fe4a38a194c887f4d9d22e5bff264f9e4d3d660a7e717a2c907ebfb68fa"
+      },
+      {
+        "path": "extension/src/v2/ai-pipeline.test.ts",
+        "bytes": 28428,
+        "sha256": "067a7468b7debd8933ae8515f4cd2f1078741c71bd91208901025fc9c588e69b"
+      },
+      {
+        "path": "extension/src/v2/ai-pipeline.ts",
+        "bytes": 21160,
+        "sha256": "7e72e0849f474a9587e9c13e9e8b5ed4c6ccdc9617cb761a71d14ea940411963"
+      },
+      {
+        "path": "extension/src/v2/ai-regression.test.ts",
+        "bytes": 24068,
+        "sha256": "c4d1bdc56058904dc30809c5f97507d5d3896168073a1d3e7cc087dcdadf061b"
+      },
+      {
+        "path": "extension/src/v2/assessments.ts",
+        "bytes": 6782,
+        "sha256": "cf4392844b7390e69ad71408d464654d918fb4da2936cb1ca90cb1117dbf2333"
+      },
+      {
+        "path": "extension/src/v2/backup.test.ts",
+        "bytes": 2677,
+        "sha256": "f1a07cf3cf6954d3f350718efe73d3ecbf7dc06b6183efbe46b7144465c3aa83"
+      },
+      {
+        "path": "extension/src/v2/backup.ts",
+        "bytes": 3714,
+        "sha256": "9a0760f8b3b5222fc7b23802bddd93df9f6c895a3d1ec602bc1071f97de389d2"
+      },
+      {
+        "path": "extension/src/v2/blackboard.ts",
+        "bytes": 10040,
+        "sha256": "6ab633d443b36c9339bad06e72c71e8888574ebd0c38d305bb777c59dff01a39"
+      },
+      {
+        "path": "extension/src/v2/calendar-export.test.ts",
+        "bytes": 14944,
+        "sha256": "523d5afd6e7e34e82b764cc6c7516625599eb816610d619f1e4601cc82014aea"
+      },
+      {
+        "path": "extension/src/v2/calendar-export.ts",
+        "bytes": 13735,
+        "sha256": "c0defbaef3ffe4a220f9d13b0c9bdaf8e5caa221ed56f7c6257844c5b2f8d4c4"
+      },
+      {
+        "path": "extension/src/v2/calendar-plan.ts",
+        "bytes": 1408,
+        "sha256": "1a42d959194acc6b7bb237a694187843fb2ce881d421bb1045a72daa24f4bea5"
+      },
+      {
+        "path": "extension/src/v2/change-reducer.test.ts",
+        "bytes": 1745,
+        "sha256": "8a363b29a9f32b018eb0e46dbc872f6901bcbc62871e2993dafb5987ac5f19c9"
+      },
+      {
+        "path": "extension/src/v2/change-reducer.ts",
+        "bytes": 1708,
+        "sha256": "d6c56a416ae12dfc5e7cdb793ce057f1229006662f5d94d234a5ca12d8d67adb"
+      },
+      {
+        "path": "extension/src/v2/chunking.test.ts",
+        "bytes": 8188,
+        "sha256": "6c1e9df310cd284a601ed773cff267a8f5c38cbe1e8d97601d464f57c43b101a"
+      },
+      {
+        "path": "extension/src/v2/chunking.ts",
+        "bytes": 8825,
+        "sha256": "3df57fa8309ea054734ff60f23944c47a1d5b3a920592893cce181d082646afe"
+      },
+      {
+        "path": "extension/src/v2/contract-coverage.test.ts",
+        "bytes": 1738,
+        "sha256": "9224661622b47fde53fe83c34c74f44354a1884f8fdda18da9c37f4254d81579"
+      },
+      {
+        "path": "extension/src/v2/contract.ts",
+        "bytes": 9882,
+        "sha256": "785587cdf7d1f643113df733db2c31fc338ffdcf423d4c4c1eeb2fc92a968532"
+      },
+      {
+        "path": "extension/src/v2/copy.ts",
+        "bytes": 12297,
+        "sha256": "c0444e8a23a8844201e52a8206b880d345010d848293e371c85f102276703442"
+      },
+      {
+        "path": "extension/src/v2/course-state.test.ts",
+        "bytes": 14838,
+        "sha256": "bd31384f32b53bccbc0486e26bcded771fb902bc0a2506a265302e8f30bc3741"
+      },
+      {
+        "path": "extension/src/v2/course-state.ts",
+        "bytes": 27472,
+        "sha256": "2dbf8a9fc0a667293f87c3ef21352ec516f219909610a6720e9b25176788518d"
+      },
+      {
+        "path": "extension/src/v2/crypto.ts",
+        "bytes": 1847,
+        "sha256": "d49c657e30daa804184a9c8fa673490ef5bc8ae06d0be23e30176685b75406f4"
+      },
+      {
+        "path": "extension/src/v2/date-resolution.test.ts",
+        "bytes": 5065,
+        "sha256": "af63756e95ad0c895293916ca579d2d4e509065bf0892b62e13fcd87d92eb9c1"
+      },
+      {
+        "path": "extension/src/v2/date-resolution.ts",
+        "bytes": 10166,
+        "sha256": "0d8b926ce15f281d4316c2facf959d72a5d3468fc963bda8cbe922ee3a7e6006"
+      },
+      {
+        "path": "extension/src/v2/deepseek-complete.ts",
+        "bytes": 14942,
+        "sha256": "b1a19c33c2fac3910e93ca9e3c5c2ee4f8c9ac7a490229e931993133c620c4c6"
+      },
+      {
+        "path": "extension/src/v2/deepseek.test.ts",
+        "bytes": 3586,
+        "sha256": "d542282d5d80c1008be88701ba4d93a0b51941d2541babd42bcab50075b22d09"
+      },
+      {
+        "path": "extension/src/v2/deepseek.ts",
+        "bytes": 5350,
+        "sha256": "e8bbeed5e2e0be55a2c20f3fe05d0811d18290306d63ee7a35d00e60c91e997e"
+      },
+      {
+        "path": "extension/src/v2/domain.ts",
+        "bytes": 519,
+        "sha256": "45c894d1786e0473b875f8aee51114b872d9bbcd1103f9b45d32f8dd42cf6161"
+      },
+      {
+        "path": "extension/src/v2/e2e-fixtures.disabled.ts",
+        "bytes": 1112,
+        "sha256": "c290da0e6ea8884928532179ccd0fb4567b36595dc2d6b88d352c7da714ade0f"
+      },
+      {
+        "path": "extension/src/v2/e2e-fixtures.ts",
+        "bytes": 6113,
+        "sha256": "141cb46135d748a084e97b9838d486269ecd6d32b3bb523fe8f2a049c2125a36"
+      },
+      {
+        "path": "extension/src/v2/enrollment.test.ts",
+        "bytes": 13891,
+        "sha256": "3bcee7941b8494301f8ae9543b2c674ca1ff0e20b493139ec4c9831fdb041706"
+      },
+      {
+        "path": "extension/src/v2/enrollment.ts",
+        "bytes": 17449,
+        "sha256": "d8b3334d3ce545011885350c51bce22b2a73d6a60252e12173727658103d6013"
+      },
+      {
+        "path": "extension/src/v2/errors.ts",
+        "bytes": 258,
+        "sha256": "a4e33b069ac7b178616855b053ad4e3ad59fb7d333e0a1691a3181670394f63a"
+      },
+      {
+        "path": "extension/src/v2/fingerprint.test.ts",
+        "bytes": 1592,
+        "sha256": "caf9598d6918582bf314ca73f7c0faaff1995018d9bfc95d4d0b3633457c84d7"
+      },
+      {
+        "path": "extension/src/v2/fingerprint.ts",
+        "bytes": 2049,
+        "sha256": "af57135e14ecd6805ea5260f43ada6619387079af9dd5de70f4ed4ecc3661f8f"
+      },
+      {
+        "path": "extension/src/v2/fixtures.ts",
+        "bytes": 18725,
+        "sha256": "86900a72f3541e101100396678f01463ff84ab0118536445cdfffea395640f26"
+      },
+      {
+        "path": "extension/src/v2/handler.ts",
+        "bytes": 27821,
+        "sha256": "7364529c92bf7c96faf59cf270d59b29c2d81c9f84bd7edc3d77096bc9e0a06a"
+      },
+      {
+        "path": "extension/src/v2/materialize.ts",
+        "bytes": 23818,
+        "sha256": "e9107e37682c79e8341ea8a2b2b81fc4dd5cef69068fd0f00b0d1de9629771c2"
+      },
+      {
+        "path": "extension/src/v2/migration.test.ts",
+        "bytes": 21145,
+        "sha256": "91dd431cd6705fe93f31fc97a4d7cdccc4e954a044fb5082dc7527371d823dfa"
+      },
+      {
+        "path": "extension/src/v2/migration.ts",
+        "bytes": 33197,
+        "sha256": "4b82cd4b8462307ee3b8d718b4f116d72c053420e1d7222df74123485ac121ea"
+      },
+      {
+        "path": "extension/src/v2/opportunity.test.ts",
+        "bytes": 1751,
+        "sha256": "c124a61be8ada43a7391f7fff169f54329d05534a440b34a466157956395da9f"
+      },
+      {
+        "path": "extension/src/v2/opportunity.ts",
+        "bytes": 1430,
+        "sha256": "0769a5a0f4130783ed83ad5b7eb46896041d64995a5c69acc9c8105f1e9c9007"
+      },
+      {
+        "path": "extension/src/v2/product.ts",
+        "bytes": 177,
+        "sha256": "0ef23c362c450833b9d986edf38f6ad358df43de93969ee16165038ec8afe2f5"
+      },
+      {
+        "path": "extension/src/v2/prompts.ts",
+        "bytes": 30920,
+        "sha256": "8acc2c5baaf966869395bb66310ac1b64c2c3fe734aeb024a7923cceb0f04d63"
+      },
+      {
+        "path": "extension/src/v2/qa-telemetry.disabled.ts",
+        "bytes": 613,
+        "sha256": "d7e36d30b1c87e5d70112795fb7393a073b3388152f10a3116390167e14881de"
+      },
+      {
+        "path": "extension/src/v2/qa-telemetry.test.ts",
+        "bytes": 3629,
+        "sha256": "45ead1aebc7798103ef1c368e64c8c5976f5749aca66c86c29be8ba8d0d49e31"
+      },
+      {
+        "path": "extension/src/v2/qa-telemetry.ts",
+        "bytes": 5461,
+        "sha256": "5116010e5508252dd2ccf19c5b00581a0ea5d9f4991dd0109e8ef67d859d695f"
+      },
+      {
+        "path": "extension/src/v2/restore.test.ts",
+        "bytes": 16371,
+        "sha256": "4d1179268057dac7a12fd67a609d7dff460a7d545a316d3d95386d1c88b0e6ad"
+      },
+      {
+        "path": "extension/src/v2/restore.ts",
+        "bytes": 23225,
+        "sha256": "4ce8bf27da8637673ae3a28223de0d5d672658940969f932a7f874a7976b97c6"
+      },
+      {
+        "path": "extension/src/v2/scheduler.ts",
+        "bytes": 994,
+        "sha256": "9c9334baf64f735f024a7aaf76a454ed8bb13b93cb751cd23912e4d5391b3390"
+      },
+      {
+        "path": "extension/src/v2/schema.ts",
+        "bytes": 10394,
+        "sha256": "8ee1dcc4104d828dd24ddb1b646606d0a6d07cd540301ebd034fcb26cafaac0b"
+      },
+      {
+        "path": "extension/src/v2/screens/calendar.ts",
+        "bytes": 3693,
+        "sha256": "c3a23ca1a2c3db39a5e1fd194a4ca9a29e046ffbeec5bb4bbc1d836932a9ab6d"
+      },
+      {
+        "path": "extension/src/v2/screens/change-review.ts",
+        "bytes": 7434,
+        "sha256": "e05271ff8c0e84d8c9d1bea90eb54f9cb06ea6b62c87c923b2871a109de25310"
+      },
+      {
+        "path": "extension/src/v2/screens/course.ts",
+        "bytes": 14932,
+        "sha256": "e97a564bc086b8d2e214ace2c44f9a050166764d2b5eac25937bdcf35ea4cae5"
+      },
+      {
+        "path": "extension/src/v2/screens/fixtures.ts",
+        "bytes": 26503,
+        "sha256": "6e392b57fe41f6dcee40b88c6f44f3ec135259ed4deacbc7e33845cd74569916"
+      },
+      {
+        "path": "extension/src/v2/screens/initial-review.ts",
+        "bytes": 15023,
+        "sha256": "cf07664e94032e2669602b2a9d3a62a74346e4427d9d916231b6314aaa71b511"
+      },
+      {
+        "path": "extension/src/v2/screens/mount.ts",
+        "bytes": 13878,
+        "sha256": "251e3bb7bf2b4803ee117560fd7c24850c06e9b4984d73796dad50aa272a52e4"
+      },
+      {
+        "path": "extension/src/v2/screens/patterns.ts",
+        "bytes": 21537,
+        "sha256": "75b42bc800981eba470309a5a8b8e837a1fddc2936108637471d608fdd7f9c4a"
+      },
+      {
+        "path": "extension/src/v2/screens/rebuild.ts",
+        "bytes": 2184,
+        "sha256": "837aa9375d999ab97681a568d60fd358cf75ae43bdf9bae5d5cc0ea9704e6f1e"
+      },
+      {
+        "path": "extension/src/v2/screens/render.test.ts",
+        "bytes": 43659,
+        "sha256": "07244803449d82d315ee72868fc735fd6906f30763fb00bbef1ec771673c7d0a"
+      },
+      {
+        "path": "extension/src/v2/screens/render.ts",
+        "bytes": 13242,
+        "sha256": "938c1d20526ff33c2a1128868ce99db4d2db70a80affc03682843b361eb93920"
+      },
+      {
+        "path": "extension/src/v2/screens/scan.ts",
+        "bytes": 1737,
+        "sha256": "2f6c8acf77db50c76739953ed0453a667ff0734b582b2b19ac654fb656061a5e"
+      },
+      {
+        "path": "extension/src/v2/screens/semester.ts",
+        "bytes": 9612,
+        "sha256": "e73c8a802a7e66c3cd7bc859307972f5c4d931d817e5786db443dafd1273e826"
+      },
+      {
+        "path": "extension/src/v2/screens/settings.ts",
+        "bytes": 9980,
+        "sha256": "66578986e30c1d1a9df127b7e051084193e6e8009a41a3968caad49c4caf7c72"
+      },
+      {
+        "path": "extension/src/v2/screens/test-dom.ts",
+        "bytes": 10477,
+        "sha256": "628771adda88573b09cce88a2bde6db4432b20e67a425374e46a73cb20c87508"
+      },
+      {
+        "path": "extension/src/v2/settings.test.ts",
+        "bytes": 1726,
+        "sha256": "b8e20fe838a1b59940c3a1062e55f2e377ccf380a31bff2a7c7db94360969ade"
+      },
+      {
+        "path": "extension/src/v2/settings.ts",
+        "bytes": 3771,
+        "sha256": "3b0e9c36b87813950dfeb3fe77a7c1704f957a48e07ed5f1081d62591b2dff4e"
+      },
+      {
+        "path": "extension/src/v2/staging.ts",
+        "bytes": 2373,
+        "sha256": "93b354bdfb36189942edaf5f949b2ce377fd4beefbc997beb38a25d1a40096b3"
+      },
+      {
+        "path": "extension/src/v2/storage.ts",
+        "bytes": 13313,
+        "sha256": "1428922062e5aacb53c37d04c0e44c8031671de87211abff4bca8a73f76b37ff"
+      },
+      {
+        "path": "extension/src/v2/store.test.ts",
+        "bytes": 5776,
+        "sha256": "c935ed8df78017a34ef6ee570c842da53ec490fbf09628f5c6c1e002696a0cca"
+      },
+      {
+        "path": "extension/src/v2/store.ts",
+        "bytes": 20711,
+        "sha256": "0cd3046ad2394eeb741ae33282025036915b1350ce3e8d6c5812df1cecb3dd32"
+      },
+      {
+        "path": "extension/src/v2/testing.ts",
+        "bytes": 1672,
+        "sha256": "accab75041211f29321c92ece7a8b6b4e29803a3353f010575637deab52db4d5"
+      },
+      {
+        "path": "extension/src/v2/view.test.ts",
+        "bytes": 10269,
+        "sha256": "733353d8f791052a44b4ccf2d889e3bdc6b661ea088a2a0e4826fafe7f4b727e"
+      },
+      {
+        "path": "extension/src/v2/view.ts",
+        "bytes": 31277,
+        "sha256": "bfbaf034e4c44bfb5b9bfb9780d37ffe86089a424c1fbb9a92ee1aa049b7c9b1"
+      },
+      {
+        "path": "extension/src/v2/workflow.test.ts",
+        "bytes": 22480,
+        "sha256": "d54ca30c63a68067705d9c5c02ebb02c04c16eedc1d3858057e1e5c16f28548e"
+      },
+      {
+        "path": "extension/src/v2/workflow.ts",
+        "bytes": 46476,
+        "sha256": "477d1d356f77f64748e8a49df84effc128951bfe76143fb5876696ddc593af7a"
+      },
+      {
+        "path": "scripts/backfill-screenshots.mjs",
+        "bytes": 12011,
+        "sha256": "db932edde798fc39f2ec1af60355a3fb8530072dc46328ac44217d0db72272ed"
+      },
+      {
+        "path": "scripts/browser-e2e.mjs",
+        "bytes": 8369,
+        "sha256": "a9b5c90c05f9e91fb19cf6ec88174dac306bed21297021bc1801c6064109a60c"
+      },
+      {
+        "path": "scripts/capture-screenshots.mjs",
+        "bytes": 7297,
+        "sha256": "5065f9164d0548b7fbcbcc554ee0df442ccc17882689c0b4a687e43c3d89876b"
+      },
+      {
+        "path": "scripts/evidence-inventory.mjs",
+        "bytes": 3664,
+        "sha256": "c4f57ed1c7d28c676727bb1450d1bcf38fc8021f395fd16e578cb5f0e7b6443f"
+      },
+      {
+        "path": "scripts/lib/browser-harness.mjs",
+        "bytes": 6538,
+        "sha256": "203714c59d61439b72932dbe76a9f49a7fe1fdc3380b10cc582c53d6e83e40fa"
+      },
+      {
+        "path": "scripts/lib/gate-report.mjs",
+        "bytes": 4480,
+        "sha256": "4e3294ff5ee99d13fe2295773d924997dae9206717196db45c52798a9465987c"
+      },
+      {
+        "path": "scripts/lib/release-markers.mjs",
+        "bytes": 1986,
+        "sha256": "f8b845329588369ae243dde91590d453f72d7781cfa4531b125add3f53d1d547"
+      },
+      {
+        "path": "scripts/lib/walkthrough.mjs",
+        "bytes": 5413,
+        "sha256": "587c2700c0b11164a51ff8d29709e2f7cbca69dd47265294189531b5f5b8916f"
+      },
+      {
+        "path": "scripts/package-delivery.mjs",
+        "bytes": 8088,
+        "sha256": "89edd3bfd6ca47b51e1a557dbe3eef9c01543d4a68c2c449ebf3218113dd6066"
+      },
+      {
+        "path": "scripts/package-extension.mjs",
+        "bytes": 6409,
+        "sha256": "e7dd4d143369de986ae9cc197371402a358ec2b5df78c206585b3f291890ba7a"
+      },
+      {
+        "path": "scripts/real-test.mjs",
+        "bytes": 47952,
+        "sha256": "ed389496734c2b8d83c8b9db53b00c555668f73d61aadafd5b4772b5496a8e47"
+      },
+      {
+        "path": "scripts/run-gate.mjs",
+        "bytes": 8599,
+        "sha256": "ec3f9189e62b0916df6a0b75ac9d6edcd95bad35edefdd8ec26a6e3fc6de1e01"
+      },
+      {
+        "path": "scripts/verify-build-separation.mjs",
+        "bytes": 6163,
+        "sha256": "fe4cbbb672d7d1092c4724b36e2ca7743eed898e6c0803d9d5a548d48c3dc0bb"
+      },
+      {
+        "path": "scripts/verify-documented-facts.mjs",
+        "bytes": 3458,
+        "sha256": "7531f6d09ae287eba3ccbbe2506906f301c930707773160c304cffb049d3214d"
+      },
+      {
+        "path": "scripts/verify-package.mjs",
+        "bytes": 4949,
+        "sha256": "9a54bb32fee49967f2fc018a87e8db4f45339fa297ce184360439a11a93091ed"
+      },
+      {
+        "path": "scripts/verify-readme-backfill.mjs",
+        "bytes": 3843,
+        "sha256": "9f5568fbae52be66d0dcf07c989205b4e96cff277ffad7f39aeabafe19bbe0ec"
+      }
+    ],
+    "excludedFromInventory": [
+      "artifacts/Syllab_v0.2.0_engineering_handoff.zip",
+      "artifacts/Syllab_v0.2.0_engineering_handoff.zip.sha256"
+    ]
+  },
+  "recentCommits": [
+    {
+      "sha": "670880fe1dd2076d0a6d571adefe8bd81d164481",
+      "date": "2026-09-17T21:36:35+08:00",
+      "subject": "chore: remove obsolete handoff packages"
+    },
+    {
+      "sha": "48ab4845e2bf3394832d528ad2ef3daf78505592",
+      "date": "2026-09-17T21:33:37+08:00",
+      "subject": "docs: archive versioned records under v0.1.0"
+    },
+    {
+      "sha": "572440c4a7f9705b401cb0b27f4af7e9c4ecbdf6",
+      "date": "2026-09-17T21:21:04+08:00",
+      "subject": "docs: define temporary handoff package cleanup"
+    },
+    {
+      "sha": "0f3e9815a78e3e07a6170ea96f05e0cd3fe0df61",
+      "date": "2026-09-17T21:11:17+08:00",
+      "subject": "docs: publish Syllab v0.1.0 product archive"
+    },
+    {
+      "sha": "361d180799c8373b240d711da1907ebdbb1860ad",
+      "date": "2026-09-17T17:40:19+08:00",
+      "subject": "docs: add shared instructions for assistants working in this repo"
+    },
+    {
+      "sha": "c11d8c937b41dfe9d91aeddb48b4b9b42f00ab04",
+      "date": "2026-09-17T17:22:09+08:00",
+      "subject": "chore: ignore machine-local agent state"
+    },
+    {
+      "sha": "2e5430dbfdaa352a896dddabf8b209050f7f7ba9",
+      "date": "2026-09-17T17:20:36+08:00",
+      "subject": "docs(acceptance): record the missing product mark as feedback item 5"
+    },
+    {
+      "sha": "ba47ffed7d512455ebb3a1c5cf49e340c9045726",
+      "date": "2026-09-17T17:20:36+08:00",
+      "subject": "docs(design): add a design system for the popup"
+    },
+    {
+      "sha": "c94abed3ef189664acdecad7c3f06b5ebbb8b6c7",
+      "date": "2026-09-17T17:20:28+08:00",
+      "subject": "feat(ui): rebuild the popup around a paper-and-ink palette"
+    },
+    {
+      "sha": "7d08b63df18ecf1b122f5d8eb30e9be6a04eab62",
+      "date": "2026-09-17T14:59:18+08:00",
+      "subject": "docs(acceptance): record the decision on E1-E5 and fold them into risks"
+    },
+    {
+      "sha": "f70cc2e9cdf179ddc57d12436bbed3cb27277269",
+      "date": "2026-09-17T14:43:05+08:00",
+      "subject": "docs(acceptance): correct the calendar explanation in the evidence log"
+    },
+    {
+      "sha": "61b0837c6f49a0838ee7db9d7706b2caadea3d06",
+      "date": "2026-09-17T14:42:54+08:00",
+      "subject": "docs(acceptance): record independent engineering findings from Gate D"
+    },
+    {
+      "sha": "91de27b762011818aa41483b73b7199b3f5e9d7c",
+      "date": "2026-09-17T14:40:27+08:00",
+      "subject": "docs(acceptance): record assessment-fragmentation feedback from Gate D"
+    },
+    {
+      "sha": "10ac52f384c3fc96eb2776e27c5d49f45da8b8d4",
+      "date": "2026-09-17T14:36:11+08:00",
+      "subject": "test(gate-d): close MVP acceptance and fix three entry/recovery defects"
+    },
+    {
+      "sha": "1608a07ac90ee1c5b35afcc6bf25890591e8ac9b",
+      "date": "2026-09-17T13:07:28+08:00",
+      "subject": "chore: initial commit of Syllab v0.1.0 MVP workspace"
+    }
+  ]
+}

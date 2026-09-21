@@ -3,6 +3,25 @@ export const REVIEW_PROGRESS_STORE = "reviewProgress";
 export const BRIEF_ITEMS_STORE = "briefItems";
 export const PARSED_SOURCES_STORE = "parsedSources";
 export const NORMALIZED_UNITS_STORE = "normalizedUnits";
+export const V2_STORES = {
+  semesters: "semesterId",
+  courses: "courseId",
+  courseStates: "courseId",
+  assessments: "assessmentId",
+  constraints: "constraintId",
+  facts: "factId",
+  sources: "sourceId",
+  evidence: "evidenceId",
+  sourceObservations: "observationId",
+  reviewItems: "reviewItemId",
+  reviewDecisions: "decisionId",
+  exclusionMemory: "memoryId",
+  changes: "changeId",
+  history: "historyId",
+  workflows: "workflowId",
+  aiRuns: "aiRunId",
+  appMetadata: "key"
+} as const;
 
 export function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -38,7 +57,7 @@ export function transactionComplete(transaction: IDBTransaction): Promise<void> 
 }
 
 export async function openLocalDatabase(): Promise<IDBDatabase> {
-  const request = indexedDB.open("syllab-local", 4);
+  const request = indexedDB.open("syllab-local", 5);
   request.addEventListener("upgradeneeded", () => {
     const database = request.result;
     if (!database.objectStoreNames.contains(CANDIDATES_STORE)) {
@@ -59,6 +78,15 @@ export async function openLocalDatabase(): Promise<IDBDatabase> {
     if (!database.objectStoreNames.contains(NORMALIZED_UNITS_STORE)) {
       const normalized = database.createObjectStore(NORMALIZED_UNITS_STORE, { keyPath: "unitId" });
       normalized.createIndex("scanId", "scanId", { unique: false });
+    }
+    for (const [storeName, keyPath] of Object.entries(V2_STORES)) {
+      if (!database.objectStoreNames.contains(storeName)) {
+        const store = database.createObjectStore(storeName, { keyPath });
+        if (storeName !== "semesters" && storeName !== "appMetadata") {
+          if (["courses", "courseStates"].includes(storeName)) continue;
+          store.createIndex("courseId", "courseId", { unique: false });
+        }
+      }
     }
   });
   return requestResult(request);

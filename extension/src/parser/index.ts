@@ -1,7 +1,7 @@
 import type { ParseResult, ParserLimits } from "./domain";
 import { DEFAULT_PARSER_LIMITS } from "./domain";
 import { detectDocumentFormat } from "./format-detector";
-import { parseDocx, parsePptx } from "./ooxml-parser";
+import { parseDocx, parsePptx, parseXlsx } from "./ooxml-parser";
 import { parsePdf } from "./pdf-parser";
 
 export async function parseDocument(
@@ -24,7 +24,9 @@ export async function parseDocument(
         ? await parsePdf(bytes)
         : format === "pptx"
           ? parsePptx(bytes)
-          : parseDocx(bytes);
+          : format === "xlsx"
+            ? parseXlsx(bytes)
+            : parseDocx(bytes);
     if (units.length > limits.maxUnits) {
       return { format, status: "failed", units: [], diagnosticsCode: "UNIT_LIMIT" };
     }

@@ -1,0 +1,373 @@
+Syllab v0.2.0 — 工作区冻结快照（Engineering Handoff）
+
+冻结时间（本机）：19/09/2026, 23:23:00
+冻结时间（UTC）：2026-09-19T15:23:00.918Z
+
+## Git 状态
+
+仓库根目录：/Users/simonluo/Desktop/Syllab for NTU Learn_副本
+分支：main
+HEAD：670880fe1dd2076d0a6d571adefe8bd81d164481
+HEAD 提交时间：2026-09-17T21:36:35+08:00
+HEAD 提交标题：chore: remove obsolete handoff packages
+工作区是否 clean：DIRTY
+远端：origin	https://github.com/simooon15/syllab-for-ntu-learn.git (fetch) | origin	https://github.com/simooon15/syllab-for-ntu-learn.git (push)
+
+本次冻结没有执行任何写操作：无 commit、无 reset、无 checkout、无 stash、无删除。
+所有值都是读取出来的，不是构造出来的。
+
+## git status --short（-uall，逐文件）
+
+```
+ M .gitignore
+ M .prettierignore
+ M README.md
+ M backend/package.json
+ M docs/design-system.md
+ M eslint.config.js
+ M extension/package.json
+D  extension/popup.html
+ M extension/public/manifest.json
+ M extension/scripts/build.mjs
+ M extension/src/background/index.ts
+ M extension/src/calendar/calendar.test.ts
+ M extension/src/calendar/query.ts
+ M extension/src/content/index.test.ts
+ M extension/src/content/index.ts
+ M extension/src/discovery/engine.test.ts
+ M extension/src/discovery/engine.ts
+D  extension/src/popup/entry-router.test.ts
+D  extension/src/popup/entry-router.ts
+D  extension/src/popup/entry-runtime.ts
+D  extension/src/popup/index.ts
+D  extension/src/popup/popup.css
+D  extension/src/popup/scan-errors.test.ts
+D  extension/src/popup/scan-errors.ts
+ M extension/src/repository/course-index-repository.ts
+ M extension/src/repository/local-database.ts
+ M extension/src/repository/schema-repository.test.ts
+ M extension/src/repository/schema-repository.ts
+ M extension/src/shared/storage-schema.ts
+ M package-lock.json
+ M package.json
+ M packages/contracts/package.json
+ M packages/contracts/src/index.ts
+ M scripts/secret-scan.mjs
+ M scripts/validate-manifest.mjs
+?? .real-test.local.example.json
+?? 00_CODEX_START_HERE_v0.2.0.md
+?? CODEX_START_PROMPT_v0.2.0.txt
+?? Interaction_and_Information_Architecture_Spec_v0.2.0.md
+?? PRD_v0.2.0.md
+?? PRODUCT_HANDOFF_v0.2.0.md
+?? "Run Syllab Real Test.command"
+?? artifacts/Syllab_Extension_v0.2.0.zip
+?? artifacts/Syllab_v0.2.0_delivery.zip
+?? artifacts/Syllab_v0.2.0_engineering_handoff.zip
+?? artifacts/Syllab_v0.2.0_engineering_handoff.zip.sha256
+?? artifacts/gates/v0.2.0/gate-1/REPORT.md
+?? artifacts/gates/v0.2.0/gate-1/report.json
+?? artifacts/gates/v0.2.0/gate-2/REPORT.md
+?? artifacts/gates/v0.2.0/gate-2/report.json
+?? artifacts/screenshots/v0.2.0/BKP-01.png
+?? artifacts/screenshots/v0.2.0/BKP-02.png
+?? artifacts/screenshots/v0.2.0/BKP-04.png
+?? artifacts/screenshots/v0.2.0/CAL-01.png
+?? artifacts/screenshots/v0.2.0/CRS-01.png
+?? artifacts/screenshots/v0.2.0/CRS-02.png
+?? artifacts/screenshots/v0.2.0/CRS-03.png
+?? artifacts/screenshots/v0.2.0/CRS-04.png
+?? artifacts/screenshots/v0.2.0/CRS-05.png
+?? artifacts/screenshots/v0.2.0/CRS-06.png
+?? artifacts/screenshots/v0.2.0/CRV-01.png
+?? artifacts/screenshots/v0.2.0/CRV-03.png
+?? artifacts/screenshots/v0.2.0/CRV-04.png
+?? artifacts/screenshots/v0.2.0/CRV-05.png
+?? artifacts/screenshots/v0.2.0/IRV-01.png
+?? artifacts/screenshots/v0.2.0/IRV-02.png
+?? artifacts/screenshots/v0.2.0/IRV-03.png
+?? artifacts/screenshots/v0.2.0/IRV-04.png
+?? artifacts/screenshots/v0.2.0/IRV-05.png
+?? artifacts/screenshots/v0.2.0/ISC-01.png
+?? artifacts/screenshots/v0.2.0/ISC-02.png
+?? artifacts/screenshots/v0.2.0/ISC-03.png
+?? artifacts/screenshots/v0.2.0/ISC-04.png
+?? artifacts/screenshots/v0.2.0/ISC-05.png
+?? artifacts/screenshots/v0.2.0/ISC-06.png
+?? artifacts/screenshots/v0.2.0/RBL-01.png
+?? artifacts/screenshots/v0.2.0/RBL-02.png
+?? artifacts/screenshots/v0.2.0/RBL-03.png
+?? artifacts/screenshots/v0.2.0/SEM-01.png
+?? artifacts/screenshots/v0.2.0/SEM-02.png
+?? artifacts/screenshots/v0.2.0/SEM-03.png
+?? artifacts/screenshots/v0.2.0/SEM-04.png
+?? artifacts/screenshots/v0.2.0/SEM-05.png
+?? artifacts/screenshots/v0.2.0/SEM-06.png
+?? artifacts/screenshots/v0.2.0/SEM-07.png
+?? artifacts/screenshots/v0.2.0/SET-01.png
+?? artifacts/screenshots/v0.2.0/SET-02.png
+?? artifacts/screenshots/v0.2.0/SET-04.png
+?? artifacts/screenshots/v0.2.0/SET-05.png
+?? assets/logo/syllab-logo-128px.png
+?? assets/logo/syllab-logo-16px.png
+?? assets/logo/syllab-logo-32px.png
+?? assets/logo/syllab-logo-48px.png
+?? assets/logo/syllab-logo-master.svg
+?? docs/versions/v0.2.0/CURRENT_ENGINEERING_STATE_v0.2.0.md
+?? docs/versions/v0.2.0/DIRECTION_ADJUSTMENTS_v0.2.0.md
+?? docs/versions/v0.2.0/ENGINEERING_CHANGE_MANIFEST_v0.2.0.md
+?? docs/versions/v0.2.0/GATE3_FINDINGS_v0.2.0.md
+?? docs/versions/v0.2.0/IMPLEMENTATION_PLAN_v0.2.0.md
+?? docs/versions/v0.2.0/TECHNICAL_DESIGN_v0.2.0.md
+?? docs/versions/v0.2.0/gate-1-core-loop-acceptance.md
+?? docs/versions/v0.2.0/gate-2-release-acceptance.md
+?? docs/versions/v0.2.0/handoff/00_ENGINEERING_HANDOFF_README.md
+?? docs/versions/v0.2.0/handoff/UNTRACKED_FILES.txt
+?? docs/versions/v0.2.0/handoff/WORKTREE_DIFF.txt
+?? docs/versions/v0.2.0/handoff/WORKTREE_STATE.txt
+?? docs/versions/v0.2.0/handoff/evidence/EVIDENCE_SANITIZATION.md
+?? docs/versions/v0.2.0/handoff/evidence/gate-1/REPORT.md
+?? docs/versions/v0.2.0/handoff/evidence/gate-1/report.json
+?? docs/versions/v0.2.0/handoff/evidence/gate-2/REPORT.md
+?? docs/versions/v0.2.0/handoff/evidence/gate-2/report.json
+?? docs/versions/v0.2.0/handoff/evidence/real-test/REPORT.md
+?? docs/versions/v0.2.0/handoff/evidence/real-test/qa-events.json
+?? docs/versions/v0.2.0/handoff/evidence/real-test/trace.json
+?? docs/versions/v0.2.0/handoff/worktree-state.json
+?? docs/versions/v0.2.0/images/BKP-01.png
+?? docs/versions/v0.2.0/images/BKP-02.png
+?? docs/versions/v0.2.0/images/BKP-04.png
+?? docs/versions/v0.2.0/images/CAL-01.png
+?? docs/versions/v0.2.0/images/CRS-01.png
+?? docs/versions/v0.2.0/images/CRS-02.png
+?? docs/versions/v0.2.0/images/CRS-03.png
+?? docs/versions/v0.2.0/images/CRS-04.png
+?? docs/versions/v0.2.0/images/CRS-05.png
+?? docs/versions/v0.2.0/images/CRS-06.png
+?? docs/versions/v0.2.0/images/CRV-01.png
+?? docs/versions/v0.2.0/images/CRV-03.png
+?? docs/versions/v0.2.0/images/CRV-04.png
+?? docs/versions/v0.2.0/images/CRV-05.png
+?? docs/versions/v0.2.0/images/IRV-01.png
+?? docs/versions/v0.2.0/images/IRV-02.png
+?? docs/versions/v0.2.0/images/IRV-03.png
+?? docs/versions/v0.2.0/images/IRV-04.png
+?? docs/versions/v0.2.0/images/IRV-05.png
+?? docs/versions/v0.2.0/images/ISC-01.png
+?? docs/versions/v0.2.0/images/ISC-02.png
+?? docs/versions/v0.2.0/images/ISC-03.png
+?? docs/versions/v0.2.0/images/ISC-04.png
+?? docs/versions/v0.2.0/images/ISC-05.png
+?? docs/versions/v0.2.0/images/ISC-06.png
+?? docs/versions/v0.2.0/images/RBL-01.png
+?? docs/versions/v0.2.0/images/RBL-02.png
+?? docs/versions/v0.2.0/images/RBL-03.png
+?? docs/versions/v0.2.0/images/SEM-01.png
+?? docs/versions/v0.2.0/images/SEM-02.png
+?? docs/versions/v0.2.0/images/SEM-03.png
+?? docs/versions/v0.2.0/images/SEM-04.png
+?? docs/versions/v0.2.0/images/SEM-05.png
+?? docs/versions/v0.2.0/images/SEM-06.png
+?? docs/versions/v0.2.0/images/SEM-07.png
+?? docs/versions/v0.2.0/images/SET-01.png
+?? docs/versions/v0.2.0/images/SET-02.png
+?? docs/versions/v0.2.0/images/SET-04.png
+?? docs/versions/v0.2.0/images/SET-05.png
+?? extension/app.html
+?? extension/public/icons/syllab-logo-128px.png
+?? extension/public/icons/syllab-logo-16px.png
+?? extension/public/icons/syllab-logo-32px.png
+?? extension/public/icons/syllab-logo-48px.png
+?? extension/sidepanel.html
+?? extension/src/app/app.css
+?? extension/src/app/dom.ts
+?? extension/src/app/index.test.ts
+?? extension/src/app/index.ts
+?? extension/src/app/stylesheet.test.ts
+?? extension/src/v2/ai-context.test.ts
+?? extension/src/v2/ai-context.ts
+?? extension/src/v2/ai-contracts.test.ts
+?? extension/src/v2/ai-contracts.ts
+?? extension/src/v2/ai-fixtures.ts
+?? extension/src/v2/ai-pipeline.test.ts
+?? extension/src/v2/ai-pipeline.ts
+?? extension/src/v2/ai-regression.test.ts
+?? extension/src/v2/assessments.ts
+?? extension/src/v2/backup.test.ts
+?? extension/src/v2/backup.ts
+?? extension/src/v2/blackboard.ts
+?? extension/src/v2/calendar-export.test.ts
+?? extension/src/v2/calendar-export.ts
+?? extension/src/v2/calendar-plan.ts
+?? extension/src/v2/change-reducer.test.ts
+?? extension/src/v2/change-reducer.ts
+?? extension/src/v2/chunking.test.ts
+?? extension/src/v2/chunking.ts
+?? extension/src/v2/contract-coverage.test.ts
+?? extension/src/v2/contract.ts
+?? extension/src/v2/copy.ts
+?? extension/src/v2/course-state.test.ts
+?? extension/src/v2/course-state.ts
+?? extension/src/v2/crypto.ts
+?? extension/src/v2/date-resolution.test.ts
+?? extension/src/v2/date-resolution.ts
+?? extension/src/v2/deepseek-complete.ts
+?? extension/src/v2/deepseek.test.ts
+?? extension/src/v2/deepseek.ts
+?? extension/src/v2/domain.ts
+?? extension/src/v2/e2e-fixtures.disabled.ts
+?? extension/src/v2/e2e-fixtures.ts
+?? extension/src/v2/enrollment.test.ts
+?? extension/src/v2/enrollment.ts
+?? extension/src/v2/errors.ts
+?? extension/src/v2/fingerprint.test.ts
+?? extension/src/v2/fingerprint.ts
+?? extension/src/v2/fixtures.ts
+?? extension/src/v2/handler.ts
+?? extension/src/v2/materialize.ts
+?? extension/src/v2/migration.test.ts
+?? extension/src/v2/migration.ts
+?? extension/src/v2/opportunity.test.ts
+?? extension/src/v2/opportunity.ts
+?? extension/src/v2/product.ts
+?? extension/src/v2/prompts.ts
+?? extension/src/v2/qa-telemetry.disabled.ts
+?? extension/src/v2/qa-telemetry.test.ts
+?? extension/src/v2/qa-telemetry.ts
+?? extension/src/v2/restore.test.ts
+?? extension/src/v2/restore.ts
+?? extension/src/v2/scheduler.ts
+?? extension/src/v2/schema.ts
+?? extension/src/v2/screens/calendar.ts
+?? extension/src/v2/screens/change-review.ts
+?? extension/src/v2/screens/course.ts
+?? extension/src/v2/screens/fixtures.ts
+?? extension/src/v2/screens/initial-review.ts
+?? extension/src/v2/screens/mount.ts
+?? extension/src/v2/screens/patterns.ts
+?? extension/src/v2/screens/rebuild.ts
+?? extension/src/v2/screens/render.test.ts
+?? extension/src/v2/screens/render.ts
+?? extension/src/v2/screens/scan.ts
+?? extension/src/v2/screens/semester.ts
+?? extension/src/v2/screens/settings.ts
+?? extension/src/v2/screens/test-dom.ts
+?? extension/src/v2/settings.test.ts
+?? extension/src/v2/settings.ts
+?? extension/src/v2/staging.ts
+?? extension/src/v2/storage.ts
+?? extension/src/v2/store.test.ts
+?? extension/src/v2/store.ts
+?? extension/src/v2/testing.ts
+?? extension/src/v2/view.test.ts
+?? extension/src/v2/view.ts
+?? extension/src/v2/workflow.test.ts
+?? extension/src/v2/workflow.ts
+?? scripts/backfill-screenshots.mjs
+?? scripts/browser-e2e.mjs
+?? scripts/capture-screenshots.mjs
+?? scripts/evidence-inventory.mjs
+?? scripts/lib/browser-harness.mjs
+?? scripts/lib/gate-report.mjs
+?? scripts/lib/release-markers.mjs
+?? scripts/lib/walkthrough.mjs
+?? scripts/package-delivery.mjs
+?? scripts/package-extension.mjs
+?? scripts/real-test.mjs
+?? scripts/run-gate.mjs
+?? scripts/verify-build-separation.mjs
+?? scripts/verify-documented-facts.mjs
+?? scripts/verify-package.mjs
+?? scripts/verify-readme-backfill.mjs
+```
+
+## 变更计数（按 `git status --porcelain` 的两位状态码）
+
+```
+   M  27
+  ??  225
+  D   8
+```
+
+代码含义：` M` = 工作区已修改未暂存；`M ` = 已暂存；`MM` = 两者都有；`D ` = 已暂存删除；
+`??` = 未跟踪。
+
+## git diff --stat（已跟踪文件的未暂存改动）
+
+```
+ .gitignore                                         |  11 +
+ .prettierignore                                    |   3 +
+ README.md                                          | 453 ++++++----
+ backend/package.json                               |   4 +-
+ docs/design-system.md                              | 191 ++++-
+ eslint.config.js                                   |  28 +-
+ extension/package.json                             |   5 +-
+ extension/public/manifest.json                     |  36 +-
+ extension/scripts/build.mjs                        | 102 ++-
+ extension/src/background/index.ts                  | 919 ++++++++++++++++-----
+ extension/src/calendar/calendar.test.ts            |  14 +
+ extension/src/calendar/query.ts                    |  12 +-
+ extension/src/content/index.test.ts                |  37 +-
+ extension/src/content/index.ts                     |  64 +-
+ extension/src/discovery/engine.test.ts             |  39 +
+ extension/src/discovery/engine.ts                  |   8 +-
+ .../src/repository/course-index-repository.ts      |   8 +
+ extension/src/repository/local-database.ts         |  30 +-
+ extension/src/repository/schema-repository.test.ts |  10 +-
+ extension/src/repository/schema-repository.ts      |   8 +
+ extension/src/shared/storage-schema.ts             |   2 +-
+ package-lock.json                                  |  56 +-
+ package.json                                       |  18 +-
+ packages/contracts/package.json                    |   2 +-
+ packages/contracts/src/index.ts                    |   2 +
+ scripts/secret-scan.mjs                            |   9 +-
+ scripts/validate-manifest.mjs                      |  59 +-
+ 27 files changed, 1663 insertions(+), 467 deletions(-)
+```
+
+## git diff --cached --stat（已暂存改动）
+
+```
+ extension/popup.html                     |   13 -
+ extension/src/popup/entry-router.test.ts |   74 --
+ extension/src/popup/entry-router.ts      |   51 --
+ extension/src/popup/entry-runtime.ts     |   50 --
+ extension/src/popup/index.ts             | 1307 ------------------------------
+ extension/src/popup/popup.css            | 1038 ------------------------
+ extension/src/popup/scan-errors.test.ts  |   33 -
+ extension/src/popup/scan-errors.ts       |   30 -
+ 8 files changed, 2596 deletions(-)
+```
+
+## 未跟踪文件（git ls-files --others --exclude-standard）
+
+文件数：223，合计 10.08 MiB
+（另有 2 个文件因自引用被排除出清单：artifacts/Syllab_v0.2.0_engineering_handoff.zip、artifacts/Syllab_v0.2.0_engineering_handoff.zip.sha256）
+逐文件的路径、字节数与 SHA-256 见 `worktree-state.json` 的 `untracked.files`。
+完整清单另见 `UNTRACKED_FILES.txt`。
+
+## 最近提交
+
+```
+670880fe1dd2076d0a6d571adefe8bd81d164481	2026-09-17T21:36:35+08:00	chore: remove obsolete handoff packages
+48ab4845e2bf3394832d528ad2ef3daf78505592	2026-09-17T21:33:37+08:00	docs: archive versioned records under v0.1.0
+572440c4a7f9705b401cb0b27f4af7e9c4ecbdf6	2026-09-17T21:21:04+08:00	docs: define temporary handoff package cleanup
+0f3e9815a78e3e07a6170ea96f05e0cd3fe0df61	2026-09-17T21:11:17+08:00	docs: publish Syllab v0.1.0 product archive
+361d180799c8373b240d711da1907ebdbb1860ad	2026-09-17T17:40:19+08:00	docs: add shared instructions for assistants working in this repo
+c11d8c937b41dfe9d91aeddb48b4b9b42f00ab04	2026-09-17T17:22:09+08:00	chore: ignore machine-local agent state
+2e5430dbfdaa352a896dddabf8b209050f7f7ba9	2026-09-17T17:20:36+08:00	docs(acceptance): record the missing product mark as feedback item 5
+ba47ffed7d512455ebb3a1c5cf49e340c9045726	2026-09-17T17:20:36+08:00	docs(design): add a design system for the popup
+c94abed3ef189664acdecad7c3f06b5ebbb8b6c7	2026-09-17T17:20:28+08:00	feat(ui): rebuild the popup around a paper-and-ink palette
+7d08b63df18ecf1b122f5d8eb30e9be6a04eab62	2026-09-17T14:59:18+08:00	docs(acceptance): record the decision on E1-E5 and fold them into risks
+f70cc2e9cdf179ddc57d12436bbed3cb27277269	2026-09-17T14:43:05+08:00	docs(acceptance): correct the calendar explanation in the evidence log
+61b0837c6f49a0838ee7db9d7706b2caadea3d06	2026-09-17T14:42:54+08:00	docs(acceptance): record independent engineering findings from Gate D
+91de27b762011818aa41483b73b7199b3f5e9d7c	2026-09-17T14:40:27+08:00	docs(acceptance): record assessment-fragmentation feedback from Gate D
+10ac52f384c3fc96eb2776e27c5d49f45da8b8d4	2026-09-17T14:36:11+08:00	test(gate-d): close MVP acceptance and fix three entry/recovery defects
+1608a07ac90ee1c5b35afcc6bf25890591e8ac9b	2026-09-17T13:07:28+08:00	chore: initial commit of Syllab v0.1.0 MVP workspace
+```
+
+## 完整 diff
+
+未暂存改动全文见 `WORKTREE_DIFF.txt`（上半部）。
+已暂存改动全文见同一文件的「已暂存改动」段。
+**未跟踪文件没有 diff**——它们不在 git 里，全文就是磁盘上的文件本身，见交接 ZIP。

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="512" height="512" viewBox="0 0 512 512"
+     role="img" aria-labelledby="title desc">
+  <title id="title">Syllab Folded Brief logo mark</title>
+  <desc id="desc">Final Syllab mark reconstructed from the approved Folded Brief direction.</desc>
+
+  <!--
+    Final production palette
+    Left folded sheet: #3B5151
+    Main brief sheet:  #EEEAE3
+    Bookmark fold:     #405259
+  -->
+
+  <g shape-rendering="geometricPrecision"
+     transform="matrix(1.16022 0 0 1.16022 48.87296 1.91164)">
+
+    <!-- Left folded sheet -->
+    <path fill="#3B5151" d="
+      M 40 90
+      L 156 149
+      Q 162 152 162 159
+      L 162 392
+      Q 162 399 160 399
+      Q 158 400 154 397
+      L 38 331
+      Q 32 328 32 321
+      L 32 98
+      Q 32 88 40 90
+      Z"/>
+
+    <!-- Main brief sheet -->
+    <path fill="#EEEAE3" d="
+      M 165 120
+      L 318 40
+      Q 324 37 324 45
+      L 324 296
+      Q 324 304 317 308
+      L 175 382
+      Q 168 386 168 378
+      L 168 163
+      Q 168 157 163 154
+      L 159 151
+      L 159 128
+      Q 159 123 165 120
+      Z"/>
+
+    <!-- Bookmark / folded index detail -->
+    <path fill="#405259" d="
+      M 319 39
+      Q 324 36 324 43
+      L 324 169
+      L 304 160
+      L 272 198
+      L 272 67
+      Q 272 62 277 60
+      Z"/>
+  </g>
+</svg>

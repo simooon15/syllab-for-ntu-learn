@@ -1,0 +1,105 @@
+{
+  "gate": "gate-1",
+  "productVersion": "v0.2.0",
+  "startedAt": "2026-09-19T08:57:37.881Z",
+  "completedAt": "2026-09-19T08:59:10.159Z",
+  "status": "AUTOMATED_PASS",
+  "steps": [
+    {
+      "name": "build+ci",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 65958,
+      "produces": [
+        "formatting",
+        "build",
+        "strict typecheck",
+        "lint",
+        "unit tests",
+        "manifest",
+        "secret scan"
+      ]
+    },
+    {
+      "name": "qa-bundle",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 669,
+      "produces": [
+        "extension/dist-qa — the same product with the acceptance bridge and observation layer"
+      ]
+    },
+    {
+      "name": "core-loop-e2e",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 10670,
+      "produces": [
+        "one-start scan through Initial Review to Current State",
+        "Source change through Change Review to updated Current State"
+      ]
+    },
+    {
+      "name": "shipping-bundle",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 1145,
+      "produces": [
+        "extension/dist — the shipped bundle, rebuilt in its own configuration"
+      ]
+    },
+    {
+      "name": "evidence-inventory",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 334,
+      "produces": [
+        "required screens implemented and captured, shipped bundle free of the test bridge"
+      ]
+    },
+    {
+      "name": "v2-contract-tests",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 8060,
+      "produces": [
+        "domain, schema, workflow, AI-contract and reducers"
+      ]
+    },
+    {
+      "name": "ai-regression",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 2604,
+      "produces": [
+        "Task A/B/C recorded regression",
+        "deterministic hard checks",
+        "live provider run when enabled"
+      ]
+    },
+    {
+      "name": "data-integrity",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 2834,
+      "produces": [
+        "v0.1.0 migration and idempotency",
+        "backup/restore Full Replace atomicity",
+        "calendar event consolidation and KR-07",
+        "resumable workflow and Coverage Facts"
+      ]
+    }
+  ],
+  "evidence": {
+    "automated": "PASS",
+    "liveDeepSeek": "NOT TESTED",
+    "realNtuLearnCourses": "NOT TESTED",
+    "productJudgment": "PENDING"
+  },
+  "productJudgment": [
+    "Course Brief reads as a course, not as a scan result, and the assessment grouping matches how the Course is really structured.",
+    "Initial Review asks only for decisions the system genuinely cannot make.",
+    "Change Review shows Current → Latest as a single decision rather than a stack of pending items.",
+    "Trusted Current State stays believable after a rejected change and after a failed check."
+  ]
+}

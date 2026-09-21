@@ -58,6 +58,20 @@ function makeDocx(): Uint8Array {
   });
 }
 
+function makeXlsx(): Uint8Array {
+  return zipSync({
+    "[Content_Types].xml": strToU8(
+      '<Types><Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/></Types>'
+    ),
+    "xl/sharedStrings.xml": strToU8(
+      "<sst><si><t>Assessment</t></si><si><r><t>Due </t></r><r><t>date</t></r></si></sst>"
+    ),
+    "xl/worksheets/sheet1.xml": strToU8(
+      '<worksheet><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="inlineStr"><is><t>Weight</t></is></c><c r="C1"><v>25</v></c></row><row r="2"><c r="A2" t="s"><v>1</v></c></row></sheetData></worksheet>'
+    )
+  });
+}
+
 describe("document parser", () => {
   it("extracts PDF text in page order with locators", async () => {
     const result = await parseDocument(makePdf(["First page", "Second page"]));
@@ -81,6 +95,17 @@ describe("document parser", () => {
       units: [
         { locator: "paragraph:1", text: "First paragraph" },
         { locator: "paragraph:2", text: "Cell text" }
+      ]
+    });
+  });
+
+  it("extracts every populated XLSX cell with sheet and row locators", async () => {
+    await expect(parseDocument(makeXlsx())).resolves.toMatchObject({
+      format: "xlsx",
+      status: "parsed",
+      units: [
+        { locator: "sheet:1:row:1", text: "A1: Assessment | B1: Weight | C1: 25" },
+        { locator: "sheet:1:row:2", text: "A2: Due date" }
       ]
     });
   });

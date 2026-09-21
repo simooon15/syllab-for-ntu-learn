@@ -2,7 +2,14 @@ import { readdir, readFile } from "node:fs/promises";
 import { extname, join, relative, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const ignoredDirectories = new Set([".git", ".spike-backups", "node_modules", "coverage"]);
+/**
+ * Directories this scan does not read.
+ *
+ * `.tmp` is machine-local browser state: the QA Chrome profile keeps Chrome's own component
+ * extensions in it, whose shipped data contains strings shaped like credentials and which this
+ * repository neither wrote nor could leak. Everything else here is third-party or generated.
+ */
+const ignoredDirectories = new Set([".git", ".spike-backups", "node_modules", "coverage", ".tmp"]);
 const allowedExtensions = new Set([
   ".ts",
   ".js",

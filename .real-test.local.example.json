@@ -1,0 +1,13 @@
+{
+  "_comment": [
+    "Machine-local settings for `npm run test:real`. This file is NOT committed — .gitignore covers",
+    "it — and no secret ever belongs in it: there is no field for a password, an MFA secret, a cookie",
+    "or an API key, because the run never needs one. The DeepSeek key is entered in the product's own",
+    "Settings screen and stays in the browser profile.",
+    "Delete a field, or this whole file, and the run still works: it uses .tmp/syllab-qa-profile and",
+    "takes the Courses in the order the Semester Dashboard lists them."
+  ],
+  "profile": ".tmp/syllab-qa-profile",
+  "courseA": "https://ntulearn.ntu.edu.sg/ultra/courses/_0000000_1/outline",
+  "courseB": "https://ntulearn.ntu.edu.sg/ultra/courses/_0000000_2/outline"
+}

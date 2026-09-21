@@ -4,6 +4,7 @@ import { XMLParser } from "fast-xml-parser";
 import type { ParsedTextUnit } from "./domain";
 
 const parser = new XMLParser({ preserveOrder: true, ignoreAttributes: false });
+const objectParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "" });
 
 function collectText(nodes: unknown, textElement: "a:t" | "w:t", output: string[]): void {
   if (Array.isArray(nodes)) {
@@ -75,4 +76,79 @@ export function parseDocx(bytes: Uint8Array): ParsedTextUnit[] {
     text,
     partial: text.length === 0
   }));
+}
+
+function asArray<T>(value: T | T[] | undefined): T[] {
+  return value === undefined ? [] : Array.isArray(value) ? value : [value];
+}
+
+function collectObjectText(value: unknown, output: string[]): void {
+  if (typeof value === "string" || typeof value === "number") {
+    output.push(String(value));
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectObjectText(item, output);
+    return;
+  }
+  if (typeof value !== "object" || value === null) return;
+  for (const [key, item] of Object.entries(value)) {
+    if (key === "t") collectObjectText(item, output);
+    else if (!key.startsWith("@_")) collectObjectText(item, output);
+  }
+}
+
+function joinTextParts(parts: string[]): string {
+  return parts.join(" ").replace(/\s+/g, " ").trim();
+}
+
+/** Mechanical XLSX extraction: every populated cell is retained with its native cell reference. */
+export function parseXlsx(bytes: Uint8Array): ParsedTextUnit[] {
+  const archive = unzipSync(bytes);
+  const shared: string[] = [];
+  const sharedXml = archive["xl/sharedStrings.xml"];
+  if (sharedXml) {
+    const parsed = objectParser.parse(strFromU8(sharedXml)) as {
+      sst?: { si?: unknown };
+    };
+    for (const item of asArray(parsed.sst?.si)) {
+      const text: string[] = [];
+      collectObjectText(item, text);
+      shared.push(joinTextParts(text));
+    }
+  }
+
+  return Object.keys(archive)
+    .filter((path) => /^xl\/worksheets\/sheet\d+\.xml$/.test(path))
+    .sort((left, right) => naturalNumber(left) - naturalNumber(right))
+    .flatMap((path, sheetIndex) => {
+      const sheet = archive[path];
+      if (!sheet) throw new Error("XLSX_SHEET_MISSING");
+      const parsed = objectParser.parse(strFromU8(sheet)) as {
+        worksheet?: { sheetData?: { row?: unknown } };
+      };
+      return asArray(parsed.worksheet?.sheetData?.row).map((unknownRow, rowIndex) => {
+        const row = unknownRow as {
+          r?: string | number;
+          c?: Array<Record<string, unknown>> | Record<string, unknown>;
+        };
+        const cells = asArray(row.c).flatMap((cell) => {
+          const reference = typeof cell.r === "string" ? cell.r : "cell";
+          const raw = cell.v;
+          let value = typeof raw === "string" || typeof raw === "number" ? String(raw) : "";
+          if (cell.t === "s" && value !== "") value = shared[Number(value)] ?? value;
+          if (cell.t === "inlineStr") {
+            const inline: string[] = [];
+            collectObjectText(cell.is, inline);
+            value = joinTextParts(inline);
+          }
+          return value === "" ? [] : [`${reference}: ${value}`];
+        });
+        return {
+          locator: `sheet:${String(sheetIndex + 1)}:row:${String(row.r ?? rowIndex + 1)}`,
+          text: cells.join(" | "),
+          partial: cells.length === 0
+        };
+      });
+    });
 }

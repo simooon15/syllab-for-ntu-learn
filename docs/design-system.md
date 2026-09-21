@@ -1,23 +1,44 @@
-# Syllab popup — design system
+# Syllab — design system
 
-Status: **CURRENT · applies to v0.1.0 and any surface added after it**
+Status: **CURRENT · applies to v0.2.0's Side Panel and Full-page surfaces**
 
-This document is the contract for the extension popup's visual language. Read it before adding a
-surface, a component, or a state, and read the section you are about to contradict before
-contradicting it — most of the rules here exist because the opposite was tried and rejected at
-review, and the reason is recorded so you can judge edge cases instead of guessing.
+This document is the contract for Syllab's visual language. Read it before adding a surface, a
+component, or a state, and read the section you are about to contradict before contradicting it —
+most of the rules here exist because the opposite was tried and rejected at review, and the reason
+is recorded so you can judge edge cases instead of guessing.
 
-Everything described here lives in two files:
+Everything described here lives in three places:
 
-- `extension/src/popup/popup.css` — the entire stylesheet. One file, no preprocessor.
-- `extension/src/popup/index.ts` — builds the entire DOM imperatively. There is no framework, no
+- `extension/src/app/app.css` — the entire stylesheet. One file, no preprocessor.
+- `extension/src/v2/screens/` — builds the entire DOM imperatively. There is no framework, no
   component library, and no template layer.
+- `extension/src/v2/copy.ts` — every user-visible string, so no component holds literal copy.
+
+**The v0.1.0 popup is gone.** v0.2.0 removed the Popup product form entirely: the toolbar now opens
+the Side Panel with a course context and the Full-page extension page without one. Sections below
+that name popup-era components (`extension/src/popup/…`, `.task-list`, `.unresolved-field`, the
+three action tiers) are kept as the record of how those decisions were reached; the class names
+that carry them today are in `extension/src/app/app.css`, and the screen structure they serve is in
+`Interaction_and_Information_Architecture_Spec_v0.2.0.md`. Nothing in this file authorises
+reintroducing a popup.
 
 ---
 
 ## 1. What this UI is
 
-One surface: the Chrome extension popup. Fixed `380px` wide, minimum `500px` tall, no responsive
+Two surfaces, one product model:
+
+- **Side Panel** — `380px`, the working surface beside NTU Learn. Full Course Brief, Initial Scan,
+  Initial Review, Change Review, Task Status, and a lightweight Course list for switching.
+- **Full-page extension page** — the complete Semester Dashboard, Historical semesters, Settings
+  and Backup / Restore.
+
+They read the same Current Course State and never fork its semantics; only density differs. The
+rules below that describe a fixed `380px` column and its scrolling behaviour were written for the
+popup and still hold for the Side Panel.
+
+Historical note, kept because the reasoning still applies to the Side Panel: the v0.1.0 popup was
+Fixed `380px` wide, minimum `500px` tall, no responsive
 breakpoints — the popup chrome decides the height, and content scrolls.
 
 The entry router picks one of four sections, and each section renders its own content inside a
@@ -105,6 +126,28 @@ one place. The only literals allowed in component rules are the few hairlines th
 | `--green-tint`  | `#e2efe4` | hover fills and selection only                              |
 | `--clay`        | `#bd6a3f` | the attention accent: a bar, a dot, a hover                 |
 | `--clay-wash`   | `#f7e8de` | the attention band's fill (opaque)                          |
+| `--surface-2`   | `#f6f5ee` | the Dashboard's second card tone — see below                |
+
+**The Semester Dashboard alternates two card tones.** Cards on `--surface` and `--surface-2`
+alternate so that no two cards that touch share a tone; the second tone sits between the page and
+the panel, so a Dashboard of many Courses reads as a rhythm instead of one repeated block.
+
+The second tone has to be _lighter_ than `--surface`, not darker. `--ink-2` on `--surface` is already
+`8.05:1`, the house floor for text on a panel, so any deeper ground drops below it: `--sunken` would
+give `7.32:1`. `--surface-2` gives `8.2:1` and needs no exception to the floor.
+
+Because that tone is close to the page's own colour its cards take `--line-strong` as their hairline;
+a card on `--surface` keeps `--line`.
+
+A Course that has not been set up takes the tone of the position it sits in, like every other card —
+what marks it out is that it has no preview to show and carries a line of its own at the foot, not a
+different box. `.course-card-note` gives that line exactly the box a `.status-cue` has, so the two
+rows start at the same height and the text tops line up across a row. The final Interaction Spec
+§3.5 now carries this later Product Owner decision; its superseded visual-only baseline remains in
+DIRECTION_ADJUSTMENTS §2.20 and the version Decision Log.
+
+`extension/src/app/stylesheet.test.ts` fails if any rule gives an untouched card a background of its
+own, and recomputes the two-column breakpoints from the grid's own card width and gap.
 
 ### Rules that are not obvious
 
@@ -124,6 +167,32 @@ value and check the composite before trusting it.
 **No mid-tone green fills.** A desaturated green in the middle of the range reads dated. Filled
 shapes take `--green-deep` with light type; quiet shapes take a hairline outline; the pale tint is
 only ever a hover.
+
+---
+
+## 4.1 The Product Mark
+
+The mark is an **official, locked asset**. It is never redrawn, recoloured, re-proportioned or
+substituted — not by CSS shapes, not by an emoji, not by a letterform.
+
+| Asset                                | Use                                   |
+| ------------------------------------ | ------------------------------------- |
+| `assets/logo/syllab-logo-master.svg` | the single master source              |
+| `assets/logo/syllab-logo-16px.png`   | Chrome toolbar, smallest legible size |
+| `assets/logo/syllab-logo-32px.png`   | extension asset                       |
+| `assets/logo/syllab-logo-48px.png`   | Side Panel and Full-page identity     |
+| `assets/logo/syllab-logo-128px.png`  | high-resolution display               |
+
+`extension/public/icons/` ships the same PNGs, which is what `manifest.json` and the in-app mark
+load. Production palette: left folded sheet `#3B5151`, main brief sheet `#EEEAE3`, bookmark fold
+`#405259`.
+
+**Do not regenerate the PNGs.** They are hand-exported from the master at their own sizes; deriving
+them by rescaling would silently change the small sizes. There is deliberately no icon-generation
+script in this repository.
+
+In the UI, `brandMark(size)` in `extension/src/v2/screens/patterns.ts` is the only way to render it,
+so a surface cannot invent its own mark.
 
 ---
 
@@ -164,6 +233,8 @@ an annotation on a control, not content.
 
 ## 6. Space and shape
 
+### 6.1 Radii
+
 | Token      | Value   | Use                              |
 | ---------- | ------- | -------------------------------- |
 | `--r-card` | `14px`  | panels                           |
@@ -174,9 +245,50 @@ an annotation on a control, not content.
 Radii are deliberately not uniform: a panel is a bigger object than a control, and both are bigger
 than a tag. Using one radius everywhere is what makes an interface read as a template.
 
-Page padding is `20px 20px 26px` on `main`, so the content column is `340px`. Vertical rhythm uses a
-small set of steps — `8 / 10 / 12 / 14 / 16` inside a component, `22 / 26` between blocks. Reach for
-an existing step before inventing one.
+### 6.2 The spacing scale
+
+Nine steps. Each one means exactly one relationship, and that is the whole point — §3.2 makes spacing
+the primary way to establish rank, so the steps have to carry meaning rather than taste.
+
+| Step | Relationship                                                                                                                        |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `2`  | Optical only. A control's own padding where an equal negative margin cancels it, or a nudge that must not change a box's footprint. |
+| `4`  | Lines that belong together inside one block — a label and its body, an Evidence locator and its excerpt.                            |
+| `6`  | A glyph or dot and the text beside it.                                                                                              |
+| `8`  | Sibling items inside a list or a card.                                                                                              |
+| `10` | Items in a group; two pieces of text on one line.                                                                                   |
+| `12` | Blocks inside a card.                                                                                                               |
+| `16` | Card padding; the gap between cards; controls side by side.                                                                         |
+| `22` | Between sections; from a screen header down to its content.                                                                         |
+| `28` | Below the shell's identity line.                                                                                                    |
+
+The scale is enforced, not advisory: `extension/src/app/stylesheet.test.ts` fails on any spacing
+value outside it. That test exists because the scale had already drifted — "inside a card" alone was
+carrying `8 / 10 / 14 / 16 / 18`, and "two things on one line" was carrying `8 / 10 / 12 / 14 / 16`.
+No single value was wrong; having five of them for one relationship is what reads as untidiness the
+eye cannot name and cannot stop adjusting for. Converging them is a spacing change only — it moves
+no element, changes no size, and alters no colour.
+
+**Two axes deliberately sit outside the scale**, because neither is a distance between two things:
+
+- **Page padding** — `40px` top and bottom with `24px` sides on the full page; `32px` and `16px` on
+  the Side Panel and on any viewport under 560px. Top and bottom are the side padding plus `16`, and
+  equal to each other. They were once `24px` top against `40px` bottom, which put the content block
+  visibly high: inside a centred 1120px column the sides sit about `54px` from the window edge, so a
+  `24px` top gives the page less room above it than beside it. The two densities stay different on
+  purpose — the Side Panel is the same product at a tighter setting, not the same measurement.
+- **The label column** — `116px` on the full page, `96px` in the Side Panel. A value that aligns to
+  the column starts at that width plus the `10px` column gap, so `.competing-values` is indented
+  `126px` / `106px`. Those three numbers are one fact, not three choices: changing the label width
+  without changing the corresponding indent breaks the column, and the stylesheet test checks the
+  arithmetic.
+
+### 6.3 Writing a new rule
+
+Reach for a step above before inventing a value, and name the relationship the value expresses in
+the rule's comment when it is not obvious from the selector. A value that does not fit any row is a
+signal that the rule is describing a relationship this scale has not named yet — that is worth a
+conversation, not a new number.
 
 ---
 
@@ -216,16 +328,43 @@ Two patterns worth copying when you add something:
   width the same colours make it read as an object _placed on_ the card, which is what made it feel
   like it had appeared from nowhere.
 
+- **Nothing clickable is underlined.** A rule line under a control reads as a document link and
+  makes an application surface look like prose. `.link-action`, `.menu-item` and
+  `.evidence-locator` all rest on `text-decoration: none` and signal affordance with colour
+  (`--ink-2` → `--green-deep` on hover, 140ms). `src/app/stylesheet.test.ts` fails if an underline
+  reappears anywhere in the sheet, so this cannot drift back one rule at a time.
+
 - **The working marker.** In `.task-list` the three states share one circle: pending is a hollow
   outline, complete is a filled circle with a drawn tick, and active is the same circle with one
-  green quarter, turning (`border-top-color` over a `--line-strong` ring, 0.9s). It is the one
-  animation in the product allowed to run indefinitely, and reduced motion freezes it — a ring with
-  a green quarter still reads as "working".
+  green quarter, turning (`border-top-color` over a `--line-strong` ring, 0.9s). It is one of the
+  two animations in the product allowed to run indefinitely, and reduced motion freezes it — a ring
+  with a green quarter still reads as "working".
   **The turn is eased, and that is safe as long as the curve has non-zero slope at both ends.**
   A 360° loop with a zero-slope easing stalls visibly at the seam: measured frame-to-frame movement
   falls to 16% of its peak with `ease-in-out`, against 82% for `linear` and 44% for
   `cubic-bezier(0.4, 0.2, 0.6, 0.8)`, which is what ships. The rule is `y1/x1 > 0` and
   `(1 − y2)/(1 − x2) > 0`, not "use linear".
+
+### The motion vocabulary
+
+Motion exists to explain a change of state, never to decorate it. Everything animates once and
+stops; only the working marker and the active Scan stage may loop. `stylesheet.test.ts` enforces all
+of the rules below.
+
+| Moment                                        | Rule                                                                                 | Why it stays quiet                                        |
+| --------------------------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| Navigating to another screen                  | `.workspace` / `.screen`, `settle` 160ms                                             | The eye follows a page that arrives rather than snaps     |
+| A list of Courses or Assessments              | `.course-card` / `.assessment` / `.constraint`, `settle` 160ms, 0/30/60/90ms stagger | Reading order, not a wipe                                 |
+| Fact ↔ Evidence (`CRS-05`)                    | `.is-evidence` / `.is-fact`, `swap-in` 180ms, fade from 0.4 with 1px lift            | One line changes in place; no modal, no new row           |
+| Disclosure (`More…`, hints, attention detail) | `disclose` 150ms, fade with a 2px drop                                               | The panel belongs to the control that opened it           |
+| Exclude / Undo / Export feedback              | `.notice` / `.toast` / `.undo`, `notice-in` 160ms                                    | Lightweight feedback, never a completion page             |
+| Background check in progress                  | `.task-phase.is-working`, `stage-breath` 2.4s loop                                   | One shallow breath says "still working" without a spinner |
+
+**Two rules govern every curve here.** First, a loop must have non-zero slope at both ends — a
+seam that stalls is visible as a jerk, which is why `linear` and `ease-in-out` are both wrong for a
+360° turn and `cubic-bezier(0.4, 0.2, 0.6, 0.8)` is right. Second, nothing decorative may exceed a
+quarter second; a 100ms floor keeps a change legible instead of a flicker. Both are asserted
+mechanically, so a new animation cannot quietly opt out.
 
 ---
 
@@ -235,11 +374,11 @@ Inside a review card, `index.ts` appends the actions in a fixed order: any numbe
 tags first, then `Confirm`, `Edit`, `Ignore`, `Skip for now`, `View source`. The CSS turns that order
 into three tiers using positional selectors:
 
-| Position                  | Tier             | Treatment                          |
-| ------------------------- | ---------------- | ---------------------------------- |
-| `:nth-last-child(n + 6)`  | relationship tag | outline pill, `--green-deep` text  |
-| `:nth-last-child(5)`      | `Confirm`        | the only filled button in the card |
-| `:nth-last-child(-n + 4)` | everything else  | quiet underlined link              |
+| Position                  | Tier             | Treatment                                |
+| ------------------------- | ---------------- | ---------------------------------------- |
+| `:nth-last-child(n + 6)`  | relationship tag | outline pill, `--green-deep` text        |
+| `:nth-last-child(5)`      | `Confirm`        | the only filled button in the card       |
+| `:nth-last-child(-n + 4)` | everything else  | quiet link — colour change, no underline |
 
 That is why most candidates can be declined without the card becoming a wall of buttons. **If you
 reorder the appends in `appendReview`, the tiers degrade** — nothing breaks, but everything falls
@@ -257,6 +396,7 @@ Measured against the token values in §4, not estimated. Keep them when you chan
 | `--ink-2` on `--page` / on `--surface`          | 8.7 / 8.0   |
 | `--ink-3` on `--page` / on `--surface`          | 5.8 / 5.4   |
 | light type (`--page`) on `--green-deep`         | 8.2         |
+| `--ink-2` on `--surface-2`                      | 8.2         |
 | `--green-deep` on `--surface`                   | 7.6         |
 | `--clay` on `--page` (a graphic mark, needs ≥3) | 3.9         |
 
@@ -265,7 +405,9 @@ figures in this table; a short script over `:root` is enough to catch it.
 
 Body text needs 4.5:1; graphics need 3:1. Focus is always visible: `:focus-visible` draws a 2px
 `--green` outline at 2px offset. Reduced motion is honoured — `prefers-reduced-motion: reduce`
-neutralises every animation and transition.
+neutralises every animation and transition, and every motion added since needs no reduced-motion
+special case because removing it only removes the explanation of a change that is still visible
+afterwards.
 
 ---
 
@@ -322,6 +464,11 @@ Before calling UI work done:
 ---
 
 ## 13. Rejected directions — do not reintroduce
+
+**Underlined text on anything clickable.** A rule line under a control reads as a document link and
+makes an application surface look like prose. Affordance comes from colour (`--ink-2` →
+`--green-deep`) and weight. `extension/src/app/stylesheet.test.ts` fails if an underline rule, an
+underlined class, or an unreset `a`/`u` default reappears.
 
 Each of these was tried, reviewed and removed. The reason matters more than the prohibition.
 

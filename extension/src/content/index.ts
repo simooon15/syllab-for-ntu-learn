@@ -66,6 +66,19 @@ if (typeof chrome !== "undefined") {
         );
         return true;
       }
+      if (message.type === "ENROLLMENT_API_GET" && typeof message.endpoint === "string") {
+        void readEnrollmentApi(message.endpoint).then(
+          (payload) => sendResponse({ ok: true, payload }),
+          (error: unknown) =>
+            sendResponse({
+              ok: false,
+              status:
+                isRecord(error) && typeof error.status === "number" ? error.status : undefined,
+              message: error instanceof Error ? error.message : "Enrollment request failed"
+            })
+        );
+        return true;
+      }
       return false;
     }
   );
@@ -88,8 +101,57 @@ export function validateDiscoveryEndpoint(
   return url;
 }
 
+/**
+ * The read-only scope Semester / Curriculum Course discovery is allowed. It is deliberately its own
+ * scope rather than a widening of the course one: a discovery request names the signed-in user, the
+ * user's memberships, or one term — never a Course's contents — and a reply body cannot extend it,
+ * because the next request is validated the same way this one was.
+ */
+const ENROLLMENT_SCOPES = [
+  /^\/learn\/api\/public\/v1\/users\/me$/,
+  // The Ultra enrollment list, which is where NTU Learn actually serves memberships. Read from a
+  // signed-in instance: `public/v1/users/me` answers 200 and `public/v1/users/me/memberships`
+  // answers 404, so the two halves of this read live on different surfaces of the same API.
+  /^\/learn\/api\/v1\/users\/me\/memberships$/
+];
+
+/**
+ * The origin every read is measured against.
+ *
+ * The manifest injects this script on `https://ntulearn.ntu.edu.sg/*` and nowhere else, so the
+ * approved origin is that and not whatever `location` happens to say. Reading it from `location`
+ * made the check depend on the surroundings of the call rather than on the scope it is enforcing,
+ * which is the wrong thing for a scope check to depend on.
+ */
+const APPROVED_ORIGIN = "https://ntulearn.ntu.edu.sg";
+
+export function validateEnrollmentEndpoint(
+  endpoint: string,
+  approvedOrigin = APPROVED_ORIGIN
+): URL {
+  const url = new URL(endpoint, approvedOrigin);
+  if (
+    url.origin !== approvedOrigin ||
+    !ENROLLMENT_SCOPES.some((scope) => scope.test(url.pathname))
+  ) {
+    // The path leads, because a run that is refused needs to say which read was refused and the
+    // reader may only see the first line of it.
+    throw new Error(
+      `Enrollment read refused: ${url.pathname} (origin ${url.origin}, approved ${approvedOrigin}, scope ${ENROLLMENT_SCOPES.map((scope) => scope.source).join(" ")})`
+    );
+  }
+  return url;
+}
+
+async function readEnrollmentApi(endpoint: string): Promise<unknown> {
+  return readJson(validateEnrollmentEndpoint(endpoint));
+}
+
 async function readDiscoveryApi(courseId: string, endpoint: string): Promise<unknown> {
-  const url = validateDiscoveryEndpoint(courseId, endpoint);
+  return readJson(validateDiscoveryEndpoint(courseId, endpoint));
+}
+
+async function readJson(url: URL): Promise<unknown> {
   const response = await fetch(url, {
     credentials: "include",
     redirect: "error",

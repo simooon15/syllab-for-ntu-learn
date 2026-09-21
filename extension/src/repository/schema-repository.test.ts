@@ -28,8 +28,14 @@ describe("storage schema repository", () => {
   it("initializes and survives a simulated service worker restart", async () => {
     const storage = memoryStorage();
     await ensureStorageSchema(storage);
-    expect(await readStorageSchemaVersion(storage)).toBe(1);
-    expect(await ensureStorageSchema(storage)).toEqual({ "syllab.schemaVersion": 1 });
+    expect(await readStorageSchemaVersion(storage)).toBe(2);
+    expect(await ensureStorageSchema(storage)).toEqual({ "syllab.schemaVersion": 2 });
+  });
+
+  it("migrates the v0.1 storage metadata idempotently", async () => {
+    const storage = memoryStorage({ "syllab.schemaVersion": 1 });
+    expect(await ensureStorageSchema(storage)).toEqual({ "syllab.schemaVersion": 2 });
+    expect(await ensureStorageSchema(storage)).toEqual({ "syllab.schemaVersion": 2 });
   });
 
   it("rejects an unknown future schema", async () => {

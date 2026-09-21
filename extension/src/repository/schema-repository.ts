@@ -21,6 +21,14 @@ export async function ensureStorageSchema(storage: StorageArea): Promise<Storage
     return metadata;
   }
 
+  if (storedVersion === 1) {
+    const metadata: StorageMetadata = {
+      [STORAGE_SCHEMA_VERSION_KEY]: STORAGE_SCHEMA_VERSION
+    };
+    await storage.set({ ...metadata });
+    return metadata;
+  }
+
   if (storedVersion !== STORAGE_SCHEMA_VERSION) {
     throw new Error(`Unsupported storage schema version: ${JSON.stringify(storedVersion)}`);
   }

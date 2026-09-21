@@ -105,6 +105,134 @@ describe("discovery engine", () => {
     expect(checkpoints.length).toBeGreaterThan(3);
   });
 
+  it("reads the text out of a body that is an object rather than a string", async () => {
+    // The platform sends `body` as `{ rawText, displayText, webLocation, fileLocation }`. Reading
+    // only the string-shaped keys — which is what this did — left every announcement with a title
+    // and no text: on MA6081 all seven were dropped, and one of them held the presentation schedule.
+    // (Gate 3 finding F29.)
+    const api = new FixtureApi(
+      new Map<string, object | Error>([
+        [`${base}/contents/ROOT/children`, { items: [] }],
+        [
+          `${base}/announcements`,
+          {
+            announcements: [
+              {
+                id: "announcement_1",
+                title: "Group Presentation schedule and time",
+                body: {
+                  rawText: "<p>Presentation</p><table><tr><td>18 Oct, 10am</td></tr></table>",
+                  displayText: "Presentation · 18 Oct, 10am",
+                  webLocation: "https://ntulearn.example.test/courses/1/content/_1_1/embedded/"
+                }
+              }
+            ]
+          }
+        ]
+      ])
+    );
+    const result = await runDiscovery({
+      scanId: "scan_fixture",
+      courseId: "course_fixture",
+      origin,
+      api
+    });
+
+    const announcement = result.checkpoint.sources.find((source) => source.kind === "announcement");
+    expect(announcement?.rawText).toContain(
+      "body.rawText: &lt;p&gt;Presentation&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;18 Oct, 10am&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;"
+    );
+    expect(announcement?.rawText).toContain("body.displayText: Presentation · 18 Oct, 10am");
+  });
+
+  it("mechanically captures every structured field without locally judging Assessment meaning", async () => {
+    const api = new FixtureApi(
+      new Map<string, object | Error>([
+        [
+          `${base}/contents/ROOT/children`,
+          {
+            items: [
+              {
+                id: "folder_assignment",
+                title: "Assignment",
+                contentHandler: "resource/x-bb-folder"
+              },
+              {
+                id: "quiz_1",
+                title: "Final quiz",
+                contentHandler: "resource/x-bb-asmt-test-link",
+                hasChildren: false
+              }
+            ]
+          }
+        ],
+        [`${base}/contents/folder_assignment/children`, { items: [] }],
+        [
+          `${base}/contents/folder_assignment`,
+          {
+            id: "folder_assignment",
+            title: "Assignment",
+            contentHandler: "resource/x-bb-folder",
+            body: { rawText: "" }
+          }
+        ],
+        [
+          `${base}/contents/quiz_1`,
+          {
+            id: "quiz_1",
+            title: "Final quiz",
+            contentHandler: "resource/x-bb-asmt-test-link",
+            body: { rawText: "" },
+            genericReadOnlyData: { dueDate: "2026-10-18T10:00:00Z" },
+            contentDetail: {
+              "resource/x-bb-asmt-test-link": {
+                test: {
+                  deployedAssessmentType: "Test",
+                  deploymentSettings: {
+                    timeLimit: 35,
+                    isBacktrackingProhibited: false,
+                    isRandomizationOfQuestionsRequired: true,
+                    isSecureBrowserRequiredToTake: false,
+                    isDueDateEnforced: true
+                  },
+                  gradingColumn: { possible: 25 },
+                  assessment: { title: "Final quiz", questionCount: 25, totalPoints: 25 }
+                }
+              }
+            }
+          }
+        ],
+        [`${base}/announcements`, { announcements: [] }]
+      ])
+    );
+
+    const result = await runDiscovery({
+      scanId: "scan_fixture",
+      courseId: "course_fixture",
+      origin,
+      api
+    });
+
+    const folder = result.checkpoint.sources.find(
+      (source) => source.sourceId === "content:folder_assignment"
+    );
+    const quiz = result.checkpoint.sources.find((source) => source.sourceId === "content:quiz_1");
+    expect(folder?.kind).toBe("course-content-item");
+    expect(quiz).toMatchObject({ kind: "assignment" });
+    expect(quiz?.rawText).toContain(
+      "contentDetail.resource/x-bb-asmt-test-link.test.assessment.title: Final quiz"
+    );
+    expect(quiz?.rawText).toContain("genericReadOnlyData.dueDate: 2026-10-18T10:00:00Z");
+    expect(quiz?.rawText).toContain(
+      "contentDetail.resource/x-bb-asmt-test-link.test.assessment.questionCount: 25"
+    );
+    expect(quiz?.rawText).toContain(
+      "contentDetail.resource/x-bb-asmt-test-link.test.deploymentSettings.timeLimit: 35"
+    );
+    expect(folder?.rawText).toContain("contentHandler: resource/x-bb-folder");
+    expect(folder?.rawText).toContain("body.rawText: ");
+  });
+
   it("isolates a failed branch as Partial and treats a 400 child response as a leaf", async () => {
     const api = new FixtureApi(
       new Map<string, object | Error>([

@@ -1,0 +1,27 @@
+{
+  "courseDiscovery": true,
+  "scanCompleted": true,
+  "deepSeekCalled": true,
+  "dateResolution": {
+    "total": 0,
+    "semesterResolved": 0,
+    "sourceResolved": 0,
+    "unresolved": 0
+  },
+  "calendar": {
+    "preview": 0,
+    "exported": 0
+  },
+  "results": {
+    "System Chrome": "PASS",
+    "QA Extension": "PASS",
+    "Course Discovery": "PASS",
+    "Real DeepSeek": "PASS",
+    "Initial Review": "PASS",
+    "Course Brief": "PASS",
+    "Semester Date Resolution": "NOT TESTED",
+    "Calendar Preview": "PASS",
+    "Actual ICS Download": "NOT TESTED",
+    "Persistence": "PASS"
+  }
+}

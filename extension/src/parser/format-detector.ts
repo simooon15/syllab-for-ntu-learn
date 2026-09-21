@@ -28,6 +28,7 @@ export function detectDocumentFormat(bytes: Uint8Array): DocumentFormat {
     const xml = strFromU8(types);
     if (xml.includes("presentationml")) return "pptx";
     if (xml.includes("wordprocessingml")) return "docx";
+    if (xml.includes("spreadsheetml")) return "xlsx";
     return "unsupported";
   } catch {
     return "unsupported";

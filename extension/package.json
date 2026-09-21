@@ -1,15 +1,16 @@
 {
   "name": "@syllab/extension",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:qa": "node scripts/build.mjs --qa",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "@syllab/contracts": "0.1.0",
+    "@syllab/contracts": "0.2.0",
     "fast-xml-parser": "^5.11.1",
     "fflate": "^0.8.3",
     "pdfjs-dist": "^6.3.289"

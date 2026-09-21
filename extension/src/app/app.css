@@ -1,0 +1,1580 @@
+@font-face {
+  font-family: "Fraunces";
+  src: url("fonts/fraunces-var-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("fonts/plus-jakarta-sans-400.woff2") format("woff2");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("fonts/plus-jakarta-sans-500.woff2") format("woff2");
+  font-weight: 500;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("fonts/plus-jakarta-sans-600.woff2") format("woff2");
+  font-weight: 600;
+}
+@font-face {
+  font-family: "Space Mono";
+  src: url("fonts/space-mono-400.woff2") format("woff2");
+  font-weight: 400;
+}
+
+:root {
+  --page: #fdfcf8;
+  --surface: #f0f4ea;
+  /*
+    The Dashboard's second card tone: the page's own colour with a whisper of green in it, and a
+    stroke to hold the edge. It reads as paper rather than as a panel, so a Dashboard of many
+    Courses alternates between "card" and "page" instead of between two shades of green.
+    It is lighter than `--surface` on purpose: `--ink-2` there is already 8.05:1, the house floor
+    for text on a panel, so a deeper second tone would drop below it.
+  */
+  --surface-2: #fafbf4;
+  --sunken: #e2ebd9;
+  --ink: #191f18;
+  --ink-2: #434c3d;
+  --ink-3: #5d6656;
+  --line: #e6ecdc;
+  --line-strong: #c7d5bb;
+  --line-soft: #eef2e7;
+  --green: #3c6a45;
+  --green-deep: #305537;
+  --green-tint: #e2efe4;
+  --clay: #bd6a3f;
+  --clay-wash: #f7e8de;
+  --r-card: 14px;
+  --r-ctl: 10px;
+  --r-sm: 8px;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-ui: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/*
+  Nothing in Syllab is underlined, including anything the browser would underline by default.
+  An anchor or a `u` element that slipped into a component would otherwise reintroduce the
+  document-link look this product deliberately does not have.
+*/
+a,
+u {
+  text-decoration: none;
+  color: inherit;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+}
+
+body {
+  font: 400 15px/1.6 var(--font-ui);
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+ol,
+ul {
+  margin: 0;
+}
+
+ol,
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+#app {
+  display: block;
+}
+
+/*
+  A page's top and bottom are the same, and both are the side padding plus 16. Before this the top
+  was 24px while the sides were 24px inside a centred 1120px column — about 54px from the window
+  edge — so the content block sat visibly high, with more room beside it than above it.
+*/
+.screen {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 40px 24px 40px;
+}
+
+html[data-surface="side-panel"] .screen {
+  padding: 32px 16px 32px;
+}
+
+/* --- masthead and brand mark --------------------------------------------- */
+
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* A fixed height, so the identity line is the same size on every screen and nothing below it
+     shifts as the user moves between them. */
+  height: 28px;
+  margin-bottom: 28px;
+}
+
+.product-name {
+  margin: 0;
+  font: 500 24px/1.1 var(--font-display);
+}
+
+/* A screen's own heading. Deliberately not `.product-name`: only the mark's wordmark is the brand. */
+.screen-title {
+  margin: 0;
+  font: 500 24px/1.1 var(--font-display);
+}
+
+.brand-mark {
+  display: inline-flex;
+  flex: none;
+  /*
+    28px, not 24: the exported art carries about 8px of transparent margin on each side of a 48px
+    canvas, so a 24px box would draw the mark at roughly 16x20 and the fold would close up. 28px
+    renders it at about 19x23, which is the size the mark needs to read, and the 48px source keeps
+    it crisp on a 2x display.
+  */
+  width: 28px;
+  height: 28px;
+}
+
+.brand-mark-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* --- back affordance ------------------------------------------------------ */
+
+.back-action {
+  padding: 0 8px 0 0;
+  border: 0;
+  background: transparent;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--ink-2);
+}
+
+/* QA build only: the release bundle resolves its mount function to an inert stub. */
+.qa-ai-monitor {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 1000;
+  width: min(620px, calc(100vw - 24px));
+  max-height: min(46vh, 440px);
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-ctl);
+  background: var(--page);
+  color: var(--ink);
+  font: 400 11px/1.55 var(--font-mono);
+}
+
+.qa-ai-monitor:not([open]) {
+  width: auto;
+  max-height: none;
+}
+
+.qa-ai-monitor summary {
+  cursor: pointer;
+  font: 700 12px/1.4 var(--font-ui);
+}
+
+.qa-ai-monitor-status {
+  margin: 10px 0;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.qa-ai-monitor-events {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.qa-ai-monitor-events li + li {
+  margin-top: 4px;
+}
+
+.qa-ai-monitor-context pre,
+.qa-ai-monitor-stream {
+  max-height: 160px;
+  overflow: auto;
+  margin: 6px 0 10px;
+  padding: 8px;
+  border-left: 2px solid var(--line-strong);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.qa-ai-monitor-label {
+  margin: 8px 0 0;
+  font: 700 11px/1.4 var(--font-ui);
+}
+
+/*
+  Every screen header is the same shape: the back affordance, then a group that holds the screen's
+  own title. Without this the chevron fell onto a line of its own on some screens and shared a row
+  with the course code on others, so the top of the app looked different depending on where you
+  were. Baseline alignment puts the chevron on the first line of whatever the header leads with —
+  a course code or a screen title — so the relationship is the same everywhere and stays right when
+  a title wraps.
+  A screen-specific rule must not re-lay-out a header: that override is what made Review screens
+  align differently from every other screen.
+*/
+.review-header,
+.course-header,
+.settings-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.course-title-group {
+  flex: 1 1 auto;
+}
+
+.course-code {
+  font: 400 13px/1.4 var(--font-mono);
+  color: var(--ink-2);
+  letter-spacing: 0.01em;
+}
+
+.course-name {
+  font: 500 28px/1.2 var(--font-display);
+}
+
+/* In a header that also carries progress or status, the name stays subordinate to the screen's
+   own title below it. */
+.course-name.is-compact {
+  font: 500 17px/1.3 var(--font-display);
+  color: var(--ink-2);
+}
+
+html[data-surface="side-panel"] .course-name {
+  font-size: 22px;
+}
+
+.review-progress {
+  margin-left: auto;
+  font: 400 13px/1.4 var(--font-mono);
+  color: var(--ink-2);
+}
+
+/* --- status position (SYS-01 / SYS-02) ----------------------------------- */
+
+.status-area {
+  margin-left: auto;
+  text-align: right;
+}
+
+/*
+  The right-hand side of a screen header: whatever the screen is reporting, and the way into
+  Settings. One container rather than two auto margins, so the two sit together at the right edge
+  instead of splitting the free space between them.
+*/
+.semester-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.semester-actions .status-area {
+  margin-left: 0;
+}
+
+.status-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--green-deep);
+  font: 600 13px/1.4 var(--font-ui);
+}
+
+.status-cue.is-action {
+  cursor: pointer;
+}
+
+.status-cue.is-action:hover {
+  background: var(--green-tint);
+}
+
+.status-area[data-kind="checking"] .status-cue,
+.status-area[data-kind="freshness"] .status-cue {
+  border-color: transparent;
+  padding-left: 0;
+  padding-right: 0;
+  color: var(--ink-2);
+  font-weight: 400;
+}
+
+.status-area[data-kind="needs-attention"] .status-cue,
+.status-area[data-kind="api-key"] .status-cue,
+.status-area[data-kind="permission"] .status-cue,
+.status-area[data-kind="authorization"] .status-cue {
+  border-color: transparent;
+  padding-left: 0;
+  padding-right: 0;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.status-area[data-kind="needs-attention"] .status-cue::before,
+.status-area[data-kind="api-key"] .status-cue::before,
+.status-area[data-kind="permission"] .status-cue::before,
+.status-area[data-kind="authorization"] .status-cue::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--clay);
+}
+
+.attention-detail {
+  width: 100%;
+  margin: 0 0 22px;
+  padding: 12px 16px;
+  border-left: 2px solid var(--clay);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--clay-wash);
+}
+
+.attention-title {
+  font: 600 14px/1.5 var(--font-ui);
+}
+
+.attention-note {
+  font: 400 14px/1.6 var(--font-display);
+  color: var(--ink-2);
+}
+
+/* --- semester screens ----------------------------------------------------- */
+
+.semester-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.semester-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.semester-name {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: 500 30px/1.15 var(--font-display);
+  text-align: left;
+}
+
+html[data-surface="side-panel"] .semester-name {
+  font-size: 21px;
+}
+
+.semester-switcher-toggle {
+  cursor: pointer;
+}
+
+.semester-switcher-toggle:hover {
+  color: var(--green-deep);
+}
+
+.semester-badge {
+  font: 600 12px/1.4 var(--font-ui);
+  color: var(--ink-2);
+  text-transform: none;
+}
+
+.semester-switcher {
+  display: grid;
+  gap: 4px;
+  margin: -8px 0 22px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+.switcher-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  text-align: left;
+  font: 400 15px/1.5 var(--font-ui);
+}
+
+.switcher-option[data-selected="true"] {
+  background: var(--green-tint);
+  font-weight: 600;
+}
+
+.switcher-current {
+  font: 600 12px/1.4 var(--font-ui);
+  color: var(--green-deep);
+}
+
+/*
+  Rows stretch, so every card on a row is the same height. With `align-items: start` each card took
+  its own content height, and a Course that has not been set up — which has no Assessment preview —
+  came out at half the height of its neighbours.
+*/
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.course-list {
+  display: grid;
+  gap: 8px;
+}
+
+/*
+  The card is a column so its button can fill the space the row gives it. Once rows stretch, a card
+  is taller than its content, and a card whose lower half is not clickable is a card that ignores
+  half the clicks aimed at it. The status row stays at the foot of the card.
+*/
+.course-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+/*
+  A Dashboard with several Courses reads as a checkerboard: no two cards that touch share a tone.
+  At the three columns this grid actually reaches, plain parity is already a checkerboard, because
+  an odd column count makes (row + column) parity equal index parity. At two columns parity would
+  stripe the columns instead, so the even case is stated on its own. Four columns never occur: the
+  content column is at most 1072px and four need 1168px — a stylesheet test recomputes those bounds
+  from the grid definition rather than trusting this comment.
+
+  The second tone is nearly the page's own colour, so it needs a slightly stronger hairline to keep
+  the card's edge readable; the filled tone keeps the standard one.
+
+  A Course that has not been set up takes the tone of the position it sits in, like every other
+  card: what marks it out is that it has no preview to show and carries a line of its own at the
+  foot, not a different box.
+*/
+.course-grid .course-card:nth-child(odd) {
+  background: var(--surface);
+}
+
+.course-grid .course-card:nth-child(even) {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+}
+
+@media (min-width: 624px) and (max-width: 919px) {
+  .course-grid .course-card:nth-child(4n + 1),
+  .course-grid .course-card:nth-child(4n + 4) {
+    background: var(--surface);
+    border-color: var(--line);
+  }
+
+  .course-grid .course-card:nth-child(4n + 2),
+  .course-grid .course-card:nth-child(4n + 3) {
+    background: var(--surface-2);
+    border-color: var(--line-strong);
+  }
+}
+
+/*
+  A button centres its own content, so a stretched one would float its title in the middle of the
+  card while its neighbours' titles sat at the top. The column with `flex-start` puts every card's
+  content on the same line, stretched or not.
+*/
+.course-card-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  flex: 1 1 auto;
+  width: 100%;
+  padding: 16px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.course-list .course-card-main {
+  padding: 12px 16px;
+}
+
+.course-name {
+  display: block;
+  margin-top: 4px;
+  font: 500 19px/1.35 var(--font-display);
+}
+
+/*
+  A Course that has not been set up carries this line where its neighbours carry a status cue, so
+  the two sit on the same line across a row. It is the only thing that says so in words; the card
+  itself is the same box as any other.
+
+  The transparent border and the padding are not decoration: they give this line exactly the box a
+  status cue has (13px/1.4 in a 6px-padded, 1px-bordered pill), so both rows start at the same
+  height and the text tops line up instead of the note sitting 8px lower.
+*/
+.course-card-note {
+  display: inline-block;
+  padding: 6px 0;
+  border: 1px solid transparent;
+  font: 400 13px/1.4 var(--font-display);
+  color: var(--ink-2);
+}
+
+.course-preview {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.preview-group {
+  margin-top: 8px;
+  font: 600 12px/1.5 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.preview-line {
+  font: 400 14px/1.5 var(--font-ui);
+  color: var(--ink);
+}
+
+.preview-more {
+  margin-top: 8px;
+  font: 400 13px/1.5 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.course-card-status {
+  padding: 0 16px 16px;
+}
+
+.course-list .course-card-status {
+  padding: 0 16px 12px;
+}
+
+/* --- course brief --------------------------------------------------------- */
+
+.course-body {
+  display: grid;
+  gap: 22px;
+}
+
+.group-heading {
+  margin-top: 4px;
+  font: 600 13px/1.5 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.assessment {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+.assessment.is-component {
+  gap: 8px;
+  margin-left: 16px;
+  padding: 12px 16px;
+  background: var(--page);
+}
+
+.assessment-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.assessment-name {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: 500 20px/1.3 var(--font-display);
+  text-align: left;
+}
+
+.component-name {
+  font: 500 16px/1.35 var(--font-display);
+  color: var(--ink-2);
+}
+
+.assessment-kind {
+  font: 400 12px/1.5 var(--font-ui);
+  font-style: italic;
+  color: var(--ink-2);
+}
+
+.series-note {
+  font: 400 13px/1.5 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.facts {
+  display: grid;
+  gap: 8px;
+}
+
+.fact {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.fact-label {
+  min-width: 116px;
+  font: 400 13px/1.6 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.fact-value {
+  padding: 2px 6px;
+  margin: 0 -6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  font: 400 15px/1.6 var(--font-ui);
+  text-align: left;
+}
+
+/*
+  A fact that reveals its Evidence is a control, so it carries no rule line. The underline that
+  used to mark it read as a document link, and it was the last line under clickable text in the
+  product. The tint on approach is the affordance, as it is for every other control here.
+*/
+.fact-value.is-swappable {
+  cursor: pointer;
+  transition: background 140ms ease-out;
+}
+
+.fact-value.is-swappable:hover {
+  background: var(--green-tint);
+}
+
+.fact-value.is-competing {
+  color: var(--ink-2);
+}
+
+.fact-value.is-static {
+  color: var(--ink);
+}
+
+.is-evidence,
+.is-fact {
+  animation: swap-in 180ms cubic-bezier(0.4, 0.2, 0.6, 0.8);
+}
+
+/* A fact and its evidence occupy the same place, so the swap reads as one line changing rather
+   than as a new row arriving. */
+@keyframes swap-in {
+  from {
+    opacity: 0.4;
+    transform: translateY(1px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Screen changes settle rather than snap: long enough to follow, short enough to stay out of the
+   way when moving quickly through a review. */
+.workspace,
+.screen {
+  animation: settle 160ms cubic-bezier(0.4, 0.2, 0.6, 0.8);
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Grouped lists arrive in reading order instead of all at once. */
+.course-card,
+.assessment,
+.constraint {
+  animation: settle 160ms cubic-bezier(0.4, 0.2, 0.6, 0.8) both;
+}
+
+.course-card:nth-child(2),
+.assessment:nth-child(2) {
+  animation-delay: 30ms;
+}
+
+.course-card:nth-child(3),
+.assessment:nth-child(3) {
+  animation-delay: 60ms;
+}
+
+.course-card:nth-child(n + 4),
+.assessment:nth-child(n + 4) {
+  animation-delay: 90ms;
+}
+
+/* Expanding a disclosure is a change of state, so it is shown as one. */
+.more-items,
+.hint,
+.attention-detail {
+  animation: disclose 150ms cubic-bezier(0.4, 0.2, 0.6, 0.8);
+}
+
+@keyframes disclose {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Lightweight feedback arrives and leaves without a page appearing. */
+.notice,
+.toast,
+.undo {
+  animation: notice-in 160ms cubic-bezier(0.4, 0.2, 0.6, 0.8);
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fact-question {
+  width: 100%;
+  font: 400 13px/1.6 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.fact-question::before {
+  content: "?";
+  margin-right: 6px;
+  color: var(--clay);
+  font-weight: 600;
+}
+
+.competing-values {
+  display: grid;
+  gap: 4px;
+  padding-left: 126px;
+}
+
+.prose-block {
+  display: grid;
+  gap: 4px;
+  flex: 1 1 240px;
+}
+
+.prose {
+  font: 400 15px/1.62 var(--font-display);
+  font-variation-settings: "opsz" 11;
+  color: var(--ink);
+}
+
+.evidence {
+  display: grid;
+  gap: 4px;
+  flex: 1 1 240px;
+}
+
+.evidence-locator {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: 400 12px/1.6 var(--font-mono);
+  color: var(--ink-2);
+  text-align: left;
+  /* The locator is a control, so it is not underlined; it reads as a source line. */
+  text-decoration: none;
+  transition: color 140ms ease-out;
+}
+
+.evidence-locator:hover {
+  color: var(--green-deep);
+}
+
+.evidence-excerpt {
+  font: 400 14px/1.6 var(--font-display);
+  color: var(--ink-2);
+}
+
+.evidence-excerpt::before {
+  content: "“";
+}
+
+.evidence-excerpt::after {
+  content: "”";
+}
+
+.series-instances {
+  display: grid;
+  gap: 4px;
+  padding-left: 16px;
+}
+
+.series-instance {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font: 400 14px/1.5 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.instance-name {
+  color: var(--ink);
+}
+
+.constraints-heading {
+  margin-top: 10px;
+}
+
+.constraint {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.constraint-content {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: 400 15px/1.6 var(--font-display);
+  font-variation-settings: "opsz" 11;
+  text-align: left;
+}
+
+/* --- course detail and calendar ------------------------------------------- */
+
+.assessment-detail {
+  display: grid;
+  gap: 16px;
+}
+
+.assessment-detail .assessment {
+  background: var(--surface);
+}
+
+.instance-summary {
+  font: 400 13px/1.5 var(--font-mono);
+  color: var(--ink-2);
+}
+
+/* --- marks ---------------------------------------------------------------- */
+
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font: 600 12px/1.5 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.mark-possiblyremoved::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--clay);
+}
+
+/* --- actions -------------------------------------------------------------- */
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 16px;
+}
+
+.primary-action {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: var(--r-ctl);
+  background: var(--green-deep);
+  color: var(--page);
+  font: 600 14px/1.4 var(--font-ui);
+}
+
+.primary-action:hover {
+  background: var(--green);
+}
+
+.secondary-action {
+  padding: 10px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-ctl);
+  background: transparent;
+  font: 600 14px/1.4 var(--font-ui);
+  color: var(--ink);
+}
+
+.secondary-action:hover {
+  background: var(--green-tint);
+}
+
+.link-action,
+.menu-item {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  font: 400 14px/1.5 var(--font-ui);
+  color: var(--ink-2);
+  /* A button centres its own text by default. Inside a grid the control is stretched to the full
+     column, so `More` and every menu entry were drawing themselves in the middle of the page while
+     everything around them was left-aligned. */
+  text-align: left;
+  /* Nothing that can be clicked is underlined. A quiet link reads through colour and weight. */
+  text-decoration: none;
+  transition: color 140ms ease-out;
+}
+
+.menu-item:hover,
+.link-action:hover {
+  color: var(--green-deep);
+}
+
+.more-menu {
+  display: grid;
+  gap: 4px;
+}
+
+.more-items {
+  display: grid;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+/* --- forms ---------------------------------------------------------------- */
+
+.edit-form {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.field-label {
+  min-width: 116px;
+  font: 400 13px/1.5 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.text-input,
+.select-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-ctl);
+  background: var(--page);
+  font: 400 15px/1.4 var(--font-ui);
+}
+
+.file-input {
+  display: none;
+}
+
+/* --- status, notices, errors --------------------------------------------- */
+
+.notice,
+.error-bar {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 22px;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+.error-bar {
+  border-left: 2px solid var(--clay);
+  border-radius: 0 var(--r-card) var(--r-card) 0;
+  background: var(--clay-wash);
+}
+
+.error-copy {
+  font: 600 14px/1.5 var(--font-ui);
+}
+
+.error-details {
+  flex: 1 1 100%;
+  display: grid;
+  gap: 4px;
+  padding: 8px 0 0;
+  border-left: 2px solid var(--line-strong);
+  padding-left: 10px;
+}
+
+.error-detail,
+.error-code {
+  font: 400 13px/1.6 var(--font-mono);
+  color: var(--ink-2);
+}
+
+.notice-message {
+  font: 400 14px/1.5 var(--font-ui);
+  color: var(--ink);
+}
+
+.notice-dismiss {
+  margin-left: auto;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--ink-2);
+}
+
+.contextual-hint {
+  padding: 10px 12px;
+  border-left: 2px solid var(--green);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--green-tint);
+  font: 400 14px/1.6 var(--font-display);
+  color: var(--ink-2);
+}
+
+/* --- task status ---------------------------------------------------------- */
+
+.task-block {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  margin-bottom: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+.task-heading {
+  font: 500 22px/1.25 var(--font-display);
+  margin-bottom: 12px;
+}
+
+.task-phase {
+  font: 400 15px/1.5 var(--font-ui);
+  color: var(--ink);
+}
+
+/*
+  The working stage is the second of the two marks allowed to run indefinitely (the first is the
+  working marker). A shallow breath around the line says "still working" without a spinner, and the
+  curve has non-zero slope at both ends so the loop cannot stall at its seam.
+*/
+.task-phase.is-working {
+  animation: stage-breath 2.4s cubic-bezier(0.4, 0.2, 0.6, 0.8) infinite;
+}
+
+@keyframes stage-breath {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.task-title {
+  font: 500 20px/1.3 var(--font-display);
+}
+
+.task-body,
+.review-note,
+.settings-body {
+  font: 400 15px/1.62 var(--font-display);
+  font-variation-settings: "opsz" 11;
+  color: var(--ink-2);
+}
+
+.task-list {
+  display: grid;
+  gap: 6px;
+}
+
+.task-list li,
+.task-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 14px/1.6 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.task-list li::before,
+.task-step::before {
+  content: "";
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 999px;
+}
+
+.task-list li[data-state="complete"]::before,
+.task-step[data-state="complete"]::before {
+  border-color: var(--green);
+  background: var(--green);
+}
+
+.task-list li[data-state="active"],
+.task-step[data-state="active"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.task-list li[data-state="active"]::before,
+.task-step[data-state="active"]::before {
+  border-color: var(--green);
+  border-top-color: var(--line-strong);
+  animation: working 0.9s cubic-bezier(0.4, 0.2, 0.6, 0.8) infinite;
+}
+
+@keyframes working {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.working-marker {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--line-strong);
+  border-top-color: var(--green);
+  border-radius: 999px;
+  animation: working 0.9s cubic-bezier(0.4, 0.2, 0.6, 0.8) infinite;
+}
+
+/* --- review --------------------------------------------------------------- */
+
+.review-title {
+  font: 500 24px/1.25 var(--font-display);
+  margin-bottom: 6px;
+}
+
+.review-subtitle {
+  font: 400 13px/1.5 var(--font-ui);
+  color: var(--ink-2);
+  margin-bottom: 12px;
+}
+
+.review-marks {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.review-actions {
+  margin-top: 22px;
+}
+
+.review-screen .facts,
+.review-screen .assessment {
+  margin-bottom: 16px;
+}
+
+.change-side {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.change-label {
+  font: 600 13px/1.5 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.change-values {
+  display: grid;
+  gap: 6px;
+}
+
+.conflict-value {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.identity-separator {
+  margin: 6px 0;
+  color: var(--ink-2);
+}
+
+.merge-candidates,
+.split-parts {
+  display: grid;
+  gap: 4px;
+}
+
+.split-fact {
+  align-items: center;
+}
+
+.split-choices {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.split-choice {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: transparent;
+  font: 600 13px/1 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.split-choice[data-selected="true"] {
+  background: var(--green-tint);
+  border-color: var(--green);
+  color: var(--green-deep);
+}
+
+/* --- calendar ------------------------------------------------------------- */
+
+.calendar-count {
+  font: 400 13px/1.5 var(--font-mono);
+  color: var(--ink-2);
+  margin-bottom: 10px;
+}
+
+/* A partial export names the dates it could not place, in the same quiet voice as the count. */
+.calendar-note {
+  margin-top: 10px;
+  font: 400 13px/1.6 var(--font-display);
+  color: var(--ink-2);
+}
+
+.calendar-events {
+  display: grid;
+  gap: 6px;
+}
+
+.calendar-event {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.event-title {
+  font: 400 16px/1.5 var(--font-display);
+}
+
+.event-date {
+  font: 400 13px/1.5 var(--font-mono);
+  color: var(--ink-2);
+}
+
+/* --- settings ------------------------------------------------------------- */
+
+/*
+  The restore states have no back affordance, so their title is a plain child of the screen rather
+  than a header. This was written as `.settings-screen .product-name`, which also matched the
+  masthead's wordmark: a 22px bottom margin on a flex item inside the 28px masthead makes its margin
+  box 48px tall, and centring then drew the wordmark 10px above the top of its own row. The child
+  combinator and the page-title class both keep it off the brand.
+*/
+.settings-screen > .screen-title {
+  margin-bottom: 22px;
+}
+
+.settings-section {
+  display: grid;
+  gap: 12px;
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+}
+
+.section-heading {
+  font: 600 13px/1.5 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.subsection-heading {
+  font: 500 17px/1.4 var(--font-display);
+}
+
+.api-key-block,
+.data-block {
+  display: grid;
+  gap: 8px;
+}
+
+.api-key-status {
+  display: grid;
+  gap: 4px;
+}
+
+.status-label {
+  font: 600 14px/1.5 var(--font-ui);
+}
+
+.api-key-status[data-state="invalid"] .status-label {
+  color: var(--ink);
+}
+
+.status-body {
+  font: 400 14px/1.6 var(--font-display);
+  color: var(--ink-2);
+}
+
+.api-key-input {
+  font: 400 14px/1.5 var(--font-mono);
+}
+
+.api-key-stored {
+  font: 400 13px/1.6 var(--font-mono);
+  color: var(--ink-2);
+}
+
+.toggle-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.toggle-input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--green-deep);
+}
+
+.toggle-text {
+  display: grid;
+  gap: 4px;
+}
+
+.toggle-label {
+  font: 600 15px/1.5 var(--font-ui);
+}
+
+.toggle-body {
+  max-width: 62ch;
+  font: 400 14px/1.6 var(--font-display);
+  color: var(--ink-2);
+}
+
+.toggle-state {
+  font: 400 12px/1.5 var(--font-mono);
+  color: var(--ink-2);
+}
+
+.settings-note {
+  font: 400 13px/1.6 var(--font-mono);
+  color: var(--ink-2);
+}
+
+.restore-picker {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.restore-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.summary-list {
+  display: grid;
+  gap: 4px;
+}
+
+.summary-item {
+  font: 400 14px/1.6 var(--font-ui);
+}
+
+.restore-warning {
+  display: grid;
+  gap: 4px;
+  padding: 12px 16px;
+  border-left: 2px solid var(--clay);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--clay-wash);
+}
+
+.warning-title {
+  font: 600 14px/1.5 var(--font-ui);
+}
+
+.warning-body {
+  font: 400 14px/1.6 var(--font-display);
+  color: var(--ink-2);
+}
+
+.about-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.about-name {
+  font: 500 18px/1.4 var(--font-display);
+}
+
+.about-version {
+  font: 400 13px/1.6 var(--font-mono);
+  color: var(--ink-2);
+}
+
+/* --- empty and prompt states --------------------------------------------- */
+
+.empty-state-block {
+  display: grid;
+  gap: 16px;
+}
+
+.empty-state {
+  max-width: 52ch;
+  font: 400 16px/1.62 var(--font-display);
+  font-variation-settings: "opsz" 11;
+  color: var(--ink-2);
+}
+
+.prompt-line {
+  max-width: 46ch;
+  font: 400 18px/1.55 var(--font-display);
+  font-variation-settings: "opsz" 11;
+}
+
+/* --- side panel density --------------------------------------------------- */
+
+html[data-surface="side-panel"] .assessment {
+  padding: 12px;
+}
+
+html[data-surface="side-panel"] .course-grid {
+  grid-template-columns: 1fr;
+}
+
+html[data-surface="side-panel"] .fact-label,
+html[data-surface="side-panel"] .field-label {
+  min-width: 96px;
+}
+
+html[data-surface="side-panel"] .competing-values {
+  padding-left: 106px;
+}
+
+@media (max-width: 560px) {
+  .screen {
+    padding: 32px 16px 32px;
+  }
+  .course-grid {
+    grid-template-columns: 1fr;
+  }
+  .field-row,
+  .fact {
+    flex-wrap: wrap;
+  }
+  .competing-values {
+    padding-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

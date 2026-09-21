@@ -1,6 +1,6 @@
 {
   "name": "syllab-for-ntu-learn",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -13,6 +13,9 @@
   },
   "scripts": {
     "build": "npm run build -w @syllab/contracts && npm run build -w @syllab/extension && npm run build -w @syllab/backend",
+    "build:qa": "npm run build -w @syllab/contracts && npm run build:qa -w @syllab/extension",
+    "test:real": "npm run build:qa && node scripts/real-test.mjs",
+    "verify:builds": "node scripts/verify-build-separation.mjs",
     "typecheck": "npm run build -w @syllab/contracts && npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -20,7 +23,15 @@
     "test": "npm run build -w @syllab/contracts && npm run test --workspaces --if-present",
     "validate:manifest": "node scripts/validate-manifest.mjs",
     "secret:scan": "node scripts/secret-scan.mjs",
-    "ci": "npm run format:check && npm run build && npm run typecheck && npm run lint && npm test && npm run validate:manifest && npm run secret:scan"
+    "browser:e2e": "node scripts/browser-e2e.mjs",
+    "package": "node scripts/package-extension.mjs",
+    "package:verify": "node scripts/verify-package.mjs",
+    "package:delivery": "node scripts/package-delivery.mjs",
+    "readme:verify": "node scripts/verify-readme-backfill.mjs",
+    "docs:verify": "node scripts/verify-documented-facts.mjs",
+    "ci": "npm run format:check && npm run build && npm run typecheck && npm run lint && npm test && npm run validate:manifest && npm run secret:scan && npm run docs:verify && npm run readme:verify && npm run build:qa && npm run verify:builds",
+    "gate:1": "node scripts/run-gate.mjs gate-1",
+    "gate:2": "node scripts/run-gate.mjs gate-2"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
@@ -28,7 +39,10 @@
     "@types/node": "^24.3.1",
     "esbuild": "^0.25.9",
     "eslint": "^9.35.0",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^16.3.0",
+    "playwright": "^1.63.0",
+    "playwright-core": "^1.63.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.42.0",

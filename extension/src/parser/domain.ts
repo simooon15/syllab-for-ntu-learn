@@ -1,4 +1,5 @@
-export type DocumentFormat = "pdf" | "pptx" | "docx" | "legacy-ppt" | "legacy-doc" | "unsupported";
+export type DocumentFormat =
+  "pdf" | "pptx" | "docx" | "xlsx" | "legacy-ppt" | "legacy-doc" | "unsupported";
 
 export interface ParsedTextUnit {
   locator: string;

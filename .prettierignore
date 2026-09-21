@@ -1,6 +1,9 @@
 node_modules
 dist
+dist-qa
+.build-meta
 coverage
 docs/versions
 .spike-backups
+artifacts
 *.zip

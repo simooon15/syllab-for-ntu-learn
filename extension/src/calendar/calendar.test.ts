@@ -47,6 +47,20 @@ describe("calendar export", () => {
     ).toEqual([]);
   });
 
+  it("does not let an unparseable prose when field hide a valid structured date", () => {
+    expect(
+      calendarEventsFromBrief([
+        item({
+          currentValue: {
+            what: "CA1 Batch 1",
+            when: "23 October 2026, 3.30 pm to 6.20 pm",
+            date: "2026-10-23"
+          }
+        })
+      ])
+    ).toMatchObject([{ title: "CA1 Batch 1", date: "2026-10-23" }]);
+  });
+
   it("writes RFC 5545 CRLF, escaping, all-day end, stable UID and folded lines", () => {
     const event = calendarEventsFromBrief([
       item({ currentValue: { title: `Final, Exam; ${"x".repeat(90)}`, date: "2026-11-18" } })

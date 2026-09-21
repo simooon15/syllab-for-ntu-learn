@@ -1,0 +1,1551 @@
+[
+  {
+    "at": "2026-09-19T09:12:05.626Z",
+    "event": "qa.discovery-started",
+    "fields": {}
+  },
+  {
+    "at": "2026-09-19T09:12:05.704Z",
+    "event": "qa.semester-detected",
+    "fields": {
+      "firstSeen": false,
+      "label": "AY2026/27 · Semester 1",
+      "status": "Current"
+    }
+  },
+  {
+    "at": "2026-09-19T09:12:05.706Z",
+    "event": "qa.course-detected",
+    "fields": {
+      "courseCode": "MA6081",
+      "established": true,
+      "firstSeen": false,
+      "semester": "_321_1"
+    }
+  },
+  {
+    "at": "2026-09-19T09:12:05.706Z",
+    "event": "qa.course-detected",
+    "fields": {
+      "courseCode": "MA6094",
+      "established": false,
+      "firstSeen": false,
+      "semester": "_321_1"
+    }
+  },
+  {
+    "at": "2026-09-19T09:12:05.707Z",
+    "event": "qa.course-detected",
+    "fields": {
+      "courseCode": "MA6086",
+      "established": false,
+      "firstSeen": false,
+      "semester": "_321_1"
+    }
+  },
+  {
+    "at": "2026-09-19T09:12:05.709Z",
+    "event": "qa.course-detected",
+    "fields": {
+      "courseCode": "MA6084",
+      "established": false,
+      "firstSeen": false,
+      "semester": "_321_1"
+    }
+  },
+  {
+    "at": "2026-09-19T09:12:05.709Z",
+    "event": "qa.course-detected",
+    "fields": {
+      "courseCode": "MA6083",
+      "established": false,
+      "firstSeen": false,
+      "semester": "_321_1"
+    }
+  },
+  {
+    "at": "2026-09-19T09:12:05.710Z",
+    "event": "qa.enrollment",
+    "fields": {
+      "courses": 5,
+      "currentSemesterId": "_321_1",
+      "terms": 1
+    }
+  },
+  {
+    "at": "2026-09-19T09:13:06.709Z",
+    "event": "qa.review-opened",
+    "fields": {
+      "pending": true,
+      "screen": "IRV-01"
+    }
+  },
+  {
+    "at": "2026-09-19T09:13:31.602Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:38.421Z",
+    "event": "qa.scan-started",
+    "fields": {
+      "courseCode": "MA6081",
+      "established": true,
+      "hasTab": false,
+      "kind": "check"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:38.426Z",
+    "event": "qa.discovery-sources",
+    "fields": {
+      "courseCode": "MA6081",
+      "discovered": 0,
+      "kinds": []
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:38.463Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "announcement",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:38.488Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:38.497Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "announcement",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:38.599Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "attachment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:38.825Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:38.933Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:38.945Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.201Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.213Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.284Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.296Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.329Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.375Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.399Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.411Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.423Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.431Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.679Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.737Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.761Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.807Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.903Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.937Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.950Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.963Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:39.974Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:40.017Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:41.010Z",
+    "event": "qa.deepseek-task",
+    "fields": {
+      "promptVersion": "task-a/1",
+      "task": "task-a"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:43.858Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 1,
+      "detail": "AI_CONTRACT:schema:syllab.ai.task-a/1",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 184,
+      "sawSchema": "syllab.ai/task-a/1",
+      "task": "task-a",
+      "truncated": false
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:45.251Z",
+    "event": "qa.deepseek-task",
+    "fields": {
+      "promptVersion": "task-a/1",
+      "task": "task-a"
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:49.630Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 1,
+      "detail": "AI_CONTRACT:schema:syllab.ai.task-a/1",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 184,
+      "sawSchema": "syllab.ai/task-a/1",
+      "task": "task-a",
+      "truncated": false
+    }
+  },
+  {
+    "at": "2026-09-19T09:26:51.843Z",
+    "event": "qa.deepseek-task",
+    "fields": {
+      "promptVersion": "task-a/1",
+      "task": "task-a"
+    }
+  },
+  {
+    "at": "2026-09-19T09:27:11.002Z",
+    "event": "qa.candidates",
+    "fields": {
+      "assessments": 1,
+      "facts": 1,
+      "reviewItems": 1
+    }
+  },
+  {
+    "at": "2026-09-19T09:27:26.237Z",
+    "event": "qa.deepseek-task",
+    "fields": {
+      "promptVersion": "task-a/1",
+      "task": "task-a"
+    }
+  },
+  {
+    "at": "2026-09-19T09:27:26.243Z",
+    "event": "qa.candidates",
+    "fields": {
+      "assessments": 1,
+      "facts": 2,
+      "reviewItems": 1
+    }
+  },
+  {
+    "at": "2026-09-19T09:27:46.017Z",
+    "event": "qa.deepseek-task",
+    "fields": {
+      "promptVersion": "task-a/1",
+      "task": "task-a"
+    }
+  },
+  {
+    "at": "2026-09-19T09:27:46.025Z",
+    "event": "qa.candidates",
+    "fields": {
+      "assessments": 1,
+      "facts": 6,
+      "reviewItems": 1
+    }
+  },
+  {
+    "at": "2026-09-19T09:28:16.445Z",
+    "event": "qa.deepseek-task",
+    "fields": {
+      "promptVersion": "task-a/1",
+      "task": "task-a"
+    }
+  },
+  {
+    "at": "2026-09-19T09:28:16.451Z",
+    "event": "qa.candidates",
+    "fields": {
+      "assessments": 1,
+      "facts": 1,
+      "reviewItems": 1
+    }
+  },
+  {
+    "at": "2026-09-19T09:28:39.417Z",
+    "event": "qa.deepseek-task",
+    "fields": {
+      "promptVersion": "task-a/1",
+      "task": "task-a"
+    }
+  },
+  {
+    "at": "2026-09-19T09:28:39.425Z",
+    "event": "qa.candidates",
+    "fields": {
+      "assessments": 1,
+      "facts": 1,
+      "reviewItems": 1
+    }
+  },
+  {
+    "at": "2026-09-19T09:28:57.341Z",
+    "event": "qa.deepseek-task",
+    "fields": {
+      "promptVersion": "task-a/1",
+      "task": "task-a"
+    }
+  },
+  {
+    "at": "2026-09-19T09:28:57.351Z",
+    "event": "qa.candidates",
+    "fields": {
+      "assessments": 1,
+      "facts": 6,
+      "reviewItems": 1
+    }
+  },
+  {
+    "at": "2026-09-19T09:28:58.207Z",
+    "event": "qa.deepseek-task",
+    "fields": {
+      "promptVersion": "task-a/1",
+      "task": "task-a"
+    }
+  },
+  {
+    "at": "2026-09-19T09:28:59.380Z",
+    "event": "qa.candidates",
+    "fields": {
+      "assessments": 1,
+      "facts": 3,
+      "reviewItems": 1
+    }
+  },
+  {
+    "at": "2026-09-19T09:28:59.535Z",
+    "event": "qa.candidates",
+    "fields": {
+      "assessments": 1,
+      "facts": 1,
+      "reviewItems": 1
+    }
+  },
+  {
+    "at": "2026-09-19T09:28:59.546Z",
+    "event": "qa.candidates",
+    "fields": {
+      "assessments": 1,
+      "facts": 2,
+      "reviewItems": 1
+    }
+  },
+  {
+    "at": "2026-09-19T09:28:59.618Z",
+    "event": "qa.candidates",
+    "fields": {
+      "assessments": 1,
+      "facts": 6,
+      "reviewItems": 1
+    }
+  },
+  {
+    "at": "2026-09-19T09:28:59.643Z",
+    "event": "qa.candidates",
+    "fields": {
+      "assessments": 1,
+      "facts": 1,
+      "reviewItems": 1
+    }
+  },
+  {
+    "at": "2026-09-19T09:28:59.669Z",
+    "event": "qa.candidates",
+    "fields": {
+      "assessments": 1,
+      "facts": 6,
+      "reviewItems": 1
+    }
+  },
+  {
+    "at": "2026-09-19T09:29:00.665Z",
+    "event": "qa.deepseek-task",
+    "fields": {
+      "promptVersion": "task-a/1",
+      "task": "task-a"
+    }
+  },
+  {
+    "at": "2026-09-19T09:29:00.715Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  },
+  {
+    "at": "2026-09-19T09:29:01.997Z",
+    "event": "qa.deepseek-task",
+    "fields": {
+      "promptVersion": "task-a/1",
+      "task": "task-a"
+    }
+  },
+  {
+    "at": "2026-09-19T09:29:02.049Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  },
+  {
+    "at": "2026-09-19T09:29:26.992Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 1,
+      "detail": "the response was not valid JSON",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 6601,
+      "task": "task-a",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:29:51.606Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 2,
+      "detail": "the response was not valid JSON",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 15800,
+      "task": "task-a",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:29:57.931Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 1,
+      "detail": "the response contained no message content",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 24000,
+      "task": "task-b",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:29:59.846Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 1,
+      "detail": "the response contained no message content",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 24000,
+      "task": "task-b",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:30:46.511Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 3,
+      "detail": "the response contained no message content",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 24000,
+      "task": "task-a",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:30:46.558Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  },
+  {
+    "at": "2026-09-19T09:30:48.480Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 2,
+      "detail": "the response was not valid JSON",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 18988,
+      "task": "task-b",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:30:48.709Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 2,
+      "detail": "the response was not valid JSON",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 14977,
+      "task": "task-b",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:31:46.906Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 3,
+      "detail": "the response contained no message content",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 24000,
+      "task": "task-b",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:31:46.946Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  },
+  {
+    "at": "2026-09-19T09:31:48.375Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 3,
+      "detail": "the response contained no message content",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 24000,
+      "task": "task-b",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:31:48.408Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  },
+  {
+    "at": "2026-09-19T09:32:46.799Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 1,
+      "detail": "the response contained no message content",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 24000,
+      "task": "task-a",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:33:09.649Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 2,
+      "detail": "the response was not valid JSON",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 24000,
+      "task": "task-a",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:34:07.655Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 3,
+      "detail": "the response contained no message content",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 24000,
+      "task": "task-a",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:34:07.687Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  },
+  {
+    "at": "2026-09-19T09:37:47.564Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 1,
+      "detail": "the response contained no message content",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 24000,
+      "task": "task-b",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:38:28.798Z",
+    "event": "qa.deepseek-task",
+    "fields": {
+      "promptVersion": "task-b/1",
+      "task": "task-b"
+    }
+  },
+  {
+    "at": "2026-09-19T09:39:34.182Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 1,
+      "detail": "the response contained no message content",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 24000,
+      "task": "task-b-expand",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:40:36.206Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 2,
+      "detail": "the response contained no message content",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 24000,
+      "task": "task-b-expand",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:38.243Z",
+    "event": "qa.ai-contract-failure",
+    "fields": {
+      "attempt": 3,
+      "detail": "the response contained no message content",
+      "head": "[redacted: 40 chars of model output]",
+      "length": 24000,
+      "task": "task-b-expand",
+      "truncated": true
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:38.285Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:38.414Z",
+    "event": "qa.scan-started",
+    "fields": {
+      "courseCode": "MA6081",
+      "established": true,
+      "hasTab": false,
+      "kind": "check"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:38.418Z",
+    "event": "qa.discovery-sources",
+    "fields": {
+      "courseCode": "MA6081",
+      "discovered": 0,
+      "kinds": []
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:38.456Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "announcement",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:38.487Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:38.497Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "announcement",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:38.590Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "attachment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:38.853Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:38.942Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:38.956Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:39.244Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:39.260Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:39.344Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:39.361Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:39.404Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:39.491Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:39.520Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:39.535Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:39.550Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:39.566Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:39.879Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:39.946Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:39.975Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:40.031Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:40.111Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:40.154Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:40.170Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:40.186Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:40.202Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:40.265Z",
+    "event": "qa.course-brief",
+    "fields": {
+      "assessments": 17,
+      "constraints": 0,
+      "facts": 26,
+      "kind": "check",
+      "reviewItems": 6,
+      "sources": 119
+    }
+  },
+  {
+    "at": "2026-09-19T09:41:40.289Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:38.418Z",
+    "event": "qa.scan-started",
+    "fields": {
+      "courseCode": "MA6081",
+      "established": true,
+      "hasTab": false,
+      "kind": "check"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:38.425Z",
+    "event": "qa.discovery-sources",
+    "fields": {
+      "courseCode": "MA6081",
+      "discovered": 0,
+      "kinds": []
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:38.473Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "announcement",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:38.524Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:38.537Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "announcement",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:38.643Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "attachment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:38.939Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:39.037Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:39.054Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:39.379Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:39.396Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:39.490Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:39.508Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:39.554Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:39.628Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:39.689Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:39.709Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:39.729Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:39.749Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:40.056Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:40.159Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:40.195Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:40.262Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:40.354Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:40.401Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:40.420Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:40.439Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "course-content-item",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:40.457Z",
+    "event": "qa.source-read",
+    "fields": {
+      "chars": 0,
+      "errorCode": "SOURCE_NOT_DISCOVERED",
+      "fetchStatus": "failed",
+      "kind": "assignment",
+      "parseStatus": "not-attempted"
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:40.521Z",
+    "event": "qa.course-brief",
+    "fields": {
+      "assessments": 17,
+      "constraints": 0,
+      "facts": 26,
+      "kind": "check",
+      "reviewItems": 6,
+      "sources": 119
+    }
+  },
+  {
+    "at": "2026-09-19T09:56:40.548Z",
+    "event": "qa.calendar-preview",
+    "fields": {
+      "courseCode": "MA6081",
+      "dates": 0,
+      "preview": 0,
+      "unresolved": 0
+    }
+  }
+]

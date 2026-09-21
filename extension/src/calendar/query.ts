@@ -34,6 +34,15 @@ function firstString(value: Record<string, unknown>, keys: RegExp): string | und
   )?.[1] as string | undefined;
 }
 
+function firstNormalizedDate(value: Record<string, unknown>): string | null {
+  for (const [key, candidate] of Object.entries(value)) {
+    if (!dateField.test(key)) continue;
+    const date = normalizedDate(candidate);
+    if (date) return date;
+  }
+  return null;
+}
+
 function eventTitle(item: BriefItem, parents: ReadonlyMap<string, BriefItem>): string {
   const value = item.currentValue;
   const own = firstString(value, /^(?:title|name|label|event|assessment|what|description)$/i);
@@ -56,8 +65,7 @@ export function calendarEventsFromBrief(items: readonly BriefItem[]): CalendarEv
     ) {
       continue;
     }
-    const rawDate = firstString(item.currentValue, dateField);
-    const date = normalizedDate(rawDate);
+    const date = firstNormalizedDate(item.currentValue);
     if (!date) continue;
     const title = eventTitle(item, parents);
     const time = firstString(item.currentValue, timeField)?.match(

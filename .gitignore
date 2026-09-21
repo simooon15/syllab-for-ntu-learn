@@ -4,6 +4,10 @@ dist/
 coverage/
 .DS_Store
 
+# Generated acceptance, package, screenshot, and private/local analysis outputs.
+# Formal version records live under docs/versions/; artifacts are regenerated or handed off locally.
+artifacts/
+
 # Server-side secrets must never be committed.
 .env
 .env.*
@@ -23,3 +27,14 @@ secrets/
 syllab-spike-*.json
 fixtures/private/
 evidence/private/
+
+# The QA build shares the product source; it is a second output, not a second product.
+dist-qa/
+
+# Build provenance read by scripts/verify-build-separation.mjs.
+.build-meta/
+
+# Machine-local real acceptance state: the QA Chrome profile and its local config.
+.tmp/
+.real-test.local.json
+artifacts/real-test/

@@ -96,9 +96,9 @@ function itemType(item: Record<string, unknown>): string {
 }
 
 function itemKind(item: Record<string, unknown>): SourceKind {
-  return /assignment|asmt/i.test(`${itemType(item)} ${itemTitle(item, "")}`)
-    ? "assignment"
-    : "course-content-item";
+  const type = itemType(item);
+  if (/assignment|asmt|test-link/i.test(type)) return "assignment";
+  return "course-content-item";
 }
 
 function explicitlyHasChildren(item: Record<string, unknown>): boolean {
@@ -142,20 +142,64 @@ function extensionHint(value: string | undefined): boolean {
   return /\.(?:pdf|pptx?|docx?)(?:$|[?#])/i.test(value) || /\/bbcswebdav\//i.test(value);
 }
 
-function rawTextEvidence(item: Record<string, unknown>): string | undefined {
-  const keys = ["body", "description", "rawText", "renderedText", "formattedText", "text", "html"];
-  for (const key of keys) {
-    const value = item[key];
-    if (typeof value === "string" && value.trim()) return value;
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function flattenCapturedFields(
+  value: unknown,
+  path: string,
+  output: Array<[string, string]>
+): void {
+  if (value === null) {
+    output.push([path, "null"]);
+    return;
   }
-  for (const key of ["content", "contentDetail", "data"]) {
-    const nested = item[key];
-    if (isRecord(nested)) {
-      const value = rawTextEvidence(nested);
-      if (value) return value;
-    }
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    output.push([path, String(value)]);
+    return;
   }
-  return undefined;
+  if (Array.isArray(value)) {
+    if (value.length === 0) output.push([path, "[]"]);
+    value.forEach((entry, index) =>
+      flattenCapturedFields(entry, `${path}[${String(index)}]`, output)
+    );
+    return;
+  }
+  if (!isRecord(value)) return;
+  const entries = Object.entries(value).sort(([left], [right]) => left.localeCompare(right));
+  if (entries.length === 0) output.push([path, "{}"]);
+  for (const [key, entry] of entries) {
+    flattenCapturedFields(entry, path ? `${path}.${key}` : key, output);
+  }
+}
+
+/**
+ * Mechanical Source capture only. Local code deliberately does not decide which Blackboard fields
+ * carry Assessment meaning: every scalar the read-only Course API returned is preserved for Task A
+ * to interpret. Empty values are facts too; the only transformation is deterministic flattening.
+ */
+function capturedSourceEvidence(label: string, item: Record<string, unknown>): string {
+  const fields: Array<[string, string]> = [];
+  flattenCapturedFields(item, "", fields);
+  return [
+    `<p>${escapeHtml(label)}</p>`,
+    ...fields.map(([path, value]) => `<p>${escapeHtml(path)}: ${escapeHtml(value)}</p>`)
+  ].join("");
+}
+
+function appendCapturedEvidence(
+  existing: string | undefined,
+  label: string,
+  item: Record<string, unknown>
+): string {
+  const captured = capturedSourceEvidence(label, item);
+  return existing ? `${existing}${captured}` : captured;
 }
 
 function attachmentCandidates(item: Record<string, unknown>): Record<string, unknown>[] {
@@ -380,6 +424,7 @@ async function discoverContent(
         depth: parent.depth,
         status: "discovered"
       };
+      source.rawText = capturedSourceEvidence("Blackboard collection metadata", rawItem);
       state.sources.push(source);
       addAttachments(state, rawItem, source, options.origin);
       state.detailQueue.push({ nativeItemId, sourceId });
@@ -475,8 +520,11 @@ async function discoverContentDetails(
         source.title = itemTitle(record, source.title);
         const nativeTypeHint = itemType(record);
         if (nativeTypeHint) source.nativeTypeHint = nativeTypeHint;
-        const rawText = rawTextEvidence(record);
-        if (rawText) source.rawText = rawText;
+        source.rawText = appendCapturedEvidence(
+          source.rawText,
+          "Blackboard detail metadata",
+          record
+        );
         addAttachments(state, record, source, options.origin);
         if (
           explicitlyHasChildren(record) &&
@@ -563,8 +611,7 @@ async function discoverAnnouncements(
         depth: 0,
         status: "discovered"
       };
-      const rawText = rawTextEvidence(raw);
-      if (rawText) source.rawText = rawText;
+      source.rawText = capturedSourceEvidence("Blackboard announcement metadata", raw);
       state.sources.push(source);
       addAttachments(state, raw, source, options.origin);
     }

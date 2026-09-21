@@ -1,0 +1,14 @@
+接手 Syllab for NTU Learn v0.2.0，并严格按照本目录中的 `00_CODEX_START_HERE_v0.2.0.md` 执行。
+
+先完整读取：
+- `PRD_v0.2.0.md`
+- `PRODUCT_HANDOFF_v0.2.0.md`
+- `Interaction_and_Information_Architecture_Spec_v0.2.0.md`
+
+然后优先读取本地仓库与现有 v0.1.0 代码/文档，不要为了获取已有仓库内容去 GitHub 网页重复拉取。
+
+先完成 `TECHNICAL_DESIGN_v0.2.0.md` 和 `IMPLEMENTATION_PLAN_v0.2.0.md`，只要没有 Product-impacting Technical Conflict，就不要停下来等我确认，直接按计划进入开发并推进 Gate 1、Gate 2。
+
+测试与验收必须 script-first：能通过 CLI、test runner、fixture、headless/browser extension automation、Playwright、validator 或其他脚本可靠完成的，就不要改成人工点击，也不要滥用 Computer Use。Computer Use 只留给脚本确实无法覆盖且必须依赖真实 GUI / Product Judgment 的少数场景。
+
+按照项目既定 Gate 原则执行：Phase 内自动测试通过后自动继续；只有 Product-impacting Technical Conflict、无法自动解决的关键测试失败、需要明确 Product Judgment、或最终 Human/Product Gate Acceptance 时再打断我。

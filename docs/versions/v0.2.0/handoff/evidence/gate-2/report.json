@@ -1,0 +1,162 @@
+{
+  "gate": "gate-2",
+  "productVersion": "v0.2.0",
+  "startedAt": "2026-09-19T08:59:10.666Z",
+  "completedAt": "2026-09-19T09:00:43.555Z",
+  "status": "AUTOMATED_PASS",
+  "steps": [
+    {
+      "name": "build+ci",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 44454,
+      "produces": [
+        "formatting",
+        "build",
+        "strict typecheck",
+        "lint",
+        "unit tests",
+        "manifest",
+        "secret scan"
+      ]
+    },
+    {
+      "name": "qa-bundle",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 446,
+      "produces": [
+        "extension/dist-qa — the same product with the acceptance bridge and observation layer"
+      ]
+    },
+    {
+      "name": "core-loop-e2e",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 7472,
+      "produces": [
+        "one-start scan through Initial Review to Current State",
+        "Source change through Change Review to updated Current State"
+      ]
+    },
+    {
+      "name": "screenshot-capture",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 19922,
+      "produces": [
+        "final UI screenshot set for the Interface Spec backfill"
+      ]
+    },
+    {
+      "name": "shipping-bundle",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 1245,
+      "produces": [
+        "extension/dist — the shipped bundle, rebuilt in its own configuration"
+      ]
+    },
+    {
+      "name": "package-extension",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 1937,
+      "produces": [
+        "artifacts/Syllab_Extension_v0.2.0.zip — unzip and load unpacked"
+      ]
+    },
+    {
+      "name": "verify-package",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 3961,
+      "produces": [
+        "the packaged zip extracts and loads in a clean browser profile"
+      ]
+    },
+    {
+      "name": "screenshot-backfill",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 267,
+      "produces": [
+        "Interaction & IA Spec screenshots in place",
+        "README Product Walkthrough"
+      ]
+    },
+    {
+      "name": "readme-backfill-verify",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 1005,
+      "produces": [
+        "one walkthrough per language; a second backfill changes no byte"
+      ]
+    },
+    {
+      "name": "evidence-inventory",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 325,
+      "produces": [
+        "required screens implemented and captured, shipped bundle free of the test bridge"
+      ]
+    },
+    {
+      "name": "v2-contract-tests",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 6635,
+      "produces": [
+        "domain, schema, workflow, AI-contract and reducers"
+      ]
+    },
+    {
+      "name": "ai-regression",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 2123,
+      "produces": [
+        "Task A/B/C recorded regression",
+        "deterministic hard checks",
+        "live provider run when enabled"
+      ]
+    },
+    {
+      "name": "data-integrity",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 2350,
+      "produces": [
+        "v0.1.0 migration and idempotency",
+        "backup/restore Full Replace atomicity",
+        "calendar event consolidation and KR-07",
+        "resumable workflow and Coverage Facts"
+      ]
+    },
+    {
+      "name": "package-delivery",
+      "status": "PASS",
+      "code": 0,
+      "durationMs": 744,
+      "produces": [
+        "artifacts/Syllab_v0.2.0_delivery.zip — documents, screenshots and Gate reports"
+      ]
+    }
+  ],
+  "evidence": {
+    "automated": "PASS",
+    "liveDeepSeek": "NOT TESTED",
+    "realNtuLearnCourses": "NOT TESTED",
+    "productJudgment": "PENDING"
+  },
+  "productJudgment": [
+    "Semester Dashboard communicates the state of a semester at a glance without becoming a task list.",
+    "Side Panel and Full-page feel like one product at two densities, not two products.",
+    "Background checking is quiet enough to leave on, and its freshness copy is honest.",
+    "Backup → clean environment → Restore reproduces a Course that a student would still trust.",
+    "Calendar Export produces one event per real deadline and files that open cleanly in a calendar client.",
+    "The Product Mark is legible at 16px and consistent across toolbar, Side Panel and Full-page."
+  ]
+}

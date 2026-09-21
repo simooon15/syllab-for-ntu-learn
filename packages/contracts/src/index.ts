@@ -29,6 +29,8 @@ export interface RegisterInstallationResponse {
 export interface EvidenceReference {
   sourceId: string;
   locator: string;
+  /** v0.2.0 field-level evidence row. Absent on records written by v0.1.0. */
+  evidenceId?: string;
 }
 
 export interface ExtractionUnit {

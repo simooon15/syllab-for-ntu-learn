@@ -72,6 +72,14 @@ export class CourseIndexRepository {
     await this.storage.set({ [SCAN_SUMMARIES_KEY]: structuredClone(scans) });
   }
 
+  async updateScan(updated: ScanSummary): Promise<void> {
+    const latest = await this.listScans();
+    if (!latest.some((scan) => scan.scanId === updated.scanId)) return;
+    await this.replaceScans(
+      latest.map((scan) => (scan.scanId === updated.scanId ? structuredClone(updated) : scan))
+    );
+  }
+
   async resumeScan(scanId: string): Promise<ScanSummary | null> {
     const scans = await this.listScans();
     const target = scans.find((scan) => scan.scanId === scanId);

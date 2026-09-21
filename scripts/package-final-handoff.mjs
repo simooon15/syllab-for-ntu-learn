@@ -26,6 +26,7 @@ const documents = [
   "PRODUCT_HANDOFF_v0.2.0.md",
   "Interaction_and_Information_Architecture_Spec_v0.2.0.md",
   "docs/versions/v0.2.0/README_v0.2.0.md",
+  "docs/DOCUMENTATION_GOVERNANCE.md",
   "docs/versions/v0.2.0/AI_DESIGN_v0.2.0.md",
   "docs/versions/v0.2.0/DECISION_LOG_v0.2.0.md",
   "docs/versions/v0.2.0/ENGINEERING_REPORT_v0.2.0.md",
@@ -88,6 +89,7 @@ const index = `# Syllab v${version} — Final Closure Handoff Index
 
 - README.md
 - docs/versions/v${version}/README_v${version}.md
+- docs/DOCUMENTATION_GOVERNANCE.md
 - PRD_v${version}.md
 - PRODUCT_HANDOFF_v${version}.md
 - docs/versions/v${version}/AI_DESIGN_v${version}.md

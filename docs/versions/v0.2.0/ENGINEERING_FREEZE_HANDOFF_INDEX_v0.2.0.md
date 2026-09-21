@@ -14,7 +14,7 @@
 
 ## Canonical repository
 
-- Path: `/Users/simonluo/Desktop/Syllab for NTU Learn_副本`
+- Path: `/Users/simonluo/罗鑫宇/Vibe Coding/Syllab for NTU Learn`
 - Canonical branch: `main`
 - Remote: `https://github.com/simooon15/syllab-for-ntu-learn.git`
 - Relationship: the older Vibe Coding directory is an independent clone of the same remote at the

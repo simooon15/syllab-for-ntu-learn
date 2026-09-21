@@ -7,7 +7,7 @@
 
 ## Closure basis
 
-- Canonical source is `/Users/simonluo/Desktop/Syllab for NTU Learn_副本` on `main`.
+- Canonical source is `/Users/simonluo/罗鑫宇/Vibe Coding/Syllab for NTU Learn` on `main`.
 - Immutable tested product baseline is `43de61aafd23661abcce3ba9335284f2e752ea41`.
 - Repository reconciliation found no unique alternate commits and preserved all historical
   repositories/worktrees without destructive operations.

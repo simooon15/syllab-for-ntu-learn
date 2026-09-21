@@ -5,7 +5,7 @@
 
 ## Canonical source
 
-- Repository: `/Users/simonluo/Desktop/Syllab for NTU Learn_副本`
+- Repository: `/Users/simonluo/罗鑫宇/Vibe Coding/Syllab for NTU Learn`
 - Branch: `main`
 - Remote: `https://github.com/simooon15/syllab-for-ntu-learn.git`
 - Frozen product baseline: `43de61aafd23661abcce3ba9335284f2e752ea41`
@@ -18,9 +18,9 @@ committed after that immutable product baseline without changing product semanti
 
 | Location | Relationship | Unique Git commits | Disposition |
 | --- | --- | --- | --- |
-| Desktop `_副本` | canonical repository and `main` worktree | v0.2.0 freeze commit | retain; only release source |
+| `/Users/simonluo/罗鑫宇/Vibe Coding/Syllab for NTU Learn` | canonical repository and `main` worktree | v0.2.0 freeze commit | retain; only release source |
 | `/Users/simonluo/.codex/worktrees/457e/Syllab for NTU Learn_副本` | detached worktree of canonical repository | none beyond historical `670880f` | retain until after release; safe cleanup candidate later |
-| `/Users/simonluo/罗鑫宇/Vibe Coding/Syllab for NTU Learn` | independent clone of the same remote at historical `670880f` | none | retain as historical clone until Product Owner approves cleanup |
+| `/Users/simonluo/罗鑫宇/Vibe Coding/Syllab for NTU Learn__historical-clone-20260921` | independent clone of the same remote at historical `670880f` | none | retain as historical clone until Product Owner approves cleanup |
 | Downloads handoff folders/ZIPs | copied delivery inputs, not repositories | not applicable | historical reference; do not use as source |
 
 No alternate workspace contained a unique commit that needed merging. No repository, worktree,

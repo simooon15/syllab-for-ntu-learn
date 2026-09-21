@@ -72,7 +72,7 @@ const index = `# Syllab v${version} — Final Closure Handoff Index
 
 ## Canonical Git state
 
-- Repository: /Users/simonluo/Desktop/Syllab for NTU Learn_副本
+- Repository: /Users/simonluo/罗鑫宇/Vibe Coding/Syllab for NTU Learn
 - Branch: ${gitBranch}
 - HEAD at packaging time: ${gitHead}
 - Frozen product baseline: 43de61aafd23661abcce3ba9335284f2e752ea41

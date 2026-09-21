@@ -32,8 +32,9 @@ The local analysis export retains only its separately controlled, sanitized meta
 
 ## Repository reconciliation
 
-The canonical source is `/Users/simonluo/Desktop/Syllab for NTU Learn_副本`. It and the older
-`/Users/simonluo/罗鑫宇/Vibe Coding/Syllab for NTU Learn` are independent clones of the same
+The canonical source is `/Users/simonluo/罗鑫宇/Vibe Coding/Syllab for NTU Learn`. The preserved
+historical clone is `/Users/simonluo/罗鑫宇/Vibe Coding/Syllab for NTU Learn__historical-clone-20260921`;
+both are independent clones of the same
 remote and shared the same pre-v0.2.0 HEAD (`670880f`) before reconciliation. The Codex `457e`
 checkout is a detached worktree of the canonical repository at that same historical HEAD. Neither
 alternate checkout contained unique commits; the older clone's uncommitted v0.2.0 subset was
@@ -46,4 +47,3 @@ performed.
 
 v0.2.0 is ready for local consolidation and release readiness. This acceptance does not itself
 authorize Phase 3, tagging, pushing, or publishing a GitHub Release.
-

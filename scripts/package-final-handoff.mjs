@@ -16,6 +16,9 @@ const folderName = `Syllab-v${version}-final-handoff`;
 const handoffDirectory = resolve("artifacts", "handoffs");
 const outputPath = join(handoffDirectory, `Syllab_v${version}_Final_Closure_Handoff.zip`);
 const publicPackage = resolve("artifacts", "release", `syllab-for-ntu-learn-v${version}.zip`);
+const releaseCommit = "79f73365a78b01c3f2ac36247ae159225b8f8f5a";
+const releaseTag = `v${version}`;
+const releaseUrl = `https://github.com/simooon15/syllab-for-ntu-learn/releases/tag/${releaseTag}`;
 
 const documents = [
   "README.md",
@@ -67,14 +70,16 @@ const index = `# Syllab v${version} — Final Closure Handoff Index
 - Engineering Freeze: YES
 - Final Acceptance: PASS
 - Local consolidation: COMPLETE
-- Publication: NOT YET AUTHORIZED
-- Next milestone: Product Owner approval for tag, push, and GitHub Release
+- Publication: RELEASED
+- Version status: CLOSED
 
 ## Canonical Git state
 
 - Repository: /Users/simonluo/罗鑫宇/Vibe Coding/Syllab for NTU Learn
 - Branch: ${gitBranch}
 - HEAD at packaging time: ${gitHead}
+- Release commit: ${releaseCommit}
+- Release tag: ${releaseTag}
 - Frozen product baseline: 43de61aafd23661abcce3ba9335284f2e752ea41
 
 ## CURRENT AUTHORITATIVE
@@ -99,10 +104,12 @@ These retain historical truth and must not be rewritten as if later decisions we
 
 ## PUBLIC RELEASE ARTIFACT
 
+- GitHub Release: ${releaseUrl}
 - Repository path: artifacts/release/${basename(publicPackage)}
 - SHA-256: ${packageSha256}
 - Archive root: Syllab-v${version}/
-- Exact archive validation: see FINAL_PROJECT_CLOSURE_v${version}.md and release-readiness result.
+- Download-back hash verification: PASS
+- Exact archive validation: see FINAL_PROJECT_CLOSURE_v${version}.md.
 
 ## NEXT-VERSION INPUT
 

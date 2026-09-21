@@ -69,7 +69,7 @@ DeepSeek API Key、两项授权、Backup / Restore 与 About 都集中在同一�
 
 不需要安装 Node，不需要构建，不需要运行任何服务。扩展已经打包好：
 
-**下载 →** [`artifacts/release/syllab-for-ntu-learn-v0.2.0.zip`](artifacts/release/syllab-for-ntu-learn-v0.2.0.zip)
+**下载 →** [`syllab-for-ntu-learn-v0.2.0.zip`](https://github.com/simooon15/syllab-for-ntu-learn/releases/download/v0.2.0/syllab-for-ntu-learn-v0.2.0.zip)
 
 1. **下载并解压** 上面这个 zip。解压后会得到一个 `Syllab-v0.2.0/` 文件夹。
    **请把它放在一个之后不会删掉的位置** —— Chrome 每次启动都从这个文件夹加载扩展，删掉扩展就会失效。
@@ -248,7 +248,7 @@ The DeepSeek key, the two authorizations, Backup / Restore and About live in one
 
 No Node install, no build, no server. The extension is packaged:
 
-**Download →** [`artifacts/release/syllab-for-ntu-learn-v0.2.0.zip`](artifacts/release/syllab-for-ntu-learn-v0.2.0.zip)
+**Download →** [`syllab-for-ntu-learn-v0.2.0.zip`](https://github.com/simooon15/syllab-for-ntu-learn/releases/download/v0.2.0/syllab-for-ntu-learn-v0.2.0.zip)
 
 1. **Download and unzip** that archive. You get a folder named `Syllab-v0.2.0/`.
    **Keep it somewhere you will not delete** — Chrome loads the extension from that folder on every

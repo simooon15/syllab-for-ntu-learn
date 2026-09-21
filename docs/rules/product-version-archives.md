@@ -31,11 +31,11 @@ version gets a new sibling directory and must not overwrite, relocate into a tem
 delete the older version's records. Durable cross-version rules remain under `docs/rules/` (or their
 existing durable location) rather than being copied into each version directory.
 
-## Five core Product archives
+## Product archives and README snapshot
 
-Starting with v0.2.0, each product version must leave Product with five core long-term archives:
+Starting with v0.2.0, each product version keeps four human-facing Core Product Archives plus one
+independent public README snapshot:
 
-- `README_vX.X.X.md` preserves the public description of the product as that version closed.
 - `PRD_vX.X.X.md` records what the version plans to build: scope, behaviour, exclusions and
   acceptance intent.
 - `PRODUCT_HANDOFF_vX.X.X.md` is completed after implementation and acceptance. It records what was
@@ -46,33 +46,33 @@ Starting with v0.2.0, each product version must leave Product with five core lon
   navigation and interaction contract.
 - `AI_DESIGN_vX.X.X.md` records current AI behaviour, prompt policy, invocation and recovery
   strategy, state-safety boundary, observability policy, evaluation and limitations.
+- `README_vX.X.X.md` separately preserves the public project entry as that version closed; it is not
+  one of the four Feishu Core Product Archives.
 
-Keep the five files together in `docs/versions/vX.X.X/`. The root `README.md` is the deliberate
-exception to version-suffixed archive names because it always represents the current product.
+Keep all five files together in `docs/versions/vX.X.X/`. The root `README.md` is the deliberate
+exception to version-suffixed archive names because it always represents the latest project entry.
 
 Use **ONE FACT → ONE AUTHORITATIVE HOME**. PRD owns product requirements and boundaries; Product
 Handoff owns delivered status and the minimum continuation summary; Interaction/IA owns user-visible
-structure and interaction; AI Design owns current AI policy. Decision Logs retain why and when a
-decision changed, Engineering Reports retain implementation and verification, and historical records
-must not be rewritten to make later decisions look original.
+structure and interaction; AI Design owns current AI policy; README owns the public project entry.
+Decision Logs retain why and when a decision changed, Engineering Reports retain implementation and
+verification, and historical records must not be rewritten to make later decisions look original.
 
 ## Feishu product archive synchronization
 
 The Feishu knowledge base is the navigable long-term copy of the same Product archive model. Under
 the `Syllab for NTU Learn` project node, maintain one child node per released version. The project
-node itself is named `Syllab for NTU Learn` and its root page mirrors the repository root
-`README.md`, including the bilingual GitHub-homepage content. At each version closeout, copy the
-then-current project-root README into that version node's own root page as a fixed snapshot. This
-snapshot is the historical copy of the README that was current when that version was completed; it
-is not a separate, independently authored README. Do not create a separate README child under the
-version node. Keep the version's PRD, Product Handoff, Interaction/IA and AI Design as the four child
-documents that, together with the version-root README snapshot, form the Five Core Product Archives.
-Do not use Codex Handoffs, start prompts, obsolete prompts, superseded alignment handoffs, or other
-engineering-session records as substitutes for these five Product archives.
+node itself is named `Syllab for NTU Learn` and its root page may mirror the repository root
+`README.md` as the current project entry. At each version closeout, the repository README snapshot
+remains immutable under `docs/versions/vX.Y.Z/`; it is not one of the four Feishu Core Product
+Archives. Keep the version's PRD, Product Handoff, Interaction/IA and AI Design as the four Core
+Product Archive documents under the version node. Do not use Codex Handoffs, start prompts, obsolete
+prompts, superseded alignment handoffs, or other engineering-session records as substitutes for
+these four Product archives.
 
 Decision Logs, Engineering Reports, Technical Design, Final Acceptance, Final Closure, Release Notes,
 Gate/tracker/QA records and other useful engineering or historical material may remain beside the core
-archives. Their presence does not make them part of the Five Core Product Archives, and organizing a
+archives. Their presence does not make them part of the four Core Product Archives, and organizing a
 version must not destructively delete them.
 
 README image assets are part of the README snapshot. When synchronizing a README into Feishu, upload
@@ -93,7 +93,7 @@ contents.
 ## Product and engineering records
 
 Technical Design, Implementation Plan, Gate / Acceptance records, Coding Handoffs and Agent Prompts
-remain engineering records. They may support or be linked from the five core Product archives, but
+remain engineering records. They may support or be linked from the four core Product archives, but
 they do not replace them.
 
 The Product Handoff is a durable Product archive, not an engineering-session handoff. It must not

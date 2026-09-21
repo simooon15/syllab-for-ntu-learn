@@ -1,7 +1,7 @@
-# Syllab for NTU Learn PRODUCT HANDOFF v0.2.0
+# Syllab for NTU Learn 产品交接 v0.2.0
 
 **产品版本：** v0.2.0  
-**文档状态：** Final Product Handoff · Engineering Freeze / Final Acceptance  
+**文档状态：** 最终产品交接 · 工程冻结 / 最终验收
 **下一里程碑：** Local consolidation and release readiness（本文不授权发布）  
 **事实源优先级：** `PRD_v0.2.0.md` 定义“要做什么”；`docs/versions/v0.2.0/AI_DESIGN_v0.2.0.md` 定义当前 AI 行为与策略；本文只保留已交付状态与必要交接约束。
 **语言规范：** 产品实际模块名、对象名、状态名及必要技术标识保留 English；说明性内容使用中文。
@@ -10,11 +10,11 @@
 
 # 1. 当前阶段状态
 
-> **Final status update (2026-09-21):** Development Complete = YES。Phase 2 = PASS / CLOSED。
-> post-correction MA6081 Rebuild = FULL（119/119 Sources，terminal failed Sources = 0）；
-> Manual Check、trusted-state protection、stale-worker protection 与 invocation fingerprint/cache 均 PASS；
-> current complete CI = 476 tests（Extension 454 / Backend 20 / Contracts 2）。
-> Product-impacting Technical Conflict = NONE。Engineering blockers = NONE。
+> **最终状态更新（2026-09-21）：** 开发完成 = YES，Phase 2 = PASS / CLOSED。
+> 修正后 MA6081 Rebuild = FULL（119/119 Sources，终结失败 Source = 0）；
+> Manual Check、trusted-state protection、stale-worker protection 与 invocation fingerprint/cache 均通过；
+> 当前完整 CI = 476 tests（Extension 454 / Backend 20 / Contracts 2）。
+> 影响产品的技术冲突 = NONE，工程阻塞 = NONE。
 
 已完成：
 
@@ -79,13 +79,13 @@ Technical Design 必须同时读取 `PRD_v0.2.0.md`、本文与 `Interaction_and
 
 ## 2.3 AI Design 事实源
 
-`docs/versions/v0.2.0/AI_DESIGN_v0.2.0.md` 是 v0.2.0 current AI behavior / logic / policy 的唯一
-authoritative source。本 Handoff 中保留的 Prompt baseline、Context 与 Evaluation 段落是发布时交接记录；
-如需判断 current policy，以 AI Design 为准。决策过程见 Decision Log，实现与验证见
+`docs/versions/v0.2.0/AI_DESIGN_v0.2.0.md` 是 v0.2.0 当前 AI 行为、逻辑与策略的唯一权威事实源。本 Handoff 中保留的 Prompt 基线、Context 与 Evaluation 段落是发布时交接记录；
+如需判断当前策略，以 AI Design 为准。决策过程见 Decision Log，实现与验证见
 Engineering Report。
 
-v0.2.0 的 Five Core Product Archives 是 README snapshot、PRD、Product Handoff、
-Interaction & Information Architecture / Page Design 和 AI Design。
+v0.2.0 的飞书 Core Product Archives 是 PRD、Product Handoff、
+Interaction & Information Architecture / Page Design 和 AI Design 四份。README snapshot
+在 Git repository 中独立保存，不属于飞书这四份核心档案。
 
 页面 / 状态的完整设计、实现与最终截图清单统一内置于 `Interaction_and_Information_Architecture_Spec_v0.2.0.md` 的 **Screen Architecture & Page Classification** 章节，不再维护独立 Screen Inventory 文档。
 
@@ -115,31 +115,31 @@ Candidate 不是用户对象。Course Brief 是 Current Course State 的用户�
 
 # 4. AI 三层能力边界
 
-## 4.1 Deterministic Local Logic
+## 4.1 确定性本地逻辑
 
 只处理机器可直接确定的事实与已知关系：request success / failure、file existence、parser success / failure、exact machine equality / difference、stable IDs、stored local state、previous explicit user decisions、Source processing facts、persistence、routing、Backup / Restore、History / Diff。
 
 不得通过 local heuristic 直接决定 Assessment relevance、Same Assessment、semantic Source authority、Changed vs Conflict、Possibly Removed。
 
-> **Local manages known relationships; AI discovers unknown semantic relationships.**
+> **本地逻辑管理已知关系；AI 发现未知的语义关系。**
 
-## 4.2 AI Semantic Judgment
+## 4.2 AI 语义判断
 
-负责 Source-level course meaning、Assessment extraction、Requirement ownership、Same / Different / Uncertain、Component / Series、canonicalization、meaningful change、Changed / Conflict、Possibly Removed semantic sufficiency。
+负责理解 Source 级 Course 含义、提取 Assessment、判断 Requirement 归属、解析 Same / Different / Uncertain、Component / Series、规范化、有意义变化、Changed / Conflict，并判断 Possibly Removed 的语义充分性。
 
-## 4.3 User Final Decision
+## 4.3 用户最终决策
 
-用户处理 unresolved identity / structure、Conflict、Change acceptance / Keep Current、Possibly Removed Keep / Remove、manual correction。
+用户处理未解决的 identity / structure、Conflict、Change 接受 / Keep Current、Possibly Removed 的 Keep / Remove 与手动修正。
 
 AI 不直接覆盖 trusted Current Course State。
 
 ---
 
-# 5. Local Orchestrator
+# 5. 本地编排器
 
 本地需要明确的 workflow orchestrator / context manager，但默认不把它产品化为 autonomous Agent。
 
-它负责 deterministic workflow state、task invocation、object IDs、persistence、user decision retrieval、context assembly、result routing、History / Diff、failure recovery。
+它负责确定性 workflow state、Task 调用、对象 ID、持久化、用户决策读取、Context 组装、结果路由、History / Diff 与失败恢复。
 
 Task routing 由 workflow state 决定，不让模型自己选择 A / B / C。
 
@@ -168,27 +168,27 @@ new or machine-different Source
 
 ---
 
-# 6. Context Contract
+# 6. Context 合约
 
 总原则：**Minimum Sufficient Context**。不是 minimum tokens，也不是 full dump。
 
-## 6.1 Task A Context
+## 6.1 Task A 上下文
 
 提供 minimal Course identity、one Source、Source metadata、parsed text、native structure、必要 visual input。一般不提供整门 Current State / 全 History / 无关 Sources。
 
-## 6.2 Task B Context
+## 6.2 Task B 上下文
 
 提供 new Draft(s)、Constraint Candidate(s)、complete current Course canonical object index 的精简结构、必要 original Evidence、Course baseline。
 
 Local 不用字符串相似度等 heuristic 预筛“最可能对象”。可采用：complete concise index → AI 找可能相关对象 → 再补 original Evidence。具体 API 形式留给 Technical Design。
 
-## 6.3 Task C Context
+## 6.3 Task C 上下文
 
 提供 target canonical object、current value / Requirement、current Evidence、new Evidence、Task B identity relationship、relevant user decision、directly related History / Diff、deterministic Coverage Facts。不要默认发送整门 Course / 全 History。
 
 ---
 
-# 7. Evidence / Uncertainty Contract
+# 7. Evidence / Uncertainty 合约
 
 - Source = 完整来源；Evidence = 支撑具体判断的原始局部内容。
 - 关键 field 尽量保留 field-level Evidence。
@@ -200,7 +200,7 @@ Local 不用字符串相似度等 heuristic 预筛“最可能对象”。可采
 
 ---
 
-# 8. Assessment Identity Contract
+# 8. Assessment 身份合约
 
 核心是 **identity / role continuity within the Course**，不是 surface similarity。
 
@@ -210,7 +210,7 @@ Local 不用字符串相似度等 heuristic 预筛“最可能对象”。可采
 
 ---
 
-# 9. Change Analysis Contract
+# 9. 变化分析合约
 
 - `NO_MEANINGFUL_CHANGE`：Source / wording / formatting 变化，但事实不变。
 - `NEW`：可靠新 Evidence 形成新的 meaningful object / field / Requirement / Constraint。
@@ -255,7 +255,7 @@ Disposition：原 B1 fixture under-determined；Task B 可以区分 collective p
 
 ---
 
-# 11. DeepSeek / Multimodal Implementation Findings
+# 11. DeepSeek / Multimodal 实现结论
 
 - direct PDF-as-PDF 请求在 Evaluation 中返回 HTTP 400，当前不能依赖该路径。
 - image-only PDF 已验证可行：`PDF → local page rasterization → page image → deepseek-flash multimodal`。
@@ -266,9 +266,11 @@ Disposition：原 B1 fixture under-determined；Task B 可以区分 collective p
 
 ---
 
-# 12. Prompt Baseline
+# 12. Prompt 基线
 
-以下三套 Prompt 是当前 Accepted baseline。除非后续真实 Regression 暴露问题，不应因 Interaction / Technical Design 偏好而随意改写。
+以下三套 Prompt 是当前已验收基线。除非后续真实回归验证暴露问题，不应因 Interaction / Technical Design 偏好而随意改写。
+
+> 本节中的英文块是必须保真的 machine-facing Prompt 原文，不是面向 Product Owner 的英文说明。为避免改变模型行为，本轮不翻译这些代码块。
 
 ## 12.1 Task A — Source-level Course Information Interpreter
 
@@ -878,7 +880,7 @@ Before returning the result, verify:
 
 ---
 
-# 13. Structured Output Contract
+# 13. 结构化输出合约
 
 产品层只锁定语义与必要结构，不把最终 JSON Schema 全部写死。Technical Design 需要固化 required top-level fields、object IDs、evidence locator、enum、field value representation、unresolved issue、schema migration、validator、malformed / truncated response handling。
 
@@ -886,7 +888,7 @@ Before returning the result, verify:
 
 ---
 
-# 14. Technical Design Questions — Final Disposition
+# 14. Technical Design 问题的最终处置
 
 > 以下是开工前的 open-question 列表。它们的最终处置以
 > `TECHNICAL_DESIGN_v0.2.0.md`、`DEEPSEEK_INVOCATION_STRATEGY_v0.2.0.md` 与
@@ -913,7 +915,7 @@ Final disposition summary:
   multi-chunk consolidation；本版不引入 packing / concurrency。
 - Task B / C 职责不变；physical expansion 只在现有 contract 中进行。
 - malformed / truncation 使用 failure-specific recovery，不再使用 universal repair chain。
-- output budget 使用 versioned capability + task/context-aware dynamic safety ceiling。
+- 输出预算使用版本化能力配置与感知 Task / Context 的动态安全上限。
 - BYOK key 仅本地保存，不进 Backup / telemetry / export。
 - Opportunity Check 继续使用已实现的 throttle 与 live-tab / coverage guard。
 - E4 / E5 已在 v0.2.0 storage / recovery 边界中硬化。
@@ -921,7 +923,7 @@ Final disposition summary:
 
 ---
 
-# 15. Interaction & IA 已收口后的实现边界
+# 15. Interaction & IA 收口后的实现边界
 
 Interaction & Information Architecture 已在 `Interaction_and_Information_Architecture_Spec_v0.2.0.md` 收口。Technical Design 必须按该 Spec 实现 Side Panel / Full-page 页面结构、Current Course State / Course Brief 信息层级、Initial Review、Change Review、Assessment / Component / Series 视觉层级、Semester Dashboard、Pending cues、Scan / background checking / freshness 表达、Navigation 与 Task Status 分离、Backup / Restore、Calendar Export 等 Interaction contract。
 
@@ -931,9 +933,9 @@ Interaction & Information Architecture 已在 `Interaction_and_Information_Archi
 
 ---
 
-# 16. Development / Testing / Gate 原则
+# 16. 开发、测试与 Gate 原则
 
-## 16.1 Phase-level automation
+## 16.1 Phase 级自动化
 
 每个开发 Phase 有自己的 typecheck / lint、unit、relevant integration、deterministic contract tests、相关 AI regression、state persistence / error-path checks。通过后自动继续，不要求逐 Phase 人工确认。
 
@@ -957,7 +959,7 @@ Gate 不是固定模板。未来每个版本按 risk、vertical slice、failure 
 
 **Gate 2 — Release Acceptance Gate**：覆盖 Semester Dashboard、Side Panel / Full-page、Opportunity Checking、Local-first / BYOK、Backup / Restore、Calendar、Product Mark、KR-07 / KR-08 / E3、AI Regression、Recovery、real-course E2E。
 
-## 16.4 One-command Gate Acceptance
+## 16.4 单命令 Gate 验收
 
 每个 Gate 应提供 one-command / one-click acceptance workflow：
 

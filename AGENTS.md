@@ -53,9 +53,10 @@ Before acting, automatically read the branch rule documents relevant to the task
 the user to name them. Start from the governance index when a task spans more than one category or
 when the correct branch is unclear.
 
-- [`docs/project-governance.md`](docs/project-governance.md) — version lifecycle, the five core
-  Product archives, public README and screenshot-rule index. It also defines how branch rules are
-  organized and extended.
+- [`docs/DOCUMENTATION_GOVERNANCE.md`](docs/DOCUMENTATION_GOVERNANCE.md) — documentation audiences,
+  language policy, Product archives and the README lifecycle.
+- [`docs/project-governance.md`](docs/project-governance.md) — index of the remaining durable
+  governance branches and the rules for extending them.
 - [`docs/design-system.md`](docs/design-system.md) — interface tokens, typography, components and
   rejected visual directions. Read it before changing anything visual.
 - [`docs/fixture-policy.md`](docs/fixture-policy.md) — fixture privacy and rules for real acceptance

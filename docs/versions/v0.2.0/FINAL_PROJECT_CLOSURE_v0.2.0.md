@@ -102,8 +102,8 @@ They are not represented as v0.2.0 capabilities.
 - Released version node: `v0.2.0`.
 - The project root and the version root contain the released bilingual README and eight screenshot
   blocks each.
-- The Five Core Product Archives are the version-root README snapshot plus PRD, Product Handoff,
-  Interaction/IA, and AI Design child documents.
+- The four Feishu Core Product Archives are PRD, Product Handoff, Interaction/IA, and AI Design.
+  The repository keeps `README_v0.2.0.md` as an independent immutable release snapshot.
 - Decision Log, Engineering Report, Technical Design, Final Acceptance, Final Project Closure, and
   Release Notes remain useful engineering, decision, verification, and historical records.
 - The existing `v0.1.0` node remains unchanged.
@@ -111,9 +111,11 @@ They are not represented as v0.2.0 capabilities.
 ## Post-release documentation addendum
 
 The public `v0.2.0` tag, GitHub Release, and Extension binary remain immutable. A later
-documentation-only commit adds `AI_DESIGN_v0.2.0.md`, adopts the Five Core Product Archives model,
-and records the Chinese-first global documentation rule. It does not change released product source
-or the public ZIP.
+documentation-only commit adds `AI_DESIGN_v0.2.0.md` and the archive model. A subsequent
+documentation-governance addendum classifies language by audience: the four Feishu Core Product
+Archives are Chinese-first, machine/engineering documents prioritize precision, and README follows
+its independent public-entry lifecycle. Neither addendum changes released product source or the
+public ZIP.
 
 ## Final status
 

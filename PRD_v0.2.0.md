@@ -1,7 +1,7 @@
 # Syllab for NTU Learn PRD v0.2.0
 
 **产品版本：** v0.2.0  
-**文档状态：** Final Integrated PRD · Engineering Freeze / Final Acceptance baseline  
+**文档状态：** 最终集成 PRD · 工程冻结 / 最终验收基线
 **版本定位：** v0.2.0 仍属于个人产品验证阶段，不是正式生产发布版本。  
 **语言规范：** 说明性内容以中文为主；产品实际使用的模块名、对象名、状态名，以及必要的行业缩写和技术标识保留英文。
 
@@ -22,7 +22,7 @@ Syllab 不是 Blackboard 的复制品。它是在 NTU Learn 之上的个人课�
 
 v0.1.0 已验证基础链路：
 
-> Current Course Detection → Discovery → Fetch → Parse → Normalize → DeepSeek Extraction → Review → Course Brief → Calendar Export
+> 当前 Course 识别 → Source 发现 → 获取 → 解析 → 标准化 → DeepSeek 提取 → Review → Course Brief → Calendar Export
 
 v0.1.0 已证明真实 NTU Learn 内容获取、AI 提取、用户确认、Course Brief 持久化与基础 Calendar Export 可行，但产品仍主要围绕“第一次建立课程”的 Scan → Review → Brief 设计。
 
@@ -344,7 +344,7 @@ v0.2.0 不以 Blackboard 的复制品、Todo / Planner / Reminder Center、AI �
 
 正式链路：
 
-> Source → AI Candidate → Merge / Deduplicate → Relationship Resolution → Canonical Assessment Formation → Initial Review
+> Source → AI 候选 → 合并 / 去重 → 关系解析 → Canonical Assessment 形成 → Initial Review
 
 ### 5.2.4 Assessment-level Initial Review
 
@@ -534,7 +534,7 @@ Side Panel 的 Semester 视图只承担 Course navigation，不复制 Full-page 
 
 Side Panel 与 Full-page 读取同一 Current Course State，不建立两套 Course Brief 或两套 Course 数据。
 
-### 5.6.3 Popup 正式移除与 Toolbar Entry
+### 5.6.3 正式移除 Popup，改用 Toolbar 入口
 
 v0.2.0 完全取消 Popup 产品形态。
 
@@ -597,7 +597,7 @@ AI / 网络不可用时，已有 Semester / Course / Brief 仍可查看。
 
 v0.2.0 的 Restore 采用 **Full Replace**：Backup 完整验证并经用户确认后，以 Backup state 整体替换当前本地 Syllab state。当前版本不支持 Restore Merge；Merge Restore 仅作为后续产品机会保留。Restore 失败或验证失败不得留下半恢复状态，也不得破坏恢复前的有效 state。
 
-### 5.7.4 Privacy Authorization 与 API Usage Authorization 分离
+### 5.7.4 隐私授权与 API 使用授权分离
 
 允许课程内容发送给 AI，不等于允许无限后台消费用户 API。
 
@@ -628,7 +628,7 @@ AI 直接决定：
 
 AI 相关行为采用：
 
-> **Deterministic Local Logic → AI Semantic Judgment → User Final Decision**
+> **确定性本地逻辑 → AI 语义判断 → 用户最终决策**
 
 **Deterministic Local Logic** 只负责机器可以直接确定的事实与已知状态，例如请求成功 / 失败、文件是否存在、Parser 是否成功、机器表示是否相同、已存 ID、已知用户决定、哪些 Source 成功 Fetch / Parse / 进入 AI、持久化与 Workflow routing。
 
@@ -786,7 +786,7 @@ Task A / B / C Prompt baseline 已完成，并以真实 `deepseek-flash` 进行 
 
 最终结论：
 
-> **Task A / Task B / Task C baseline accepted；0 unresolved Product Review items；无需修改 Task B Prompt。**
+> **Task A / Task B / Task C 基线已验收；未解决 Product Review 项为 0；无需修改 Task B Prompt。**
 
 `PARTIALLY_UNDERSTOOD` 尚未通过正向 Case 验证，但不阻塞当前 AI Design 收口，留作后续实现 / 真实 Source Evaluation。
 
@@ -796,7 +796,7 @@ Task A / B / C Prompt baseline 已完成，并以真实 `deepseek-flash` 进行 
 是 v0.2.0 当前 AI 行为与策略的唯一 authoritative source。
 
 本 PRD 只保留产品层 AI role、requirements、boundaries 与 acceptance intent；Prompt policy、
-Task A / B / C current contract、invocation、retry / recovery、cache / fingerprint、
+Task A / B / C 的当前 contract、调用、重试 / 恢复、缓存 / fingerprint、
 stale-worker、observability、Evaluation 与 AI limitations 统一引用 AI Design。历史决策
 过程仍保留在 Decision Log 与 Engineering Report，不因事实源收口而重写。
 
@@ -808,7 +808,7 @@ v0.2.0 必须修复：
 - KR-08
 - E3
 
-### 5.8.10 Final AI Invocation Product Policy
+### 5.8.10 AI 调用的最终产品策略
 
 v0.2.0 保持 DeepSeek `deepseek-flash` 与 Task A / B / C 既有职责，并明确以下产品级边界：
 
@@ -991,25 +991,25 @@ v0.2.0 基础 Product Mark 已正式定稿为：
 > → 持续循环  
 > → Historical Semester
 
-## 8.2 课程建立 Loop
+## 8.2 课程建立闭环
 
 > 发现 Course → Initial Scan → Canonicalization → Initial Review → Current Course State
 
 Auto-discovery 不自动产生付费 Initial Scan。
 
-## 8.3 Daily Use Loop
+## 8.3 日常使用闭环
 
 > Semester Dashboard / Course Brief → 查看 Current Course State → 继续正常学习
 
 Course Established 后，用户主要进入 Current State，而不是重新面对 Scan。
 
-## 8.4 持续维护 Loop
+## 8.4 持续维护闭环
 
 > 机会式检查 → 判断来源变化 → AI 语义判断 → 无有意义变化 / New / Changed / Possibly Removed / Conflict → 必要时进入 Review → 更新 Current Course State
 
 无意义变化静默结束。
 
-## 8.5 Decision Behavior
+## 8.5 决策行为
 
 - Accept Changed → 更新 Current State + Diff。
 - Reject / Keep Current → 保留当前值，真实 discrepancy 持续时未来可再次提醒。
@@ -1018,21 +1018,21 @@ Course Established 后，用户主要进入 Current State，而不是重新面�
 - Conflict → Current State 保持旧值直到用户解决。
 - Pending Change → 始终展示 当前值与最新值，不堆叠历史任务。
 
-## 8.6 Failure / Recovery Loop
+## 8.6 失败 / 恢复闭环
 
 - 单次更新失败不影响 已有 Course Brief。
 - 后续 Opportunity 中静默重试。
 - 长期失败才提示 信息新鲜度。
 - Rebuild 重新执行课程建立所需的扫描与整理链路，先形成完整 rebuilt Course Brief / Proposed Rebuilt State，不先清空 Current State；用户在预览新结果后整体选择采用 rebuilt state 或保留 current state。
 
-## 8.7 Semester Lifecycle
+## 8.7 Semester 生命周期
 
 - 新 Course 出现：加入 Current Semester，但不 auto-scan。
 - 已建立 Course 暂时从 Blackboard 消失：不自动删本地数据。
 - New Semester：新学期成为 Current，旧学期进入 Historical。
 - Historical Semester 默认不继续 Opportunity Checking。
 
-## 8.8 Local Durability Loop
+## 8.8 本地持久性闭环
 
 > Export Backup → New / Clean Environment → Restore Backup
 
@@ -1215,7 +1215,7 @@ v0.2.0 的八个关键变化：
 
 ---
 
-# 11. 成功标准（Success Criteria）
+# 11. 成功标准
 
 ## 11.1 课程理解与信息表达
 
@@ -1508,7 +1508,7 @@ API Key / Runtime / Cache 不恢复。
 - Full Change Timeline
 - 全部历史 未验证 文件类型转为 PASS
 
-## 12.23 里程碑级验收 Gate
+## 12.23 里程碑级 Gate 验收
 
 Gate 数量不采用固定模板。每个版本根据：
 
@@ -1587,7 +1587,7 @@ Gate 数量不采用固定模板。每个版本根据：
 2. **Implementation Plan v0.2.0**
 3. Development → Phase-level automated tests → **Gate 1 Core Loop**
 4. Continue Development → Full Regression → **Gate 2 Release Acceptance**
-5. Final UI Screenshot Backfill / README Product Walkthrough → Version Freeze
+5. 最终 UI 截图回填 / README 产品演示 → 版本冻结
 
 AI Design 如无 Technical Design 暴露的真实产品冲突，不重新开启。
 

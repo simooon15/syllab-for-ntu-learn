@@ -1,8 +1,8 @@
-# Syllab for NTU Learn Interaction & Information Architecture Spec v0.2.0
+# Syllab for NTU Learn 交互与信息架构规范 v0.2.0
 
 **产品版本：** v0.2.0  
-**文档状态：** Final Accepted Interaction & Information Architecture  
-**阶段：** Engineering Freeze / Final Acceptance  
+**文档状态：** 最终交互与信息架构验收通过
+**阶段：** 工程冻结 / 最终验收
 **语言规范：** 说明性内容使用中文；产品对象、状态、模块名与正式 UI copy 保留 English。
 
 ---
@@ -34,7 +34,7 @@
 
 ---
 
-# 2. 全局 Interaction 原则与产品壳层
+# 2. 全局交互原则与产品壳层
 
 v0.2.0 的 Interaction 目标不是把内部 workflow 全部展示给用户，而是让用户始终清楚四件事：
 
@@ -64,7 +64,7 @@ Task Status 不是导航。
 Evidence 不是主体内容。
 Calendar 不是第二个事实模型。
 
-## 2.1 Surface model
+## 2.1 界面载体模型
 
 ### 2.1.1 Side Panel
 
@@ -107,7 +107,7 @@ Different information density
 Side Panel 不是简化数据模型。
 Full-page 也不是第二份 Course Brief。
 
-## 2.2 Toolbar entry
+## 2.2 Toolbar 入口
 
 Toolbar icon 只作为 Syllab 入口，不打开 Popup。
 
@@ -127,7 +127,7 @@ flowchart TB
 
 ---
 
-# 3. Semester & Navigation Screens
+# 3. Semester 与导航页面
 
 本章就是 Semester / Navigation 类页面的完整设计章节。页面清单、交互规则与后续截图回填都在这里维护，不再去另一章查页面分类。
 
@@ -141,7 +141,7 @@ flowchart TB
 | `SEM-06` | Empty Semester                  | Both       | 当前 / 历史 Semester 无可显示 Course 时的空状态 | 必须     |
 | `SEM-07` | Not Established Course Prompt   | Both       | 点击未建立 Course 后，引导 `Scan course`        | 必须     |
 
-## 3.0 Semester-level navigation
+## 3.0 Semester 级导航
 
 Side Panel 与 Full-page 使用同一套 Semester → Course 导航心智模型：
 
@@ -178,11 +178,11 @@ AY2025/26 · Semester 1
 
 ## 3.1 Full-page Current Semester Dashboard
 
-### Purpose
+### 用途
 
 让用户在一个页面快速看懂当前 Semester 有哪些 Curriculum Courses、哪些已经建立、每门 Course 的主要 Assessment 结构、哪些 Course 需要注意。
 
-### Layout
+### 布局
 
 ```text
 Syllab
@@ -197,7 +197,7 @@ AY2026/27 · Semester 1              Semester Status Area
 Settings
 ```
 
-### Established Course card
+### 已建立 Course 卡片
 
 展示轻量 Course Brief preview：
 
@@ -228,7 +228,7 @@ Final Exam · 30%
 - 点击卡片主体 → Course Brief；
 - 点击 Pending Review status → 对应 Review。
 
-### Not Established Course
+### 未建立 Course
 
 Dashboard 不显示：
 
@@ -353,7 +353,7 @@ Side Panel 无法识别 Current Course 时，直接落到当前 Semester Course 
 
 ---
 
-# 4. Course State / Course Brief Screens
+# 4. Course State / Course Brief 页面
 
 本章覆盖 Current Course State / Course Brief 相关的所有完整页面与重要状态。Side Panel 与 Full-page 使用同一内容模型，只调整布局密度。
 
@@ -380,7 +380,7 @@ Course Brief
 └─ Course-wide Constraints
 ```
 
-## 4.0 Entry / Return
+## 4.0 进入与返回
 
 Course View 可以从：
 
@@ -454,7 +454,7 @@ Submit a written report and presentation.
 - 很长的 Requirement 可 `Show more`；
 - 不展示 Raw JSON。
 
-## 4.5 Component
+## 4.5 Assessment Component
 
 Component 必须视觉上属于父 Assessment：
 
@@ -628,13 +628,13 @@ Assessment excluded.   Undo
 
 Side Panel、Full-page Course View、Full-page Course card 使用同一套 status semantics。
 
-## 4.14 Placement
+## 4.14 界面位置
 
 - Course View：Course header 右侧；
 - Full-page Dashboard：Course card header 右侧；
 - Side Panel Semester List：必要时使用 compact status。
 
-## 4.15 Copy
+## 4.15 文案
 
 Pending Review：
 
@@ -652,7 +652,7 @@ API key required
 Permission required
 ```
 
-## 4.16 Priority
+## 4.16 信息优先级
 
 同一时刻不堆多个状态。
 
@@ -663,7 +663,7 @@ Needs user action
 > transient Freshness
 ```
 
-## 4.17 Freshness
+## 4.17 信息新鲜度
 
 正常进入 Course 时可以短暂显示：
 
@@ -709,7 +709,7 @@ No assessments found
 
 ---
 
-# 5. Initial Course Setup / Scan Screens
+# 5. 首次 Course Setup / Scan 页面
 
 本章覆盖 Not Established Course 从 Scan Prompt 到扫描完成 / Waiting / Failed 的全部页面。
 
@@ -828,7 +828,7 @@ Task A 的 Source-level `NO_RELEVANT_INFORMATION` 不直接暴露为用户 warni
 
 ---
 
-# 6. Initial Review Screens
+# 6. Initial Review 页面
 
 本章覆盖 Initial Review 及其结构纠错、编辑和首次提示。
 
@@ -927,7 +927,7 @@ More…
 
 ```text
 Split
-Use this when this item actually contains two or more separate assessments.
+当当前项目实际包含两个或更多独立 Assessment 时使用此操作。
 ```
 
 规则：
@@ -939,7 +939,7 @@ Use this when this item actually contains two or more separate assessments.
 
 ---
 
-# 7. Change Review Screens
+# 7. Change Review 页面
 
 本章覆盖 Change Review 的全部用户决策页面；`New Assessment Review` 复用 Initial Review pattern，不建立第二套 UI。
 
@@ -1074,7 +1074,7 @@ UI 只显示：
 
 ---
 
-# 8. Rebuild Screens
+# 8. Rebuild 页面
 
 本章覆盖 Rebuild 的入口、Working、Preview 与 Failure。Rebuild 不做 Diff。
 
@@ -1139,7 +1139,7 @@ Rebuild failure 完全不影响 Current Course State。
 
 ---
 
-# 9. Calendar Export Screens
+# 9. Calendar Export 页面
 
 本章覆盖 Calendar Export 的 Preview 与反馈页面。
 
@@ -1185,7 +1185,7 @@ Final Exam               3 Dec
 
 ---
 
-# 10. Settings / Data / Backup & Restore Screens
+# 10. Settings / Data / Backup & Restore 页面
 
 本章把 Settings 及其 Data / Backup / Restore 作为同一 Page Family 管理。
 
@@ -1356,7 +1356,7 @@ Interaction 要求：
 
 ---
 
-# 11. Shared Status / Feedback / Recovery Patterns
+# 11. 共享状态、反馈与恢复模式
 
 以下不是另一套页面，而是跨多个 Screen Family 复用的统一 Interaction Pattern。每个 Pattern 的实际截图仍回填到它出现的页面章节。
 
@@ -1481,7 +1481,7 @@ UI 必须说具体原因：
 
 ---
 
-# 12. Complete User Flows
+# 12. 完整用户流程
 
 Interaction Flow 只把 PRD Product Flow 映射到具体 Screen、入口、返回与状态，不建立第二套 User Flow。
 
@@ -1553,7 +1553,7 @@ flowchart TB
 
 ---
 
-# 13. Side Panel vs Full-page Adaptation Rules
+# 13. Side Panel 与 Full-page 适配规则
 
 | Topic                      | Side Panel                      | Full-page                  |
 | -------------------------- | ------------------------------- | -------------------------- |
@@ -1578,7 +1578,7 @@ flowchart TB
 
 ---
 
-# 14. Screen Design Deliverables & Final Screenshot Backfill
+# 14. 页面设计交付物与最终截图回填
 
 每个上表中的完整 Screen / 重要 State 后续都应作为同一份 Spec 的组成部分继续维护。开发完成后：
 
@@ -1622,7 +1622,7 @@ Interaction & IA Spec 在开发前定义设计，在开发完成后做一次 Fin
 
 本版设计阶段使用以下占位规则：
 
-> **Final implementation screenshot: To be inserted after implementation.**
+> **最终实现截图：实现完成后回填。**
 
 ## 14.2 Gate integration
 
@@ -1659,7 +1659,7 @@ README 不成为新的产品事实源。
 
 ---
 
-# 15. Relationship to PRD Product Flow
+# 15. 与 PRD 产品流程的关系
 
 Interaction Flow 不是第二套 User Flow。
 
@@ -1695,7 +1695,7 @@ Course Brief
 
 ---
 
-# 16. Technical Design Handoff Boundaries
+# 16. Technical Design 交接边界
 
 Technical Design 可以决定：
 
@@ -1725,11 +1725,11 @@ Technical Design 不得改变：
 
 如果实现要求改变以上规则：
 
-> **Product Conflict — return to Product Design.**
+> **产品冲突 — 返回 Product Design 决策。**
 
 ---
 
-# 17. Final Interaction Acceptance Summary
+# 17. 最终交互验收总结
 
 v0.2.0 Interaction & IA 在进入 Technical Design 前应满足：
 
@@ -1755,7 +1755,7 @@ v0.2.0 Interaction & IA 在进入 Technical Design 前应满足：
 - Screen Family 已直接作为本 Spec 的正式章节结构；每个页面类别的 Screen 清单、设计说明与截图回填位置在同一章内维护；
 - 开发后的 final screenshot backfill 与 README walkthrough 已成为正式交付要求。
 
-> **Interaction & Information Architecture Design v0.2.0 — Closed. Ready for Technical Design.**
+> **v0.2.0 交互与信息架构设计已收口，可进入 Technical Design。**
 
 ---
 
@@ -1827,7 +1827,7 @@ v0.2.0 Interaction & IA 在进入 Technical Design 前应满足：
 
 ---
 
-# 附录 A. Final Implementation Screenshots
+# 附录 A. 最终实现截图
 
 每张截图都来自 v0.2.0 的最终真实实现，由 `npm run gate:2` 的自动化浏览器路径生成，
 不是设计稿或生成式示意图。Side Panel 与 Full-page 布局差异明显时分别截图。
@@ -1836,232 +1836,232 @@ v0.2.0 Interaction & IA 在进入 Technical Design 前应满足：
 
 ![Current Semester Dashboard (Full-page)](docs/versions/v0.2.0/images/SEM-01.png)
 
-Full-page entry point. The header carries the semester name, which doubles as the Current / Historical switcher, and the Semester Status Area on the right. Each established Course card is a lightweight Course Brief preview grouped by Assessment type. A Course that has not been set up carries the same card, with the prompt line where the others carry a status cue and no preview above it.
+Full-page 入口。页头显示 Semester 名称，同时作为 Current / Historical 切换器，右侧为 Semester Status Area。每张已建立 Course 卡片提供按 Assessment 类型分组的轻量 Course Brief 预览。未建立的 Course 仍使用同一卡片结构，但不显示预览，而在状态位置显示引导文案。
 
 ## SEM-02 — Current Semester Course List (Side Panel)
 
 ![Current Semester Course List (Side Panel)](docs/versions/v0.2.0/images/SEM-02.png)
 
-The Side Panel's semester view. It lists the semester's Courses for switching and deliberately does not repeat the dashboard's Assessment preview; `Open full dashboard` hands over to the Full-page surface.
+Side Panel 的 Semester 视图列出本学期 Course，供用户快速切换，不重复 Dashboard 中的 Assessment 预览。`Open full dashboard` 将用户带到 Full-page 界面。
 
 ## SEM-03 — Semester Switcher
 
 ![Semester Switcher](docs/versions/v0.2.0/images/SEM-03.png)
 
-Clicking the semester name expands the Current / Historical Semester list. There is no permanent Current / Historical navigation.
+点击 Semester 名称后展开 Current / Historical Semester 列表。产品不设置常驻的 Current / Historical 导航。
 
 ## SEM-04 — Historical Semester Dashboard (Full-page)
 
 ![Historical Semester Dashboard (Full-page)](docs/versions/v0.2.0/images/SEM-04.png)
 
-A past semester keeps the same browsing structure but offers no `Check for updates` and is never a target of background checking. Every Course Brief, field and Evidence record stays readable.
+历史 Semester 保留相同的浏览结构，但不提供 `Check for updates`，也永远不成为后台检查目标。所有 Course Brief、字段和 Evidence 记录仍可阅读。
 
 ## SEM-05 — Historical Semester Course List (Side Panel)
 
 ![Historical Semester Course List (Side Panel)](docs/versions/v0.2.0/images/SEM-05.png)
 
-The Side Panel equivalent for a past semester.
+这是历史 Semester 在 Side Panel 中的对应视图。
 
 ## SEM-06 — Empty Semester
 
 ![Empty Semester](docs/versions/v0.2.0/images/SEM-06.png)
 
-A semester with no Curriculum Course shows a single quiet line. There is no setup wizard and no Scan affordance.
+没有 Curriculum Course 的 Semester 只显示一行安静的空状态说明，不显示设置向导或 Scan 入口。
 
 ## SEM-07 — Not Established Course Prompt
 
 ![Not Established Course Prompt](docs/versions/v0.2.0/images/SEM-07.png)
 
-Choosing a Course Syllab has not been set up for asks one question before anything happens. The Course is only established after the user explicitly selects `Scan course`: auto-discovery is never auto-scan.
+用户选择尚未建立的 Course 后，Syllab 先征询一次，不直接执行任务。只有用户明确选择 `Scan course` 后 Course 才会建立：自动发现永远不等于自动 Scan。
 
 ## CRS-01 — Course Brief (Full-page)
 
 ![Course Brief (Full-page)](docs/versions/v0.2.0/images/CRS-01.png)
 
-Current Course State is the default body of the Course view. Assessments are grouped in the fixed order Assignments / Projects / Quizzes & Tests / Exams / Other; a Component sits under its parent, an Assessment Series shows its instances beneath it, and Course-wide Constraints come last. No raw JSON and no internal identifiers appear anywhere.
+Current Course State 是 Course 视图的默认主体。Assessment 固定按 Assignments / Projects / Quizzes & Tests / Exams / Other 分组；Component 位于所属父项之下，Assessment Series 在下方列出实例，Course-wide Constraint 最后显示。页面不显示 raw JSON 或内部标识符。
 
 ## CRS-02 — Course Brief (Side Panel)
 
 ![Course Brief (Side Panel)](docs/versions/v0.2.0/images/CRS-02.png)
 
-The same Current Course State at Side Panel density. Objects, marks and Review semantics are identical; only the layout is narrower.
+Side Panel 显示同一份 Current Course State。对象、标记和 Review 语义完全一致，只是布局更窄。
 
 ## CRS-03 — Assessment Detail
 
 ![Assessment Detail](docs/versions/v0.2.0/images/CRS-03.png)
 
-Selecting an Assessment opens its detail and action state. Actions are not permanently attached to every card in the Brief.
+选择 Assessment 后打开其详情与操作状态。Course Brief 不会在每张卡片上常驻所有操作。
 
 ## CRS-04 — Assessment Edit
 
 ![Assessment Edit](docs/versions/v0.2.0/images/CRS-04.png)
 
-Editing happens in place on structured fields. The user edits a value, never JSON.
+编辑在结构化字段上原位完成。用户编辑的是值，而不是 JSON。
 
 ## CRS-05 — Evidence Reveal
 
 ![Evidence Reveal](docs/versions/v0.2.0/images/CRS-05.png)
 
-Clicking a fact swaps it in place for the original Evidence that supports it; clicking again returns to the fact. There is no modal, no separate Evidence page and no `View evidence` control.
+点击事实后，其位置切换为支持该事实的原始 Evidence；再次点击即返回事实。产品不使用弹窗、独立 Evidence 页面或 `View evidence` 控件。
 
 ## CRS-06 — No Assessments Found
 
 ![No Assessments Found](docs/versions/v0.2.0/images/CRS-06.png)
 
-A successful Scan that produced no Assessment is a normal state, not an error, and Manual Add Assessment remains available.
+Scan 成功但没有产生 Assessment 是正常状态，不是错误；Manual Add Assessment 仍然可用。
 
 ## ISC-01 — Scan Prompt
 
 ![Scan Prompt](docs/versions/v0.2.0/images/ISC-01.png)
 
-The first Scan for a Course starts from an explicit prompt.
+Course 的首次 Scan 从明确的用户确认开始。
 
 ## ISC-02 — Scan Working
 
 ![Scan Working](docs/versions/v0.2.0/images/ISC-02.png)
 
-One start carries the Scan through every safe stage. The UI names only the four user-facing stages and never shows a percentage or an internal pipeline name.
+用户只需启动一次，Scan 即会贯穿所有可安全自动执行的阶段。UI 只命名四个面向用户的阶段，不显示百分比或内部 pipeline 名称。
 
 ## ISC-03 — Scan Waiting — API Key
 
 ![Scan Waiting — API Key](docs/versions/v0.2.0/images/ISC-03.png)
 
-When the run needs the user's DeepSeek API key it says so and offers a way to fix it. `Waiting` is an internal state and is never the user-facing word.
+当运行需要用户的 DeepSeek API key 时，页面会说明原因并提供修复入口。`Waiting` 是内部状态，不作为面向用户的文案。
 
 ## ISC-04 — Scan Waiting — Permission / Authorization
 
 ![Scan Waiting — Permission / Authorization](docs/versions/v0.2.0/images/ISC-04.png)
 
-The same waiting pattern for host permission or the content-sending authorization. Completing the configuration resumes the original Scan context.
+需要 host permission 或内容发送授权时使用同一等待模式。用户完成配置后，继续原来的 Scan 上下文。
 
 ## ISC-05 — Scan Failed
 
 ![Scan Failed](docs/versions/v0.2.0/images/ISC-05.png)
 
-A failure that cannot continue offers `Try again` plus `View details`; stable error codes appear only inside the details.
+无法继续的失败提供 `Try again` 和 `View details`；稳定错误码只出现在详情中。
 
 ## ISC-06 — Scan Error Details
 
 ![Scan Error Details](docs/versions/v0.2.0/images/ISC-06.png)
 
-The user-readable reason comes first and the stable error code second.
+先显示用户可理解的原因，再显示稳定错误码。
 
 ## IRV-01 — Initial Review — Assessment
 
 ![Initial Review — Assessment](docs/versions/v0.2.0/images/IRV-01.png)
 
-One complete Assessment at a time with lightweight progress. `Confirm` is the primary action; structural correction stays behind `More…`.
+每次只 Review 一个完整 Assessment，并提供轻量进度。`Confirm` 是主操作；结构性修正放在 `More…` 中。
 
 ## IRV-02 — Initial Review — Edit
 
 ![Initial Review — Edit](docs/versions/v0.2.0/images/IRV-02.png)
 
-Editing an item during Review keeps the user inside the Review context.
+在 Review 中编辑项目时，用户始终留在当前 Review 上下文。
 
 ## IRV-03 — Same assessment as…
 
 ![Same assessment as…](docs/versions/v0.2.0/images/IRV-03.png)
 
-Merge is expressed in the user's own terms: this item is actually the same Assessment as an existing one.
+Merge 使用用户的语言表达：这一项实际上与某个现有项目是同一 Assessment。
 
 ## IRV-04 — Split
 
 ![Split](docs/versions/v0.2.0/images/IRV-04.png)
 
-Split handles the low-frequency case where one item actually contains two or more separate Assessments.
+Split 处理一个项目实际包含两个或更多独立 Assessment 的低频场景。
 
 ## IRV-05 — First-use Contextual Hint
 
 ![First-use Contextual Hint](docs/versions/v0.2.0/images/IRV-05.png)
 
-Structural actions teach themselves the first time only, inline, without covering the content and without a tutorial.
+结构性操作只在首次使用时进行原位自解释，不遮挡内容，也不引入教程。
 
 ## CRV-01 — Changed Field Review
 
 ![Changed Field Review](docs/versions/v0.2.0/images/CRV-01.png)
 
-Only the changed field is shown, as Current against Latest, with `Accept change` as the primary action and `Keep current` recorded as a real decision rather than permanent suppression.
+页面只显示发生变化的字段，以 Current 与 Latest 对照。`Accept change` 是主操作；`Keep current` 被记录为真实决策，而不是永久抑制。
 
 ## CRV-03 — Conflict Review
 
 ![Conflict Review](docs/versions/v0.2.0/images/CRV-03.png)
 
-Competing values stay side by side with their own Evidence. The product never recommends a source, and Current State is not overwritten until the user decides.
+竞争值与各自 Evidence 并列显示。产品不推荐某个 Source，在用户决定前不覆盖 Current State。
 
 ## CRV-04 — Possibly Removed Review
 
 ![Possibly Removed Review](docs/versions/v0.2.0/images/CRV-04.png)
 
-Keep and Remove are the two real decisions. A kept object stays inside Current State without fading, keeps its mark, and is not asked about again while the evidence stays absent.
+Keep 和 Remove 是两个真实决策。被保留的对象继续位于 Current State 中，不变淡并保留标记；只要 Evidence 仍然缺失，产品就不再反复询问。
 
 ## CRV-05 — Identity Uncertain Review
 
 ![Identity Uncertain Review](docs/versions/v0.2.0/images/CRV-05.png)
 
-When identity itself is unresolved the user is asked directly whether the two items are the same Assessment.
+当 identity 本身无法确定时，产品直接询问用户两个项目是否属于同一 Assessment。
 
 ## RBL-01 — Rebuild Confirmation
 
 ![Rebuild Confirmation](docs/versions/v0.2.0/images/RBL-01.png)
 
-Rebuild explains before it starts that the existing Current Course State stays unchanged until the new result is adopted.
+Rebuild 在开始前明确说明：在用户采用新结果前，现有 Current Course State 保持不变。
 
 ## RBL-02 — Rebuild Working
 
 ![Rebuild Working](docs/versions/v0.2.0/images/RBL-02.png)
 
-Rebuild reuses the Initial Scan stages rather than inventing its own progress language.
+Rebuild 复用 Initial Scan 的阶段表达，不另外发明一套进度语言。
 
 ## RBL-03 — Rebuilt Course Preview
 
 ![Rebuilt Course Preview](docs/versions/v0.2.0/images/RBL-03.png)
 
-The result is a complete rebuilt Course Brief, not a field-by-field diff. The decision is taken as a whole: use the rebuilt Course or keep the current one.
+结果是一份完整重建的 Course Brief，而不是逐字段 diff。用户以整体作出决策：使用重建后的 Course，或保留当前 Course。
 
 ## CAL-01 — Calendar Export Preview
 
 ![Calendar Export Preview](docs/versions/v0.2.0/images/CAL-01.png)
 
-Export reads Current Course State and never re-scans or re-calls the model, and the list and the file come from one call, so the preview cannot promise an event the download does not contain. Equivalent facts collapse into one event; unresolved Conflicts are excluded. A date the Source wrote without a year (`18 Oct`) is completed from the Course's Semester instead of being dropped, and a date the Source left open (the Final Exam's) is not a settled fact, so it appears in neither the list nor the file.
+Export 只读取 Current Course State，不重新 Scan，也不重新调用模型。预览列表与导出文件来自同一次计算，因此预览不会出现下载文件中缺失的事件。等价事实合并为一个事件，未解决 Conflict 不导出。Source 中未写年份的日期（如 `18 Oct`）使用 Course 所属 Semester 补全，而 Source 明确未定的日期（如 Final Exam 日期）不是已确定事实，因此不出现在列表或文件中。
 
 ## SET-01 — Settings
 
 ![Settings](docs/versions/v0.2.0/images/SET-01.png)
 
-One Full-page Settings entry covering AI, Authorization, Data and About. Entering Settings from a task returns to that task's exact context afterwards.
+Full-page 只提供一个 Settings 入口，覆盖 AI、Authorization、Data 和 About。用户从任务中进入 Settings 后，可返回该任务的精确上下文。
 
 ## SET-02 — AI — API Key
 
 ![AI — API Key](docs/versions/v0.2.0/images/SET-02.png)
 
-Only the DeepSeek API key is configured here; there is no model selector. The key is masked until revealed and is stored locally, never in a Backup.
+此处只配置 DeepSeek API key，不提供模型选择器。Key 默认遮罩，由用户主动显示；它只存储在本地，永远不进入 Backup。
 
 ## SET-04 — Authorization
 
 ![Authorization](docs/versions/v0.2.0/images/SET-04.png)
 
-Privacy Authorization and API Usage Authorization are separate: allowing course content to be sent to the model is not the same as allowing unlimited background spending.
+Privacy Authorization 与 API Usage Authorization 彼此独立：允许把 Course 内容发送给模型，不等于允许无限制后台调用。
 
 ## SET-05 — About
 
 ![About](docs/versions/v0.2.0/images/SET-05.png)
 
-The Product Mark and the product version, nothing more.
+此页只显示 Product Mark 与产品版本。
 
 ## BKP-01 — Data — Backup / Restore
 
 ![Data — Backup / Restore](docs/versions/v0.2.0/images/BKP-01.png)
 
-Backup exports the complete local Syllab state; the API key is explicitly not included and the user is not asked to choose Courses.
+Backup 导出完整的 Syllab 本地状态；明确不包含 API key，也不要求用户选择 Course。
 
 ## BKP-02 — Restore File Summary
 
 ![Restore File Summary](docs/versions/v0.2.0/images/BKP-02.png)
 
-Before anything is written, the backup is validated and summarised, and the Full Replace consequence is stated plainly.
+写入任何内容前，先校验 Backup 并显示摘要，同时清晰说明 Full Replace 的后果。
 
 ## BKP-04 — Restore Failed
 
 ![Restore Failed](docs/versions/v0.2.0/images/BKP-04.png)
 
-If validation or the write fails, the previous local state is left untouched and the failure says why.
+如校验或写入失败，之前的本地状态保持不变，且失败信息说明具体原因。

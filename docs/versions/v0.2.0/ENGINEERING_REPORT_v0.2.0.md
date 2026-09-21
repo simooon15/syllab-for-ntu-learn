@@ -1,6 +1,6 @@
 # Syllab for NTU Learn v0.2.0 — Engineering Report
 
-**Status:** FINAL · Development Complete · Engineering Freeze candidate  
+**Status:** FINAL · Development Complete · Engineering Freeze accepted
 **Final current-source CI:** PASS · 476 tests (Extension 454 / Backend 20 / Contracts 2)
 
 ## 1. Delivered implementation
@@ -129,6 +129,6 @@ release claims.
 ## 9. Engineering conclusion
 
 Development Complete: YES. Engineering blockers: NONE. Product-impacting Technical Conflict: NONE.
-The tested source is eligible for Engineering Freeze once repository reconciliation and the final
-document/evidence package are complete.
-
+The tested product source is frozen at `43de61aafd23661abcce3ba9335284f2e752ea41`.
+Repository reconciliation found no unique alternate commits, and Final Acceptance passed. Later
+documentation/packaging closure does not change product semantics.

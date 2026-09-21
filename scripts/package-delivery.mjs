@@ -19,7 +19,7 @@ const version = JSON.parse(
 ).version;
 const folderName = `Syllab-v${version}-delivery`;
 const outputPath = resolve("artifacts", `Syllab_v${version}_delivery.zip`);
-const extensionPackage = `artifacts/Syllab_Extension_v${version}.zip`;
+const extensionPackage = `artifacts/release/syllab-for-ntu-learn-v${version}.zip`;
 
 /** Everything a reader of this delivery needs, at the path the documents expect. */
 const contents = [
@@ -90,7 +90,7 @@ ${"=".repeat(48)}
 
 WHAT IS IN HERE
 
-  Syllab_Extension_v${version}.zip
+  artifacts/release/syllab-for-ntu-learn-v${version}.zip
       The extension itself, already built. Download this if you just want to use
       Syllab: unzip it and load the folder in Chrome (see README.md, or the
       HOW-TO-INSTALL.txt inside that zip). No Node, no build, no server.

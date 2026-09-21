@@ -22,7 +22,7 @@ const manifest = JSON.parse(
 );
 const version = manifest.version;
 const folderName = `Syllab-v${version}`;
-const outputPath = resolve("artifacts", `Syllab_Extension_v${version}.zip`);
+const outputPath = resolve("artifacts", "release", `syllab-for-ntu-learn-v${version}.zip`);
 const dist = resolve("extension", "dist");
 
 function run(command, args, env) {
@@ -100,8 +100,8 @@ FIRST USE
    The Side Panel opens on that course.
 
 7. Add your own DeepSeek API key when Syllab asks for it (Settings -> AI).
-   The key is stored locally on this computer only. It is never uploaded,
-   never included in a backup, and never sent anywhere except DeepSeek.
+   The key is stored in this Chrome profile and sent directly to DeepSeek for
+   validation and AI inference. It is never included in a backup or repository.
 
 8. Choose "Scan course" on a course that has not been set up yet, then review the
    assessments Syllab found. After that, Syllab maintains the course quietly in
@@ -122,7 +122,8 @@ NOTES
 2. 打开 chrome://extensions，右上角开启「开发者模式」。
 3. 点击「加载已解压的扩展程序」，选择包含 manifest.json 的这个文件夹。
 4. 打开 NTU Learn 课程页，点击工具栏上的 Syllab 图标，侧边栏会打开该课程。
-5. 在 Settings → AI 填入你自己的 DeepSeek API Key（仅保存在本机，不会上传）。
+5. 在 Settings → AI 填入你自己的 DeepSeek API Key。Key 保存在当前 Chrome profile，
+   仅在校验与 AI 推理时直接发送给 DeepSeek，不进入 Backup 或代码仓库。
 6. 选择 "Scan course" 建立课程；之后的日常使用中 Syllab 会在后台安静维护。
 
 若重新构建或重新加载了扩展，请刷新所有已打开的 NTU Learn 标签页。
@@ -138,7 +139,7 @@ for (const relative of files) {
 }
 const archive = zipSync(entries, { level: 9, mtime: new Date("2026-01-01T00:00:00Z") });
 
-await mkdir(resolve("artifacts"), { recursive: true });
+await mkdir(resolve("artifacts", "release"), { recursive: true });
 await writeFile(outputPath, archive);
 await rm(staging, { recursive: true, force: true });
 

@@ -27,6 +27,7 @@
     "package": "node scripts/package-extension.mjs",
     "package:verify": "node scripts/verify-package.mjs",
     "package:delivery": "node scripts/package-delivery.mjs",
+    "package:handoff": "node scripts/package-final-handoff.mjs",
     "readme:verify": "node scripts/verify-readme-backfill.mjs",
     "docs:verify": "node scripts/verify-documented-facts.mjs",
     "ci": "npm run format:check && npm run build && npm run typecheck && npm run lint && npm test && npm run validate:manifest && npm run secret:scan && npm run docs:verify && npm run readme:verify && npm run build:qa && npm run verify:builds",

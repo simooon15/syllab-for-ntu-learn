@@ -9,8 +9,8 @@
 - Final current-source CI: PASS · 476 tests (Extension 454 / Backend 20 / Contracts 2)
 - Product-impacting Technical Conflict: NONE
 - Remaining engineering blocker: NONE
-- Next milestone: local consolidation and release readiness; no tag, push, GitHub Release, or Phase 3
-  is authorized by this handoff.
+- Local consolidation and release-readiness documentation are complete. The next milestone is
+  Product Owner approval for tag, push, and GitHub Release; none is authorized by this handoff.
 
 ## Canonical repository
 
@@ -22,8 +22,9 @@
 - Reconciliation: current tested workspace retained as source of truth; no alternate checkout had a
   unique commit; no old checkout was deleted/reset/overwritten.
 
-The exact freeze commit is the commit containing this index and is recorded in Git history. This
-package does not tag or publish it.
+The immutable tested product baseline is `43de61aafd23661abcce3ba9335284f2e752ea41`.
+Documentation/packaging closure may follow it without changing product semantics. This handoff does
+not tag or publish either commit.
 
 ## Current authoritative documents
 
@@ -35,6 +36,10 @@ package does not tag or publish it.
 5. `Interaction_and_Information_Architecture_Spec_v0.2.0.md` — final screen/interaction contract.
 6. `TECHNICAL_DESIGN_v0.2.0.md` — final technical contract.
 7. `FINAL_ACCEPTANCE_v0.2.0.md` — document-and-evidence-based acceptance result.
+8. `FINAL_PROJECT_CLOSURE_v0.2.0.md` — local closure and exact public-artifact contract.
+9. `RELEASE_NOTES_v0.2.0.md` — user-facing release summary and limitations.
+10. `LOCAL_WORKSPACE_CONSOLIDATION_v0.2.0.md` — repository/artifact inventory and post-release
+    cleanup plan.
 
 ## Historical/reference documents
 
@@ -60,4 +65,3 @@ package does not tag or publish it.
 This compact handoff contains no API key, Authorization header, cookie, login/profile, raw NTU
 private content, QA Chrome profile, or raw AI prompt/reasoning/output stream. Large local runtime and
 cost exports remain outside this package.
-

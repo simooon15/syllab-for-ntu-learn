@@ -8,8 +8,9 @@
  *
  * The QA observation layer is the same shape of risk: its call sites sit inside product modules, so
  * a build that resolved one of them to the real module instead of the stub would ship telemetry.
- * Its storage key, its module and its event names are all listed, and the `qa.` prefix makes an
- * event name something no product string, class or scenario name can collide with.
+ * Its storage key, callable identifiers and event names are listed. The inert production stub's
+ * source-path comment may name `qa-telemetry.disabled.ts`; that name alone is not executable
+ * telemetry, while every real storage/call/event marker remains forbidden.
  *
  * `scripts/verify-documented-facts.mjs` is not part of this: it reads documents, not bundles.
  */
@@ -24,7 +25,6 @@ export const RELEASE_FORBIDDEN = [
   "isE2eMessage",
   "e2e-fixtures",
   "syllab.qa.trace",
-  "qa-telemetry",
   "qaTrace",
   "qaBuild",
   "qa.date-resolution",

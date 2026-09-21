@@ -17,8 +17,12 @@ import { KEY_SHAPE, forbiddenHits } from "./lib/release-markers.mjs";
 const version = JSON.parse(
   await readFile(resolve("extension", "public", "manifest.json"), "utf8")
 ).version;
-const archivePath = resolve("artifacts", `Syllab_Extension_v${version}.zip`);
+const archivePath = resolve("artifacts", "release", `syllab-for-ntu-learn-v${version}.zip`);
 const folderName = `Syllab-v${version}`;
+// Stable Chrome no longer guarantees support for command-line sideloading. This verifier uses
+// Playwright's extension-capable Chromium for a deterministic clean-profile check; release
+// closure separately performs the ordinary Chrome UI "Load unpacked" smoke on this exact extract.
+const browserExecutable = chromium.executablePath();
 
 const archive = new Uint8Array(await readFile(archivePath));
 const entries = unzipSync(archive);
@@ -64,7 +68,7 @@ for (const [name, bytes] of Object.entries(entries)) {
 
 const profile = await mkdtemp(join(tmpdir(), "syllab-verify-profile-"));
 const context = await chromium.launchPersistentContext(profile, {
-  executablePath: chromium.executablePath(),
+  executablePath: browserExecutable,
   headless: false,
   args: [`--disable-extensions-except=${root}`, `--load-extension=${root}`, "--no-first-run"]
 });
@@ -121,6 +125,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   process.stdout.write(
-    `Package verification passed: ${String(names.length)} entries, loads as an unpacked extension, app and Side Panel render.\n`
+    `Package verification passed: ${String(names.length)} entries, loads as an unpacked extension in ${browserExecutable}, app and Side Panel render.\n`
   );
 }

@@ -43,10 +43,16 @@ versioned evidence files; it has not been rewritten as original intent.
 
 - Filename: `syllab-for-ntu-learn-v0.2.0.zip`
 - Repository location: `artifacts/release/syllab-for-ntu-learn-v0.2.0.zip`.
+- SHA-256: `89cc0c94bd4cefbe9a6f75c540d0f5cf1966c2b0b397265c13aa3ff9aee3aeac`.
 - Archive root: `Syllab-v0.2.0/`
 - Installation: Chrome Developer mode → Load unpacked → select the archive root after extraction.
 - The exact archive must pass manifest, secret, Production/QA separation, archive-content, and
   ordinary Chrome load/render checks before publication approval.
+
+Final validation passed: the exact ZIP cleanly extracted under the required root; manifest,
+secret, QA-contamination, and Production-only checks passed; its app and Side Panel rendered from a
+clean extension-capable Chromium profile; and ordinary Google Chrome 153 registered the exact
+extracted path through **Load unpacked**.
 
 ## Security/privacy boundary
 

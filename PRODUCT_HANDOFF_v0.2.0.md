@@ -3,7 +3,7 @@
 **产品版本：** v0.2.0  
 **文档状态：** Final Product Handoff · Engineering Freeze / Final Acceptance  
 **下一里程碑：** Local consolidation and release readiness（本文不授权发布）  
-**事实源优先级：** `PRD_v0.2.0.md` 定义“要做什么”；本文定义当前已锁定的 AI 行为与后续设计 / 技术实现不可破坏的交接约束。  
+**事实源优先级：** `PRD_v0.2.0.md` 定义“要做什么”；`docs/versions/v0.2.0/AI_DESIGN_v0.2.0.md` 定义当前 AI 行为与策略；本文只保留已交付状态与必要交接约束。
 **语言规范：** 产品实际模块名、对象名、状态名及必要技术标识保留 English；说明性内容使用中文。
 
 ---
@@ -77,17 +77,15 @@ Technical Design 必须同时读取 `PRD_v0.2.0.md`、本文与 `Interaction_and
 - Technical Design open questions；
 - Development / Gate 测试原则。
 
-## 2.3 不再创建独立最终 AI Spec
+## 2.3 AI Design 事实源
 
-AI 产品级结论已合并进 PRD。
+`docs/versions/v0.2.0/AI_DESIGN_v0.2.0.md` 是 v0.2.0 current AI behavior / logic / policy 的唯一
+authoritative source。本 Handoff 中保留的 Prompt baseline、Context 与 Evaluation 段落是发布时交接记录；
+如需判断 current policy，以 AI Design 为准。决策过程见 Decision Log，实现与验证见
+Engineering Report。
 
-Prompt / Context / Evaluation / implementation-facing contract 集中保留在本文。
-
-最终产品设计阶段正式事实源保持：
-
-1. `PRD_v0.2.0.md`
-2. `PRODUCT_HANDOFF_v0.2.0.md`
-3. `Interaction_and_Information_Architecture_Spec_v0.2.0.md`
+v0.2.0 的 Five Core Product Archives 是 README snapshot、PRD、Product Handoff、
+Interaction & Information Architecture / Page Design 和 AI Design。
 
 页面 / 状态的完整设计、实现与最终截图清单统一内置于 `Interaction_and_Information_Architecture_Spec_v0.2.0.md` 的 **Screen Architecture & Page Classification** 章节，不再维护独立 Screen Inventory 文档。
 

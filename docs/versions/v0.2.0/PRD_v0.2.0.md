@@ -792,12 +792,13 @@ Task A / B / C Prompt baseline 已完成，并以真实 `deepseek-flash` 进行 
 
 ### 5.8.8 AI Design 最终文档归属
 
-不再单独维护第三份最终 AI Spec。
+从 post-release documentation addendum 起，`AI_DESIGN_v0.2.0.md` 是 v0.2.0 当前 AI 行为与策略的
+唯一 authoritative source。
 
-最终文档归属：
-
-- **PRD_v0.2.0.md**：保存产品级 AI 行为、边界、语义和验收原则。
-- **PRODUCT_HANDOFF_v0.2.0.md**：保存 Prompt baseline、Context contract、结构化输出约束、Evaluation 结论和实现交接事项。
+本 PRD 只保留产品层 AI role、requirements、boundaries 与 acceptance intent；Prompt policy、
+Task A / B / C current contract、invocation、retry / recovery、cache / fingerprint、
+stale-worker、observability、Evaluation 与 AI limitations 统一引用 AI Design。历史决策
+过程仍保留在 Decision Log 与 Engineering Report，不因事实源收口而重写。
 
 ### 5.8.9 基础可靠性收口
 

@@ -4,10 +4,12 @@ This is the index for Syllab's durable project rules. `AGENTS.md` remains the sh
 repository-wide hard rules; detailed long-term rules are grouped by subject here:
 
 - [`rules/product-version-archives.md`](rules/product-version-archives.md) — version directories,
-  version transitions, the three core Product archives and the boundary between Product archives
+  version transitions, the five core Product archives and the boundary between Product archives
   and engineering records.
 - [`rules/public-readme-and-screenshots.md`](rules/public-readme-and-screenshots.md) — the current
   public README, historical README snapshots and the README screenshot lifecycle.
+- [`rules/documentation-language.md`](rules/documentation-language.md) — the Chinese-first language
+  rule for formal project documents and the boundary for retained English product/technical terms.
 - [`design-system.md`](design-system.md) — interface tokens, typography, components and rejected
   visual directions.
 - [`fixture-policy.md`](fixture-policy.md) — fixture privacy and storage of real acceptance evidence.

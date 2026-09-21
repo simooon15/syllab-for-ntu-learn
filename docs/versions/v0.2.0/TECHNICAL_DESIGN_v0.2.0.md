@@ -265,6 +265,10 @@ Intervals are configuration constants covered by fake-clock tests, not user-faci
 
 ## 8. Task A/B/C calls and context retrieval
 
+AI behavior、Prompt policy、invocation / retry / recovery、cache identity、observability 与 AI limitation 的
+current authoritative source 是 `AI_DESIGN_v0.2.0.md`。本章保留 modules、interfaces、data flow、
+validation 与实现架构；其中的历史 baseline / correction 段落是工程事实，不建立平行 AI policy。
+
 ### 8.1 Physical call strategy
 
 Logical tasks remain separate. v0.2.0 uses separate physical calls for A, B, and C because this

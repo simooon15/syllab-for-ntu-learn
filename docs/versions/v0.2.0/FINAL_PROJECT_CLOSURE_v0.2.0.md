@@ -23,11 +23,13 @@
 
 ## Authoritative document index
 
+- `README_v0.2.0.md` — immutable released README snapshot.
 - `PRD_v0.2.0.md` — final product definition.
-- `PRODUCT_HANDOFF_v0.2.0.md` — final Product/AI handoff.
+- `PRODUCT_HANDOFF_v0.2.0.md` — final Product handoff.
+- `Interaction_and_Information_Architecture_Spec_v0.2.0.md` — final interaction contract.
+- `AI_DESIGN_v0.2.0.md` — current AI behavior and policy.
 - `DECISION_LOG_v0.2.0.md` — chronological durable decisions.
 - `ENGINEERING_REPORT_v0.2.0.md` — implementation and evidence.
-- `Interaction_and_Information_Architecture_Spec_v0.2.0.md` — final interaction contract.
 - `TECHNICAL_DESIGN_v0.2.0.md` — final as-built technical contract.
 - `FINAL_ACCEPTANCE_v0.2.0.md` — accepted milestone result.
 
@@ -100,9 +102,18 @@ They are not represented as v0.2.0 capabilities.
 - Released version node: `v0.2.0`.
 - The project root and the version root contain the released bilingual README and eight screenshot
   blocks each.
-- The version node contains PRD, Product Handoff, Decision Log, Engineering Report,
-  Interaction/IA, Technical Design, Final Acceptance, Final Project Closure, and Release Notes.
+- The Five Core Product Archives are the version-root README snapshot plus PRD, Product Handoff,
+  Interaction/IA, and AI Design child documents.
+- Decision Log, Engineering Report, Technical Design, Final Acceptance, Final Project Closure, and
+  Release Notes remain useful engineering, decision, verification, and historical records.
 - The existing `v0.1.0` node remains unchanged.
+
+## Post-release documentation addendum
+
+The public `v0.2.0` tag, GitHub Release, and Extension binary remain immutable. A later
+documentation-only commit adds `AI_DESIGN_v0.2.0.md`, adopts the Five Core Product Archives model,
+and records the Chinese-first global documentation rule. It does not change released product source
+or the public ZIP.
 
 ## Final status
 

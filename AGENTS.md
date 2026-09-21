@@ -53,7 +53,7 @@ Before acting, automatically read the branch rule documents relevant to the task
 the user to name them. Start from the governance index when a task spans more than one category or
 when the correct branch is unclear.
 
-- [`docs/project-governance.md`](docs/project-governance.md) — version lifecycle, the three core
+- [`docs/project-governance.md`](docs/project-governance.md) — version lifecycle, the five core
   Product archives, public README and screenshot-rule index. It also defines how branch rules are
   organized and extended.
 - [`docs/design-system.md`](docs/design-system.md) — interface tokens, typography, components and

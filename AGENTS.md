@@ -28,8 +28,10 @@ user to supply it through their own environment when required.
 **A user-visible change is a Product decision, not an implementation detail.** Get the user's
 sign-off before adding a derived value, changing a control's behaviour or changing confirmed copy.
 
-**Ask before committing.** Use a conventional-commit subject and explain what changed and why in the
-body. `.claude/`, `.codex/` and `dist/` stay out of history.
+**Ask before committing unless the Product Owner has explicitly authorized the current commit/push.**
+Use a conventional-commit subject and explain what changed and why in the body. `.claude/`, `.codex/`
+and `dist/` stay out of history unless a later authoritative rule explicitly changes that repository
+history policy.
 
 **No assistant signs its work or claims another's.** Do not add model or tool attribution to commits,
 documents or comments, and do not describe another assistant's work as your own.
@@ -37,6 +39,12 @@ documents or comments, and do not describe another assistant's work as your own.
 **Durable knowledge belongs in the repository.** Do not rely on private memory, session history or
 tool-local settings for anything a later session needs. Record lasting constraints, decisions and
 gotchas in the appropriate project document.
+
+**Cross-agent project synchronization follows
+[`docs/PROJECT_COLLABORATION_MODEL.md`](docs/PROJECT_COLLABORATION_MODEL.md).**
+For bulk or incremental project transfer, prefer Google Drive for desktop plus filesystem-native
+sync over model-mediated per-file upload/download. Physical file sync may be bidirectional, but code,
+Product documents and release state retain their separate authorities defined in that document.
 
 ## Completion gate
 
@@ -53,6 +61,9 @@ Before acting, automatically read the branch rule documents relevant to the task
 the user to name them. Start from the governance index when a task spans more than one category or
 when the correct branch is unclear.
 
+- [`docs/PROJECT_COLLABORATION_MODEL.md`](docs/PROJECT_COLLABORATION_MODEL.md) — Product ↔ Engineering
+  collaboration model, Google Drive shared mirror, filesystem-native sync, Handoff / Sync Manifest,
+  conflict protection and file authority.
 - [`docs/DOCUMENTATION_GOVERNANCE.md`](docs/DOCUMENTATION_GOVERNANCE.md) — documentation audiences,
   language policy, Product archives and the README lifecycle.
 - [`docs/project-governance.md`](docs/project-governance.md) — index of the remaining durable

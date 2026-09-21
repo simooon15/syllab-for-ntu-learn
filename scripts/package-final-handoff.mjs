@@ -30,7 +30,8 @@ const documents = [
   "docs/versions/v0.2.0/RELEASE_NOTES_v0.2.0.md",
   "docs/versions/v0.2.0/LOCAL_WORKSPACE_CONSOLIDATION_v0.2.0.md",
   "docs/versions/v0.2.0/PRD_TO_ENGINEERING_FREEZE_DECISION_DELTA_v0.2.0.md",
-  "docs/versions/v0.2.0/ENGINEERING_FREEZE_HANDOFF_INDEX_v0.2.0.md"
+  "docs/versions/v0.2.0/ENGINEERING_FREEZE_HANDOFF_INDEX_v0.2.0.md",
+  "docs/versions/v0.2.0/images"
 ];
 
 async function walk(directory, prefix = "") {
@@ -56,7 +57,7 @@ const root = join(staging, folderName);
 for (const relative of documents) {
   const target = join(root, relative);
   await mkdir(join(target, ".."), { recursive: true });
-  await cp(resolve(relative), target);
+  await cp(resolve(relative), target, { recursive: true });
 }
 
 const index = `# Syllab v${version} — Final Closure Handoff Index

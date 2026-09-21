@@ -76,19 +76,44 @@ const index = `# Syllab v${version} — Final Closure Handoff Index
 - HEAD at packaging time: ${gitHead}
 - Frozen product baseline: 43de61aafd23661abcce3ba9335284f2e752ea41
 
-## Public release candidate
+## CURRENT AUTHORITATIVE
+
+- README.md
+- PRD_v${version}.md
+- PRODUCT_HANDOFF_v${version}.md
+- docs/versions/v${version}/DECISION_LOG_v${version}.md
+- docs/versions/v${version}/ENGINEERING_REPORT_v${version}.md
+- Interaction_and_Information_Architecture_Spec_v${version}.md
+- docs/versions/v${version}/TECHNICAL_DESIGN_v${version}.md
+- docs/versions/v${version}/FINAL_ACCEPTANCE_v${version}.md
+- docs/versions/v${version}/FINAL_PROJECT_CLOSURE_v${version}.md
+- docs/versions/v${version}/RELEASE_NOTES_v${version}.md
+
+## HISTORICAL / REFERENCE
+
+- docs/versions/v${version}/PRD_TO_ENGINEERING_FREEZE_DECISION_DELTA_v${version}.md
+- docs/versions/v${version}/ENGINEERING_FREEZE_HANDOFF_INDEX_v${version}.md
+
+These retain historical truth and must not be rewritten as if later decisions were original.
+
+## PUBLIC RELEASE ARTIFACT
 
 - Repository path: artifacts/release/${basename(publicPackage)}
 - SHA-256: ${packageSha256}
 - Archive root: Syllab-v${version}/
 - Exact archive validation: see FINAL_PROJECT_CLOSURE_v${version}.md and release-readiness result.
 
-## Document authority
+## NEXT-VERSION INPUT
 
-Start with README.md, PRD_v${version}.md, PRODUCT_HANDOFF_v${version}.md,
-DECISION_LOG_v${version}.md, ENGINEERING_REPORT_v${version}.md,
-TECHNICAL_DESIGN_v${version}.md, FINAL_ACCEPTANCE_v${version}.md, and
-FINAL_PROJECT_CLOSURE_v${version}.md. The PRD-to-freeze delta is historical truth and must remain.
+Deferred inputs are Mixed/image-only PDF OCR/multimodal support, adaptive parallelism,
+multi-source/token-aware packing, and privacy-safe AI progress monitoring. Calendar/F36 remains
+NOT TESTED in a real Course and is not represented as a verified v0.2.0 capability.
+
+## Known limitations and cleanup
+
+See FINAL_PROJECT_CLOSURE_v${version}.md for release limitations and
+LOCAL_WORKSPACE_CONSOLIDATION_v${version}.md for the post-release cleanup plan. No old repository,
+worktree, private QA evidence, or historical artifact is deleted by this handoff.
 
 ## Exclusions
 

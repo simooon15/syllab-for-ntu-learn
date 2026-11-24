@@ -133,13 +133,19 @@ export class ViewHandler {
    * session storage before the first message is served.
    */
   private async hydrate(): Promise<void> {
-    this.rehydrated ??= (async () => {
-      const stored = await this.dependencies.session.get(ROUTE_STORAGE_KEY);
-      if (typeof stored !== "object" || stored === null) return;
-      for (const [key, value] of Object.entries(stored as Record<string, unknown>)) {
-        if (isRoute(value)) this.dependencies.surfaceRoutes.set(key, value);
-      }
-    })();
+    if (!this.rehydrated) {
+      const load = (async () => {
+        const stored = await this.dependencies.session.get(ROUTE_STORAGE_KEY);
+        if (typeof stored !== "object" || stored === null) return;
+        for (const [key, value] of Object.entries(stored as Record<string, unknown>)) {
+          if (isRoute(value)) this.dependencies.surfaceRoutes.set(key, value);
+        }
+      })();
+      this.rehydrated = load.catch((error: unknown) => {
+        this.rehydrated = null;
+        throw error;
+      });
+    }
     return this.rehydrated;
   }
 

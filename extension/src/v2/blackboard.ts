@@ -93,7 +93,7 @@ export function structureFromHtml(raw: string): { text: string; structure: strin
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ");
   const blocks = withoutScripts
-    .split(/<\/(p|div|li|tr|h[1-6]|section|article|table|ul|ol)>/gi)
+    .split(/<\/(?:p|div|li|tr|h[1-6]|section|article|table|ul|ol)>/gi)
     .map((block) => block.replace(/<[^>]+>/g, " "));
   const structure: string[] = [];
   const lines: string[] = [];
@@ -123,7 +123,9 @@ function decodeEntities(value: string): string {
       entity.startsWith("#x") || entity.startsWith("#X")
         ? Number.parseInt(entity.slice(2), 16)
         : Number.parseInt(entity.slice(1), 10);
-    return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+    return Number.isInteger(code) && code >= 0 && code <= 0x10ffff
+      ? String.fromCodePoint(code)
+      : match;
   });
 }
 
@@ -245,11 +247,13 @@ export class BlackboardMachinePort implements MachinePort {
             ? "ok"
             : "failed",
       parseStatus:
-        parsed.status === "ok" || parsed.status === "partial"
-          ? parsed.status
-          : parsed.status === "unsupported"
-            ? "unsupported"
-            : "failed",
+        parsed.status === "permission-denied"
+          ? "not-attempted"
+          : parsed.status === "ok" || parsed.status === "partial"
+            ? parsed.status
+            : parsed.status === "unsupported"
+              ? "unsupported"
+              : "failed",
       ...(parsed.errorCode ? { errorCode: parsed.errorCode } : {})
     };
   }

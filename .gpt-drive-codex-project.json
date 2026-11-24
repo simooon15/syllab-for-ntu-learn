@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "project_id": "03837f29ef364a71b6aacc6e138732a0",
+  "handoffs": {
+    "inbound": "docs/collaboration/CHATGPT_TO_CODEX_HANDOFF.md",
+    "outbound": "docs/collaboration/CODEX_TO_CHATGPT_HANDOFF.md"
+  }
+}

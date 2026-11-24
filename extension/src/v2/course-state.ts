@@ -830,7 +830,14 @@ export function acceptChange(
   }
 
   if (!change.field) throw new StateGuardError("CHANGE_FIELD_MISSING");
-  const constraintResult = ruleChange(snapshot, change, nextValue, input.now, "CHANGE_ACCEPTED");
+  const constraintResult = ruleChange(
+    snapshot,
+    change,
+    nextValue,
+    input.now,
+    "CHANGE_ACCEPTED",
+    input.evidenceRefs
+  );
   if (constraintResult) return constraintResult;
   const existing = snapshot.facts.filter(
     (f) =>

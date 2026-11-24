@@ -574,6 +574,8 @@ export function deepSeekTransport(
         system: request.system,
         user: request.user,
         maxTokens: request.maxTokens,
+        ...(request.reasoningCycleGuard ? { reasoningCycleGuard: true as const } : {}),
+        ...(request.reasoningEffort ? { reasoningEffort: request.reasoningEffort } : {}),
         ...(request.providerRequestCompatibility
           ? { providerRequestCompatibility: request.providerRequestCompatibility }
           : {}),

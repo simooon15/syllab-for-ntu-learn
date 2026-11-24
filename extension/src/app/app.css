@@ -1920,7 +1920,8 @@ select:focus {
   .rubric-score-pair {
     break-inside: avoid;
   }
-  .assessment-detail > .action-row {
+  .assessment-detail > .actions,
+  .qa-ai-monitor {
     display: none;
   }
 }

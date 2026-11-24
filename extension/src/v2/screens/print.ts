@@ -16,8 +16,12 @@ export function installPrintDisclosure(): void {
     for (const [node, open] of states) if (node.isConnected) node.open = open;
     states.clear();
     document.querySelectorAll(".course-print-document").forEach((node) => node.remove());
-    document
-      .querySelectorAll(".has-print-document")
-      .forEach((node) => node.classList.remove("has-print-document"));
+    document.querySelectorAll<HTMLElement>(".has-print-document").forEach((node) => {
+      node.classList.remove("has-print-document");
+      delete node.dataset.printMode;
+    });
+    document.querySelectorAll<HTMLElement>(".course-screen[data-print-mode]").forEach((node) => {
+      delete node.dataset.printMode;
+    });
   });
 }

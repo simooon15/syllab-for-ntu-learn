@@ -1,4 +1,4 @@
-import { isParsedTextUnit } from "../parser/domain";
+import { isParsedTextUnit, type ParsedTextUnit } from "../parser/domain";
 import { CONTRACT_VERSION, isRecord } from "@syllab/contracts";
 
 import { fetchAttachmentPayload } from "../fetch/attachment-fetcher";
@@ -8,7 +8,13 @@ import { canonicalizeOffice } from "./office-runtime";
 import { parseInIsolatedWorker, inspectInIsolatedWorker } from "../parser/runtime";
 
 chrome.runtime.onMessage.addListener(
-  (message: unknown, _sender, sendResponse: (response: unknown) => void) => {
+  (message: unknown, sender, sendResponse: (response: unknown) => void) => {
+    if (
+      sender.id !== chrome.runtime.id ||
+      (sender.url !== undefined && !sender.url.startsWith(chrome.runtime.getURL("")))
+    ) {
+      return false;
+    }
     if (
       !isRecord(message) ||
       message.contractVersion !== CONTRACT_VERSION ||
@@ -25,16 +31,12 @@ chrome.runtime.onMessage.addListener(
           return;
         }
         try {
-          const originalFormat = await inspectInIsolatedWorker(
-            payload.bytes,
-            () => new Worker(chrome.runtime.getURL("parser-worker.js"))
-          );
-          const canonical = await canonicalizeOffice(payload.bytes, originalFormat);
-          const contentHash = [
-            ...new Uint8Array(await crypto.subtle.digest("SHA-256", payload.bytes.slice().buffer))
-          ]
-            .map((byte) => byte.toString(16).padStart(2, "0"))
-            .join("");
+          const contentHash =
+            payload.result.sha256 ??
+            [...new Uint8Array(await crypto.subtle.digest("SHA-256", payload.bytes.slice().buffer))]
+              .map((byte) => byte.toString(16).padStart(2, "0"))
+              .join("");
+          let visualUnits: ParsedTextUnit[] | undefined;
           if (message.type === "VISUAL_ATTACHMENT") {
             if (
               typeof message.contentHash !== "string" ||
@@ -45,11 +47,22 @@ chrome.runtime.onMessage.addListener(
               sendResponse({ ok: false, errorCode: "VISUAL_SOURCE_CHANGED" });
               return;
             }
-            const format = await inspectInIsolatedWorker(
-              canonical,
-              () => new Worker(chrome.runtime.getURL("parser-worker.js"))
-            );
-            const result = await visualCompletion(canonical, format, message.units);
+            visualUnits = message.units;
+          }
+          const originalFormat = await inspectInIsolatedWorker(
+            payload.bytes,
+            () => new Worker(chrome.runtime.getURL("parser-worker.js"))
+          );
+          const canonical = await canonicalizeOffice(payload.bytes, originalFormat);
+          if (visualUnits !== undefined) {
+            const format =
+              canonical === payload.bytes
+                ? originalFormat
+                : await inspectInIsolatedWorker(
+                    canonical,
+                    () => new Worker(chrome.runtime.getURL("parser-worker.js"))
+                  );
+            const result = await visualCompletion(canonical, format, visualUnits);
             sendResponse({ ok: true, ...result });
             return;
           }

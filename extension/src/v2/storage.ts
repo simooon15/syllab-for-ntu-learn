@@ -102,7 +102,7 @@ export const LEGACY_STORES = [
   "normalizedUnits"
 ] as const;
 
-function requestResult<T>(request: IDBRequest<T>): Promise<T> {
+export function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.addEventListener("success", () => resolve(request.result), { once: true });
     request.addEventListener(
@@ -243,6 +243,13 @@ class TransactionImpl<Tables extends V2StoreName> implements Transaction<Tables>
       )
     );
     if (value === undefined) return undefined;
+    if (
+      this.generation &&
+      DURABLE_TABLES.includes(table as DurableTable) &&
+      value[GENERATION_FIELD] !== this.generation
+    ) {
+      return undefined;
+    }
     return this.strip(value);
   }
 
@@ -295,6 +302,7 @@ class TransactionImpl<Tables extends V2StoreName> implements Transaction<Tables>
 
 export class LocalDatabase {
   private connection: IDBDatabase | null = null;
+  private opening: Promise<IDBDatabase> | null = null;
 
   constructor(
     private readonly factory: IDBFactory = indexedDB,
@@ -303,19 +311,29 @@ export class LocalDatabase {
 
   async open(): Promise<IDBDatabase> {
     if (this.connection) return this.connection;
-    const request = this.factory.open(this.name, V2_DATABASE_VERSION);
-    request.addEventListener("blocked", () => qaTrace("qa.idb-connection", { phase: "blocked" }));
-    request.addEventListener("upgradeneeded", () => {
-      upgrade(request.result);
-    });
-    const connection = await requestResult(request);
-    connection.addEventListener("versionchange", () => {
-      qaTrace("qa.idb-connection", { phase: "versionchange" });
-      connection.close();
-      this.connection = null;
-    });
-    this.connection = connection;
-    return connection;
+    if (this.opening) return this.opening;
+    this.opening = (async () => {
+      try {
+        const request = this.factory.open(this.name, V2_DATABASE_VERSION);
+        request.addEventListener("blocked", () =>
+          qaTrace("qa.idb-connection", { phase: "blocked" })
+        );
+        request.addEventListener("upgradeneeded", () => {
+          upgrade(request.result);
+        });
+        const connection = await requestResult(request);
+        connection.addEventListener("versionchange", () => {
+          qaTrace("qa.idb-connection", { phase: "versionchange" });
+          connection.close();
+          this.connection = null;
+        });
+        this.connection = connection;
+        return connection;
+      } finally {
+        this.opening = null;
+      }
+    })();
+    return this.opening;
   }
 
   close(): Promise<void> {

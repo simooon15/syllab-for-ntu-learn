@@ -193,7 +193,7 @@ export class TestElement extends TestNode {
   }
 
   matches(selector: string): boolean {
-    return this.querySelectorAll(selector).includes(this);
+    return selector.split(",").some((group) => matchesSelector(this, parseSelector(group.trim())));
   }
 }
 

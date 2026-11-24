@@ -1378,14 +1378,23 @@ export function compileCourseDraft(
     existingAssessmentIds,
     existingConstraintIds
   );
-  const ownerIds = new Map([
-    ...m.assessments.map(
-      (a, i) => [output.canonicalAssessmentProposals[i]?.proposalId, a.assessmentId] as const
-    ),
-    ...m.constraints.map(
-      (a, i) => [output.courseWideConstraintProposals[i]?.proposalId, a.constraintId] as const
-    )
-  ]);
+  const assessmentIdSet = new Set(m.assessments.map((a) => a.assessmentId));
+  const constraintIdSet = new Set(m.constraints.map((c) => c.constraintId));
+  const ownerIds = new Map<string | undefined, string>();
+  for (const proposal of output.canonicalAssessmentProposals) {
+    const id = existingAssessmentIds.has(proposal.proposalId)
+      ? proposal.proposalId
+      : proposal.role === "series" || proposal.role === "assessment"
+        ? `assessment_${proposal.proposalId}`
+        : `component_${proposal.proposalId}`;
+    if (assessmentIdSet.has(id)) ownerIds.set(proposal.proposalId, id);
+  }
+  for (const proposal of output.courseWideConstraintProposals) {
+    const id = existingConstraintIds.has(proposal.proposalId)
+      ? proposal.proposalId
+      : `constraint_${proposal.proposalId}`;
+    if (constraintIdSet.has(id)) ownerIds.set(proposal.proposalId, id);
+  }
   const evidence = m.bundle.evidence ?? [];
   // Product demotion changes display, never the durable evidence archive.
   if (product) {
@@ -1646,6 +1655,7 @@ export async function compareCourseDraft(
       field: f.field,
       value: f.value,
       semanticClause: f.semanticClause,
+      product: f.product,
       evidenceRefs: f.evidenceRefs
     });
   const identical = current.filter((old) =>
@@ -1681,8 +1691,10 @@ export async function compareCourseDraft(
     const invalidComparisons = rows.flatMap((row, rowIndex) => {
       const r = record(row);
       const invalid =
-        (r.currentFactRef !== undefined && !current.some((f) => f.factId === r.currentFactRef)) ||
-        (r.latestFactRef !== undefined && !latest.some((f) => f.factId === r.latestFactRef)) ||
+        (r.currentFactRef !== undefined &&
+          !pendingCurrent.some((f) => f.factId === r.currentFactRef)) ||
+        (r.latestFactRef !== undefined &&
+          !pendingLatest.some((f) => f.factId === r.latestFactRef)) ||
         (r.currentFactRef === undefined && r.latestFactRef === undefined);
       return invalid ? [{ rowIndex, comparison: row }] : [];
     });

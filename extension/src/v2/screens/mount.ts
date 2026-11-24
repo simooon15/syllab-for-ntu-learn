@@ -314,24 +314,33 @@ export function mount(options: MountOptions): MountHandle {
     }
   }
 
+  let viewSequence = 0;
+  const isDisposed = (): boolean => disposed;
+
   function scheduleRetry(): void {
+    if (isDisposed()) return;
     clearTimeout(retryTimer);
     retryTimer = setTimeout(() => {
-      void requestView();
+      if (!isDisposed()) void requestView();
     }, RETRY_MS);
   }
 
   async function requestView(): Promise<void> {
+    if (isDisposed()) return;
     clearTimeout(retryTimer);
+    const seq = ++viewSequence;
     const tabId = await resolveTabId();
+    if (isDisposed() || seq !== viewSequence) return;
     const response = await send({
       contract: V2_MESSAGE_CONTRACT,
       type: "GET_VIEW",
       surface,
       ...(tabId === undefined ? {} : { tabId })
     });
+    if (isDisposed() || seq !== viewSequence) return;
     const ok = absorb(response);
     permissionPatterns = await missingRecordedPermissionPatterns().catch(() => []);
+    if (isDisposed() || seq !== viewSequence) return;
     paint();
     if (!ok) scheduleRetry();
   }
@@ -453,6 +462,7 @@ export function mount(options: MountOptions): MountHandle {
     resetUiState();
     paintedSignature = "";
     const stored: unknown = await chrome.storage.local.get(HINTS_KEY).catch(() => undefined);
+    if (disposed) return;
     runtime.hints = readHints(property(stored, HINTS_KEY));
     chrome.storage.onChanged.addListener(onStorageChanged);
     await requestView();

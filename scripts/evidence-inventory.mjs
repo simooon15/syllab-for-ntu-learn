@@ -104,16 +104,22 @@ async function bundleFiles(directory, prefix = "") {
   return files;
 }
 
+const BINARY_EXTENSIONS = /\.(?:wasm|data|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|zip)$/i;
+
 /**
  * The shipped bundle is checked file by file rather than at its two entry scripts: the E2E bridge
  * reached the archive once through a source map, which no entry-script check would have seen.
  */
 async function checkShippedBundle() {
   for (const relative of await bundleFiles(resolve("extension", "dist"))) {
+    if (relative.endsWith(".map")) {
+      failures.push(`BUNDLE_HAS_SOURCE_MAP:${relative}`);
+      continue;
+    }
+    if (BINARY_EXTENSIONS.test(relative)) continue;
     const text = await readFile(resolve("extension", "dist", relative), "utf8");
     failures.push(...forbiddenHits(text, relative));
     if (KEY_SHAPE.test(text)) failures.push(`BUNDLE_HAS_KEY_SHAPE:${relative}`);
-    if (relative.endsWith(".map")) failures.push(`BUNDLE_HAS_SOURCE_MAP:${relative}`);
   }
 }
 

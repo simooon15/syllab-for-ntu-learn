@@ -124,11 +124,7 @@ function apiKeyStatusCopy(state: "missing" | "unvalidated" | "valid" | "invalid"
 
 /** SET-04 — the two authorizations are separate decisions. */
 function renderAuthorizationSection(ctx: ScreenContext, settings: SettingsViewModel): HTMLElement {
-  const block = section(
-    "settings-section authorization-section",
-    t("settingsAuthorization"),
-    "SET-04"
-  );
+  const block = section("authorization", t("settingsAuthorization"), "SET-04");
   block.append(
     toggleRow("privacy", t("privacyLabel"), t("privacyBody"), settings.privacy, (granted) => {
       ctx.actions.onSetAuthorization("privacy", granted);

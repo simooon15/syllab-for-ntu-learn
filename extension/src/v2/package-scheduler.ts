@@ -30,6 +30,7 @@ export async function schedulePackages<T, R>(
   let next = 0;
   let successes = 0;
   let stopped = false;
+  let fatalError: { error: unknown } | undefined;
   let blockedUntil = 0;
   const setLimit = (value: number) => {
     limit = value;
@@ -40,12 +41,14 @@ export async function schedulePackages<T, R>(
     if (options.signal?.aborted) stopped = true;
     if (!stopped && Date.now() < blockedUntil) {
       await new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, Math.min(2_147_483_647, blockedUntil - Date.now()));
-        if (active.size)
-          void Promise.race(active.values()).then(() => {
-            clearTimeout(timer);
-            resolve();
-          });
+        const done = () => {
+          clearTimeout(timer);
+          options.signal?.removeEventListener("abort", done);
+          resolve();
+        };
+        const timer = setTimeout(done, Math.min(2_147_483_647, blockedUntil - Date.now()));
+        options.signal?.addEventListener("abort", done, { once: true });
+        if (active.size) void Promise.race(active.values()).then(done);
       });
       continue;
     }
@@ -83,7 +86,10 @@ export async function schedulePackages<T, R>(
               );
               setLimit(Math.max(1, Math.floor(limit / 2)));
             }
-            if (options.fatal?.(error)) stopped = true;
+            if (options.fatal?.(error)) {
+              stopped = true;
+              fatalError ??= { error };
+            }
           }
         )
         .finally(() => {
@@ -96,7 +102,7 @@ export async function schedulePackages<T, R>(
   }
   // Already admitted calls settle before returning, so no late write can escape the phase.
   if (options.retainSettledOnStop && (stopped || options.signal?.aborted)) {
-    const failure = Object.values(results).find((result) => !result.ok);
+    const failure = fatalError ?? Object.values(results).find((result) => !result.ok);
     const reason: unknown =
       options.signal?.reason ??
       (failure ? failure.error : new DOMException("Package was not admitted", "AbortError"));
@@ -108,10 +114,10 @@ export async function schedulePackages<T, R>(
     throw options.signal.reason instanceof Error
       ? options.signal.reason
       : new DOMException("Cancelled", "AbortError");
-  if (stopped && next < items.length) {
-    const failure = Object.values(results).find(
-      (result): result is { ok: false; error: unknown } => !result.ok
-    );
+  if (stopped) {
+    const failure =
+      fatalError ??
+      Object.values(results).find((result): result is { ok: false; error: unknown } => !result.ok);
     if (failure) throw failure.error;
   }
   return results;

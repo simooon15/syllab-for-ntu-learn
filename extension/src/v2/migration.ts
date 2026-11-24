@@ -3,7 +3,7 @@ import { isRecord } from "@syllab/contracts";
 import type { BriefFieldState, BriefItem } from "../brief/domain";
 import type { NormalizedUnit } from "../normalize/domain";
 import type { ParsedSourceRecord } from "../parser/repository";
-import { requestResult, transactionComplete } from "../repository/local-database";
+import { requestResult, transactionComplete } from "./storage";
 import type { ReviewCandidate, ReviewProgress } from "../review/domain";
 import type {
   AppMetadataRecord,

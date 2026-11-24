@@ -68,7 +68,7 @@ export function prepareProductRebuild(
     }
   };
   const extraReviews: ReviewItemRecord[] = [];
-  for (const current of snapshot.facts.filter((f) => f.userEdited)) {
+  for (const current of snapshot.facts.filter((f) => f.userEdited && !f.superseded)) {
     const exact = facts.find((f) => f.factId === current.factId);
     const alternatives = facts.filter(
       (f) =>

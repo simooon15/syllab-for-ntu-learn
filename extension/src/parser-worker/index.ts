@@ -29,11 +29,13 @@ self.addEventListener("message", (event: MessageEvent<unknown>) => {
         ? event.data.names.filter((name): name is string => typeof name === "string")
         : [];
       const wanted = new Set(names);
-      const result =
-        event.data.operation === "DETECT"
-          ? detectDocumentFormat(bytes)
-          : unzipSync(bytes, { filter: (entry) => wanted.has(entry.name) });
-      self.postMessage({ requestId, status: "COMPLETE", result });
+      if (event.data.operation === "DETECT") {
+        self.postMessage({ requestId, status: "COMPLETE", result: detectDocumentFormat(bytes) });
+      } else {
+        const result = unzipSync(bytes, { filter: (entry) => wanted.has(entry.name) });
+        const buffers = Object.values(result).map((entry) => entry.buffer);
+        self.postMessage({ requestId, status: "COMPLETE", result }, buffers);
+      }
     } catch {
       self.postMessage({ requestId, status: "FAILED", errorCode: "ARCHIVE_DECODE_FAILED" });
     }
@@ -55,5 +57,13 @@ self.addEventListener("message", (event: MessageEvent<unknown>) => {
           errorCode: "PARSER_WORKER_FAILED"
         })
     );
+    return;
+  }
+  if (isRecord(event.data) && typeof event.data.requestId === "string") {
+    self.postMessage({
+      requestId: event.data.requestId,
+      status: "FAILED",
+      errorCode: "PARSER_WORKER_INVALID_MESSAGE"
+    });
   }
 });

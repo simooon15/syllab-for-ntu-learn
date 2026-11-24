@@ -143,12 +143,17 @@ const aiPort = {
     return completeWithRepair(call, apiKey, transport, (value) => {
       if (
         call.schemaVersion === DIRECT_COURSE_SCHEMA ||
-        call.schemaVersion === SELECTIVE_COURSE_SCHEMA
+        call.schemaVersion === SELECTIVE_COURSE_SCHEMA ||
+        call.schemaVersion === AI_SCHEMAS.product
       ) {
         if (
           !isRecord(value) ||
           (value.schema !== call.schemaVersion &&
-            !(call.schemaVersion === SELECTIVE_COURSE_SCHEMA && value.schema === undefined))
+            !(
+              (call.schemaVersion === SELECTIVE_COURSE_SCHEMA ||
+                call.schemaVersion === AI_SCHEMAS.product) &&
+              value.schema === undefined
+            ))
         )
           throw Error("DIRECT_ENVELOPE_INVALID");
         return;
@@ -278,18 +283,24 @@ async function readRecordedOrigins(): Promise<string[]> {
   return [...new Set(origins)];
 }
 
+let permissionOriginWriteQueue: Promise<void> = Promise.resolve();
+
 /** Remembers an Origin a download redirected to, so the run can ask the user for it. */
-async function recordPermissionOrigin(origin: string): Promise<void> {
-  const recorded = await readRecordedOrigins();
-  if (recorded.includes(origin)) return;
-  const next = [...recorded, origin];
-  // The permission itself is durable. Remembering which exact redirected Origin it applies to must
-  // be durable as well, otherwise an extension reload makes the first read fail again even though
-  // Chrome still holds the user's grant.
-  await Promise.all([
-    chrome.storage.local.set({ [RECORDED_PERMISSION_ORIGINS]: next }),
-    chrome.storage.session.set({ [RECORDED_PERMISSION_ORIGINS]: next })
-  ]);
+function recordPermissionOrigin(origin: string): Promise<void> {
+  const run = permissionOriginWriteQueue.then(async () => {
+    const recorded = await readRecordedOrigins();
+    if (recorded.includes(origin)) return;
+    const next = [...recorded, origin];
+    // The permission itself is durable. Remembering which exact redirected Origin it applies to must
+    // be durable as well, otherwise an extension reload makes the first read fail again even though
+    // Chrome still holds the user's grant.
+    await Promise.all([
+      chrome.storage.local.set({ [RECORDED_PERMISSION_ORIGINS]: next }),
+      chrome.storage.session.set({ [RECORDED_PERMISSION_ORIGINS]: next })
+    ]);
+  });
+  permissionOriginWriteQueue = run.catch(() => undefined);
+  return run;
 }
 
 async function isOriginGranted(origin: string): Promise<boolean> {
@@ -371,15 +382,20 @@ const machine: MachinePort = new BlackboardMachinePort({
     const unresolved =
       stored.parsed?.units?.filter((unit) => unit.partial).map((unit) => unit.locator) ?? [];
     if (!source.requestUrl || !stored.parsed?.contentHash) return { parts: [], unresolved };
-    await ensureOffscreenDocument();
-    const response: unknown = await chrome.runtime.sendMessage({
-      contractVersion: CONTRACT_VERSION,
-      type: "VISUAL_ATTACHMENT",
-      sourceId: source.sourceId,
-      requestUrl: source.requestUrl,
-      contentHash: stored.parsed.contentHash,
-      units: stored.parsed.units
-    });
+    let response: unknown;
+    try {
+      await ensureOffscreenDocument();
+      response = await chrome.runtime.sendMessage({
+        contractVersion: CONTRACT_VERSION,
+        type: "VISUAL_ATTACHMENT",
+        sourceId: source.sourceId,
+        requestUrl: source.requestUrl,
+        contentHash: stored.parsed.contentHash,
+        units: stored.parsed.units
+      });
+    } catch {
+      return { parts: [], unresolved };
+    }
     if (
       !isRecord(response) ||
       response.ok !== true ||
@@ -642,7 +658,11 @@ async function parseAttachment(source: DiscoveredSource): Promise<{
       requestUrl: source.requestUrl
     });
     if (!isRecord(response) || response.ok !== true || !isRecord(response.result)) {
-      return { status: "failed", text: "", structure: [], errorCode: "PARSER_RUNTIME_FAILED" };
+      const errorCode =
+        isRecord(response) && typeof response.errorCode === "string" && response.errorCode
+          ? response.errorCode
+          : "PARSER_RUNTIME_FAILED";
+      return { status: "failed", text: "", structure: [], errorCode };
     }
     const result = response.result as unknown as ParseResult;
     const text = result.units.map((unit) => `${unit.locator}\n${unit.text}`).join("\n\n");
@@ -1666,8 +1686,11 @@ if (__SYLLAB_E2E_FIXTURES__) {
   });
 }
 
-chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
   if (!isViewMessage(message)) return undefined;
+  if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(""))) {
+    return undefined;
+  }
   void (async () => {
     let response: ViewResponse;
     try {
@@ -1727,6 +1750,15 @@ chrome.action.onClicked.addListener((tab) => {
     const route = courseId
       ? { surface: "side-panel" as const, screen: "CRS-02" as const, courseId }
       : { surface: "side-panel" as const, screen: "SEM-02" as const };
+    const storedRoutes = await chrome.storage.session.get("syllab.surfaceRoutes");
+    const existingRoutes = storedRoutes["syllab.surfaceRoutes"];
+    if (isRecord(existingRoutes)) {
+      for (const [key, value] of Object.entries(existingRoutes)) {
+        if (!surfaceRoutes.has(key) && isRecord(value)) {
+          surfaceRoutes.set(key, value as unknown as Parameters<typeof surfaceRoutes.set>[1]);
+        }
+      }
+    }
     surfaceRoutes.set("side-panel:default", route);
     surfaceRoutes.set(`side-panel:${String(tab.id)}`, route);
     await chrome.storage.session.set({
@@ -1755,18 +1787,28 @@ async function currentCourseContext(tab: chrome.tabs.Tab): Promise<string | null
   }
 }
 
+let resuming: Promise<void> | null = null;
+
 /**
  * Picks up runs that stopped without finishing — interrupted by an eviction, or parked after a
  * retryable failure whose backoff has since elapsed.
  */
-async function resumeInterrupted(): Promise<void> {
-  if (__SYLLAB_QA_RECOVERY_HOLD__) return;
-  await engine.reconcileSession();
-  const now = new Date();
-  for (const workflow of await store.listWorkflows()) {
-    if (retryDue(workflow, now)) driveWorkflow(workflow.workflowId);
-  }
-  await scheduleParkedResume();
+function resumeInterrupted(): Promise<void> {
+  if (__SYLLAB_QA_RECOVERY_HOLD__) return Promise.resolve();
+  if (resuming !== null) return resuming;
+  resuming = (async () => {
+    try {
+      await engine.reconcileSession();
+      const now = new Date();
+      for (const workflow of await store.listWorkflows()) {
+        if (retryDue(workflow, now)) driveWorkflow(workflow.workflowId);
+      }
+      await scheduleParkedResume();
+    } finally {
+      resuming = null;
+    }
+  })();
+  return resuming;
 }
 
 /**
@@ -1790,15 +1832,19 @@ async function scheduleParkedResume(): Promise<void> {
   if (nextDue !== null) await chrome.alarms.create(PARKED_RESUME_ALARM, { when: nextDue });
 }
 
-// The alarm is the only thing that wakes the Worker for maintenance; creating it is idempotent.
-void chrome.alarms.create("syllab-opportunity-check", { periodInMinutes: 15 });
+// Ensure the periodic maintenance alarm exists without resetting its schedule on every SW wake-up.
+void chrome.alarms.get("syllab-opportunity-check").then((existing) => {
+  if (!existing) {
+    void chrome.alarms.create("syllab-opportunity-check", { periodInMinutes: 15 });
+  }
+});
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === PARKED_RESUME_ALARM) {
-    void resumeInterrupted();
+    void initialize().then(() => resumeInterrupted());
     return;
   }
   if (alarm.name !== "syllab-opportunity-check") return;
-  void opportunityCheck();
+  void initialize().then(() => opportunityCheck());
 });
 
 /** Opportunity Checking: local machine comparison first; a paid call only after a difference. */

@@ -59,6 +59,10 @@ const withoutComments = (text) =>
   text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n\r]*/g, "");
 
 // --- 1. The shipped bundle carries none of the QA layer ---------------------
+for (const path of await filesIn(shipped)) {
+  const name = path.slice(shipped.length + 1);
+  if (name.endsWith(".map")) failures.push(`SOURCE_MAP_IN_SHIPPED:${name}`);
+}
 const shippedFiles = await bundleText(shipped);
 for (const [name, text] of shippedFiles) {
   const scanText = withoutComments(text);
@@ -67,7 +71,6 @@ for (const [name, text] of shippedFiles) {
     if (scanText.includes(marker)) failures.push(`QA_MARKER_IN_SHIPPED:${marker}:${name}`);
   }
   if (KEY_SHAPE.test(scanText)) failures.push(`KEY_SHAPE_IN_SHIPPED:${name}`);
-  if (name.endsWith(".map")) failures.push(`SOURCE_MAP_IN_SHIPPED:${name}`);
 }
 checked.push(`shipped bundle: ${String(shippedFiles.size)} files read, no QA layer`);
 

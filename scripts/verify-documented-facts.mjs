@@ -25,15 +25,19 @@ const declared = /export const V2_DATABASE_VERSION = (\d+) as const;/.exec(schem
 if (!declared) failures.push("CANNOT_READ_V2_DATABASE_VERSION");
 const databaseVersion = declared?.[1] ?? "";
 
-const design = await readFile(
+const designPaths = [
   resolve("docs", "versions", "v0.2.0", "TECHNICAL_DESIGN_v0.2.0.md"),
-  "utf8"
-);
-const stated = [...design.matchAll(/IndexedDB v(\d+)/g)].map((match) => match[1]);
-if (stated.length === 0) failures.push("TECHNICAL_DESIGN_STATES_NO_INDEXEDDB_VERSION");
-for (const version of new Set(stated)) {
-  if (version !== databaseVersion) {
-    failures.push(`TECHNICAL_DESIGN_SAYS_v${version}_CODE_IS_v${databaseVersion}`);
+  resolve("docs", "versions", "v0.3.0", "TECHNICAL_DESIGN_v0.3.0.md")
+];
+for (const designPath of designPaths) {
+  const design = await readFile(designPath, "utf8");
+  const stated = [...design.matchAll(/IndexedDB v(\d+)/g)].map((match) => match[1]);
+  if (stated.length === 0)
+    failures.push(`TECHNICAL_DESIGN_STATES_NO_INDEXEDDB_VERSION:${designPath}`);
+  for (const version of new Set(stated)) {
+    if (version !== databaseVersion) {
+      failures.push(`TECHNICAL_DESIGN_SAYS_v${version}_CODE_IS_v${databaseVersion}:${designPath}`);
+    }
   }
 }
 

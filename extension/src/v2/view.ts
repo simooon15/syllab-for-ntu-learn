@@ -106,20 +106,6 @@ const PHASE_COPY: Record<string, TaskPhaseCopy> = {
   review: "Organizing assessments…"
 };
 
-/**
- * The Course Status Area shows exactly one thing. Needs-user-action outranks a pending
- * Review, which outranks an in-flight check, which outranks transient freshness.
- */
-const STATUS_PRIORITY = [
-  "api-key",
-  "permission",
-  "authorization",
-  "needs-attention",
-  "pending-review",
-  "checking",
-  "freshness"
-] as const;
-
 /** A dashboard with nothing on it is an empty state, not a blank dashboard. */
 function currentSemesterScreen(
   requested: ScreenId,
@@ -131,14 +117,6 @@ function currentSemesterScreen(
   if (requested === "SEM-03" || requested === "SEM-04" || requested === "SEM-05") return requested;
   if (semester?.lifecycle === "Historical") return surface === "side-panel" ? "SEM-05" : "SEM-04";
   return surface === "side-panel" ? "SEM-02" : "SEM-06";
-}
-
-export function primaryCue(cues: StatusCue[]): StatusCue | null {
-  for (const kind of STATUS_PRIORITY) {
-    const found = cues.find((cue) => cue.kind === kind);
-    if (found) return found;
-  }
-  return null;
 }
 
 function relativeTime(iso: string, now: Date): string {
@@ -344,10 +322,10 @@ export class ViewBuilder {
     ) {
       const staged = await this.dependencies.staging.read(courseId, rebuildWorkflow.workflowId);
       if (staged) {
-        const { observations } = await this.dependencies.store.readAllSourceStates(courseId);
+        const sourceStates = await this.dependencies.store.readAllSourceStates(courseId);
         const failedSources = rebuildFailureSources(
           staged.taskACoverage?.failedSources ?? [],
-          observations.filter((item) => item.workflowId === rebuildWorkflow.workflowId)
+          sourceStates.observations.filter((item) => item.workflowId === rebuildWorkflow.workflowId)
         );
         const projection: CourseSnapshot = {
           course,
@@ -359,9 +337,6 @@ export class ViewBuilder {
           history: []
         };
         const failedSourceCount = failedSources.length;
-        const sourceStates = staged.courseDraft
-          ? await this.dependencies.store.readAllSourceStates(courseId)
-          : undefined;
         const issueRecords = staged.courseDraft
           ? staged.reviewItems.flatMap((item) =>
               Array.isArray(item.payload.evidence)
@@ -397,7 +372,7 @@ export class ViewBuilder {
                 ],
                 issueEvidence: evidenceViews(
                   [...new Map(issueRecords.map((e) => [e.evidenceId, e])).values()],
-                  new Map(sourceStates?.sources.map((s) => [s.sourceId, s]))
+                  new Map(sourceStates.sources.map((s) => [s.sourceId, s]))
                 )
               }
             : {}),

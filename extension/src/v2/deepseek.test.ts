@@ -294,3 +294,28 @@ it("does not cancel delivered answer progress merely because earlier reasoning r
     choices: [{ message: { content: "{}" }, finish_reason: "stop" }]
   });
 });
+
+it("forwards reasoningEffort and reasoningCycleGuard through deepSeekTransport", async () => {
+  const { deepSeekTransport } = await import("./deepseek-complete");
+  let capturedBody: Record<string, unknown> | undefined;
+  const fetcher = vi.fn<typeof fetch>().mockImplementation((_url, init) => {
+    capturedBody = JSON.parse(typeof init?.body === "string" ? init.body : "{}") as Record<
+      string,
+      unknown
+    >;
+    return Promise.resolve(
+      new Response(JSON.stringify({ choices: [{ message: { content: "{}" } }] }), {
+        headers: { "content-type": "application/json" }
+      })
+    );
+  });
+  const wrapped = deepSeekTransport(new DeepSeekTransport(fetcher));
+  await wrapped.complete("synthetic", {
+    system: "Output JSON.",
+    user: "Audit",
+    maxTokens: 1000,
+    reasoningEffort: "low",
+    reasoningCycleGuard: true
+  });
+  expect(capturedBody?.reasoning_effort).toBe("low");
+});

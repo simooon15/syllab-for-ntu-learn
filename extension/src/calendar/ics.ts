@@ -1,9 +1,11 @@
 import type { CalendarEvent } from "./domain";
 
+const utf8Encoder = new TextEncoder();
+
 function escapeText(value: string): string {
   return value
     .replace(/\\/g, "\\\\")
-    .replace(/\r?\n/g, "\\n")
+    .replace(/\r\n|\r|\n/g, "\\n")
     .replace(/,/g, "\\,")
     .replace(/;/g, "\\;");
 }
@@ -22,7 +24,7 @@ function foldLine(line: string): string {
   let current = "";
   let bytes = 0;
   for (const character of line) {
-    const size = new TextEncoder().encode(character).length;
+    const size = utf8Encoder.encode(character).length;
     if (bytes + size > 75) {
       lines.push(current);
       current = ` ${character}`;

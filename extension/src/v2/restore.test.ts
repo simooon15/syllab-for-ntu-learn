@@ -550,3 +550,28 @@ it("restores candidate interpretation without restoring a semantic execution cer
     code: "BACKUP_INVALID"
   });
 });
+
+it("accepts backups containing undefined optional fields and post-rebuild historical targets", async () => {
+  const state = localState();
+  state.courses[0] = { ...state.courses[0], lastSuccessfulCheckAt: undefined };
+  state.reviewDecisions.push({
+    decisionId: "decision-pre-rebuild",
+    courseId: "course-1",
+    reviewItemId: "review-old",
+    kind: "Confirm",
+    targetId: "assessment-replaced-by-rebuild",
+    decidedAt: NOW
+  });
+  state.history.push({
+    historyId: "history-pre-rebuild",
+    courseId: "course-1",
+    revision: 1,
+    targetId: "assessment-replaced-by-rebuild",
+    event: "ASSESSMENT_CONFIRMED",
+    recordedAt: NOW
+  });
+  const result = await restored(state);
+  expect(result.read.reviewDecisions.some((r) => r["decisionId"] === "decision-pre-rebuild")).toBe(
+    true
+  );
+});

@@ -10,7 +10,6 @@ export default tseslint.config(
       "**/dist/**",
       "**/dist-qa/**",
       "**/coverage/**",
-      ".spike-backups/**",
       // Generated evidence and machine-local state, never source. The QA Chrome profile holds
       // Chrome's own bundled extensions, whose shipped source is not this repository's to lint.
       "artifacts/**",

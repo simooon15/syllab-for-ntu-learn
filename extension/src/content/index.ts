@@ -14,8 +14,14 @@ export function detectCourseContext(url: URL): CourseContext | null {
   const courseCode =
     readFirstVisibleText(['[data-testid="course-code"]', '[data-automation-id="course-code"]']) ??
     extractDisplayCourseCode(courseName);
+  let decodedCourseId = courseId;
+  try {
+    decodedCourseId = decodeURIComponent(courseId);
+  } catch {
+    return null;
+  }
   return {
-    courseId: decodeURIComponent(courseId),
+    courseId: decodedCourseId,
     route: url.pathname,
     ...(courseCode ? { courseCode } : {}),
     ...(courseName ? { courseName } : {})
@@ -30,7 +36,9 @@ function readFirstVisibleText(selectors: readonly string[]): string | undefined 
   if (typeof document === "undefined") return undefined;
   for (const selector of selectors) {
     const element = document.querySelector<HTMLElement>(selector);
-    const text = element?.innerText.trim();
+    if (!element) continue;
+    const raw: unknown = element.innerText;
+    const text = (typeof raw === "string" ? raw : element.textContent).trim();
     if (text) return text;
   }
   return undefined;
@@ -87,7 +95,7 @@ if (typeof chrome !== "undefined") {
 export function validateDiscoveryEndpoint(
   courseId: string,
   endpoint: string,
-  approvedOrigin = location.origin
+  approvedOrigin = APPROVED_ORIGIN
 ): URL {
   const url = new URL(endpoint, approvedOrigin);
   const prefix = `/learn/api/v1/courses/${encodeURIComponent(courseId)}`;

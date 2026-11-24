@@ -514,9 +514,23 @@ function validateReferences(tables: Record<DurableTable, Record<string, unknown>
   const sources = keysOf(tables, "sources");
   const evidence = keysOf(tables, "evidence");
   const reviewItems = keysOf(tables, "reviewItems");
-  // `targetId` names whatever the workflow was working on. A review item is deleted the moment
-  // its decision is recorded, so a target may legitimately name an object that is already gone.
-  const targets = [assessments, constraints, facts, reviewItems, courses];
+  // Pending NEW review items may carry a proposed assessment or constraint that has not yet been
+  // materialized into the live `assessments`/`constraints` tables.
+  const proposedTargets = new Set<string>();
+  for (const row of tables.reviewItems) {
+    const payload = isRecord(row["payload"]) ? row["payload"] : undefined;
+    const assessment =
+      payload && isRecord(payload["assessment"]) ? payload["assessment"] : undefined;
+    const constraint =
+      payload && isRecord(payload["constraint"]) ? payload["constraint"] : undefined;
+    if (assessment && typeof assessment["assessmentId"] === "string") {
+      proposedTargets.add(assessment["assessmentId"]);
+    }
+    if (constraint && typeof constraint["constraintId"] === "string") {
+      proposedTargets.add(constraint["constraintId"]);
+    }
+  }
+  const targets = [assessments, constraints, facts, reviewItems, courses, proposedTargets];
 
   tables.courses.forEach((row) => resolves(semesters, row["semesterId"], "courses.semesterId"));
   tables.courseStates.forEach((row) => resolves(courses, row["courseId"], "courseStates.courseId"));
@@ -561,9 +575,7 @@ function validateReferences(tables: Record<DurableTable, Record<string, unknown>
   });
   tables.reviewDecisions.forEach((row) => {
     resolves(courses, row["courseId"], "reviewDecisions.courseId");
-    if (row["targetId"] !== undefined) {
-      resolvesAny(targets, row["targetId"], "reviewDecisions.targetId");
-    }
+    // Historical decisions outlive assessments/constraints/facts replaced by Rebuild adoption.
   });
   tables.exclusionMemory.forEach((row) =>
     resolves(courses, row["courseId"], "exclusionMemory.courseId")
@@ -577,7 +589,7 @@ function validateReferences(tables: Record<DurableTable, Record<string, unknown>
   });
   tables.history.forEach((row) => {
     resolves(courses, row["courseId"], "history.courseId");
-    resolvesAny(targets, row["targetId"], "history.targetId");
+    // Historical audit entries outlive targets replaced by Rebuild adoption.
   });
 }
 

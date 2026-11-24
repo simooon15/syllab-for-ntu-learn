@@ -68,16 +68,7 @@ export class LocalStore {
 
   async readSnapshot(courseId: string): Promise<CourseSnapshot | null> {
     return this.database.read(
-      [
-        "courses",
-        "courseStates",
-        "assessments",
-        "constraints",
-        "facts",
-        "changes",
-        "reviewItems",
-        "history"
-      ],
+      ["courses", "assessments", "constraints", "facts", "changes", "reviewItems", "history"],
       async (transaction) => {
         const course = await transaction.get<CourseRecord>("courses", courseId);
         if (!course) return null;
@@ -216,10 +207,12 @@ export class LocalStore {
 
   async readEvidence(evidenceIds: string[]): Promise<EvidenceRecord[]> {
     if (evidenceIds.length === 0) return [];
+    const uniqueIds = [...new Set(evidenceIds)];
     return this.database.read(["evidence"], async (transaction) => {
-      const all = await transaction.getAll<EvidenceRecord>("evidence");
-      const wanted = new Set(evidenceIds);
-      return all.filter((item) => wanted.has(item.evidenceId));
+      const rows = await Promise.all(
+        uniqueIds.map((id) => transaction.get<EvidenceRecord>("evidence", id))
+      );
+      return rows.filter((item): item is EvidenceRecord => item !== undefined);
     });
   }
 
@@ -937,25 +930,38 @@ export class LocalStore {
         ]);
         const awaitingDecision = new Set(
           reviewItems
-            .filter((item) => !item.payload.productScope || item.payload.ownerScope)
+            .filter(
+              (item) =>
+                item.courseId === courseId &&
+                item.kind === "initial" &&
+                (!item.payload.productScope || item.payload.ownerScope)
+            )
             .map((item) => item.targetId)
         );
         // Excluding is a decision that takes an object out of the Course, and it does so without
         // deleting the row — the Undo has to be able to put it back. So a row that is still there
         // is not state if the user has already said it does not belong.
+        const courseDecisions = decisions.filter((decision) => decision.courseId === courseId);
+        const latestUndoByReviewItem = new Map<string, string>();
+        for (const decision of courseDecisions) {
+          if (decision.kind !== "UndoExclude") continue;
+          const prev = latestUndoByReviewItem.get(decision.reviewItemId);
+          if (!prev || decision.decidedAt > prev) {
+            latestUndoByReviewItem.set(decision.reviewItemId, decision.decidedAt);
+          }
+        }
         const excluded = new Set(
-          decisions
-            .filter(
-              (decision) =>
-                decision.kind === "Exclude" &&
-                (!decision.details?.productScope || decision.details.ownerScope) &&
-                !decisions.some(
-                  (d) =>
-                    d.kind === "UndoExclude" &&
-                    d.reviewItemId === decision.reviewItemId &&
-                    d.decidedAt >= decision.decidedAt
-                )
-            )
+          courseDecisions
+            .filter((decision) => {
+              if (
+                decision.kind !== "Exclude" ||
+                (decision.details?.productScope && !decision.details.ownerScope)
+              ) {
+                return false;
+              }
+              const undoAt = latestUndoByReviewItem.get(decision.reviewItemId);
+              return !undoAt || undoAt < decision.decidedAt;
+            })
             .flatMap((decision) => (decision.targetId === undefined ? [] : [decision.targetId]))
         );
         const counts = (id: string): boolean => !awaitingDecision.has(id) && !excluded.has(id);
@@ -979,12 +985,19 @@ export class LocalStore {
     );
     if (!state) return null;
     if (state.established === state.course.established) return state.course;
-    const updated: CourseRecord = {
-      ...state.course,
-      established: state.established,
-      updatedAt: new Date().toISOString()
-    };
+    let updated: CourseRecord | null = null;
     await this.database.write(["courses"], async (transaction) => {
+      const fresh = await transaction.get<CourseRecord>("courses", courseId);
+      if (!fresh) return;
+      if (fresh.established === state.established) {
+        updated = fresh;
+        return;
+      }
+      updated = {
+        ...fresh,
+        established: state.established,
+        updatedAt: new Date().toISOString()
+      };
       await transaction.put("courses", updated as unknown as Record<string, unknown>);
     });
     return updated;

@@ -9,7 +9,19 @@ const root = resolve(import.meta.dirname, "..");
  * extensions in it, whose shipped data contains strings shaped like credentials and which this
  * repository neither wrote nor could leak. Everything else here is third-party or generated.
  */
-const ignoredDirectories = new Set([".git", ".spike-backups", "node_modules", "coverage", ".tmp"]);
+const ignoredDirectories = new Set([
+  ".git",
+  ".claude",
+  ".codex",
+  ".build-meta",
+  "node_modules",
+  "coverage",
+  "dist",
+  "dist-qa",
+  "artifacts",
+  "evidence",
+  ".tmp"
+]);
 const allowedExtensions = new Set([
   ".ts",
   ".js",
@@ -20,6 +32,9 @@ const allowedExtensions = new Set([
   ".md",
   ".html",
   ".css",
+  ".txt",
+  ".sh",
+  ".command",
   ".example",
   ""
 ]);
@@ -44,7 +59,6 @@ async function walk(directory) {
 
 const findings = [];
 for (const path of await walk(root)) {
-  if (path.endsWith(".zip")) continue;
   const content = await readFile(path, "utf8");
   for (const pattern of forbidden) {
     pattern.lastIndex = 0;

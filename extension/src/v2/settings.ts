@@ -50,7 +50,7 @@ export class SettingsRepository {
   }
 
   async removeApiKey(): Promise<void> {
-    await this.storage.remove([DEEPSEEK_KEY_STORAGE, "syllab.deepseekApiKeyStatus"]);
+    await this.storage.remove([DEEPSEEK_KEY_STORAGE, API_KEY_STATUS_STORAGE]);
   }
 
   async readApiKeyForTransport(): Promise<string | null> {
@@ -60,16 +60,12 @@ export class SettingsRepository {
   }
 
   async apiKeyStatus(): Promise<ApiKeyStatus> {
-    const result = await this.storage.get([DEEPSEEK_KEY_STORAGE, "syllab.deepseekApiKeyStatus"]);
+    const result = await this.storage.get([DEEPSEEK_KEY_STORAGE, API_KEY_STATUS_STORAGE]);
     const key = result[DEEPSEEK_KEY_STORAGE];
     if (typeof key !== "string" || !key) return { state: "missing" };
     const rawStatus = result[API_KEY_STATUS_STORAGE];
     const state = rawStatus === "valid" || rawStatus === "invalid" ? rawStatus : "unvalidated";
     return { state, maskedSuffix: key.slice(-4).padStart(8, "•") };
-  }
-
-  async setApiKeyValidation(valid: boolean): Promise<void> {
-    await this.storage.set({ "syllab.deepseekApiKeyStatus": valid ? "valid" : "invalid" });
   }
 
   async authorizations(): Promise<{

@@ -7,8 +7,8 @@ export function replaceSurface(root: HTMLElement, nodes: HTMLElement[], sameScre
   >();
   if (sameScreen)
     for (const input of Array.from(
-      root.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
-        "input[data-edit-key], select[data-edit-key]"
+      root.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+        "input[data-edit-key], select[data-edit-key], textarea[data-edit-key]"
       )
     )) {
       if (!input.dataset.editKey) continue;
@@ -23,8 +23,8 @@ export function replaceSurface(root: HTMLElement, nodes: HTMLElement[], sameScre
     typeof root.getBoundingClientRect === "function" ? root.getBoundingClientRect().height : 0;
   root.replaceChildren(...nodes);
   for (const input of Array.from(
-    root.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
-      "input[data-edit-key], select[data-edit-key]"
+    root.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+      "input[data-edit-key], select[data-edit-key], textarea[data-edit-key]"
     )
   )) {
     const previous = edits.get(input.dataset.editKey ?? "");

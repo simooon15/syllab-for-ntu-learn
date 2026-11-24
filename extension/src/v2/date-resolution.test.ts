@@ -89,6 +89,11 @@ describe("resolving a date against the Course's Semester", () => {
     // A real date is still a real date: a day that does not exist is not one.
     expect(resolveDate("31 Feb", SEMESTER_ONE)).toBeNull();
     expect(resolveDate("2026-02-30", SEMESTER_ONE)).toBeNull();
+    // Invalid minutes must not leak into canonical clock times.
+    expect(resolveDate("2026-11-19T14:99", null)).toEqual({
+      canonicalDate: "2026-11-19",
+      source: "source"
+    });
   });
 
   it("does not place a month the term does not cover", () => {

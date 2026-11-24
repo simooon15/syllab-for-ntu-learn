@@ -30,11 +30,14 @@ export async function visualCompletion(
   const embeddedParts: VisualPart[] = [];
   if (format === "docx") {
     const wanted = new Set(gaps.flatMap((unit) => unit.embeddedImagePaths ?? []));
-    const archive = await extractInIsolatedWorker(
-      bytes,
-      [...wanted],
-      () => new Worker(chrome.runtime.getURL("parser-worker.js"))
-    );
+    const archive =
+      wanted.size > 0
+        ? await extractInIsolatedWorker(
+            bytes,
+            [...wanted],
+            () => new Worker(chrome.runtime.getURL("parser-worker.js"))
+          )
+        : {};
     const completed = new Set<string>();
     for (const unit of gaps) {
       const paths = unit.embeddedImagePaths ?? [];
@@ -45,19 +48,19 @@ export async function visualCompletion(
           const data = archive[path];
           if (!data) throw new Error("IMAGE_MISSING");
           const bitmap = await createImageBitmap(new Blob([data.slice().buffer]));
-          const scale = Math.min(1, 8192 / Math.max(bitmap.width, bitmap.height));
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.max(1, Math.ceil(bitmap.width * scale));
-          canvas.height = Math.max(1, Math.ceil(bitmap.height * scale));
-          const context = canvas.getContext("2d");
-          if (!context) {
+          try {
+            const scale = Math.min(1, 8192 / Math.max(bitmap.width, bitmap.height));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.ceil(bitmap.width * scale));
+            canvas.height = Math.max(1, Math.ceil(bitmap.height * scale));
+            const context = canvas.getContext("2d");
+            if (!context) throw new Error("IMAGE_CANVAS_MISSING");
+            context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            const dataUrl = snapshotCanvas(canvas);
+            images.push({ locator: unit.locator, dataUrl });
+          } finally {
             bitmap.close();
-            throw new Error("IMAGE_CANVAS_MISSING");
           }
-          context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-          bitmap.close();
-          const dataUrl = snapshotCanvas(canvas);
-          images.push({ locator: unit.locator, dataUrl });
         }
         embeddedParts.push(...images);
         if (unit.visualGaps?.every((gap) => gap === "embedded-image")) completed.add(unit.locator);
@@ -89,19 +92,24 @@ export async function visualCompletion(
               dpi: 144,
               maxDimension: 8192
             });
-            if (page.width < 1 || page.height < 1 || page.height > 8192)
+            if (page.width < 1 || page.height < 1 || page.width > 8192 || page.height > 8192)
               throw new Error("VISUAL_DIMENSION_LIMIT");
             const canvas = document.createElement("canvas");
             canvas.width = page.width;
             canvas.height = page.height;
-            const context = canvas.getContext("2d");
-            if (!context) throw new Error("VISUAL_CANVAS_UNAVAILABLE");
-            context.putImageData(
-              new ImageData(new Uint8ClampedArray(page.data), page.width, page.height),
-              0,
-              0
-            );
-            dataUrl = snapshotCanvas(canvas);
+            try {
+              const context = canvas.getContext("2d");
+              if (!context) throw new Error("VISUAL_CANVAS_UNAVAILABLE");
+              context.putImageData(
+                new ImageData(new Uint8ClampedArray(page.data), page.width, page.height),
+                0,
+                0
+              );
+              dataUrl = snapshotCanvas(canvas);
+            } finally {
+              canvas.width = 0;
+              canvas.height = 0;
+            }
             rendered.set(index, dataUrl);
           }
           parts.push({ locator: unit.locator, dataUrl });
@@ -143,13 +151,12 @@ export async function visualCompletion(
     for (const unit of gaps) {
       let number = format === "pdf" ? Number(unit.locator.match(/^page:(\d+)$/)?.[1]) : 0;
       if (format !== "pdf") {
-        const index = units.indexOf(unit);
-        const anchor = (unit.text || units[index - 1]?.text || "").replace(/\s+/g, " ").trim();
+        // A previous paragraph cannot prove which page a following image occupies.
+        const anchor = unit.text.replace(/\s+/g, " ").trim();
         const matches = anchor
           ? pageTexts.flatMap((text, page) => (text.includes(anchor) ? [page + 1] : []))
           : [];
-        // A previous paragraph cannot prove which page a following image occupies.
-        if (unit.text && matches.length === 1) number = matches[0] ?? 0;
+        if (matches.length === 1) number = matches[0] ?? 0;
       }
       if (!number || number > pdfDocument.numPages) {
         unresolved.push(unit.locator);
@@ -157,37 +164,42 @@ export async function visualCompletion(
       }
       let dataUrl = rendered.get(number);
       if (!dataUrl) {
-        const page = await pdfDocument.getPage(number);
-        const original = page.getViewport({ scale: 1 });
-        const viewport = page.getViewport({
-          scale: Math.min(2, 8192 / original.width, 8192 / original.height)
-        });
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.ceil(viewport.width);
-        canvas.height = Math.ceil(viewport.height);
         try {
-          const context = canvas.getContext("2d");
-          if (!context) throw new Error("VISUAL_CANVAS_UNAVAILABLE");
-          const rendering = page.render({
-            canvasContext: context,
-            canvas,
-            viewport,
-            intent: "print"
+          const page = await pdfDocument.getPage(number);
+          const original = page.getViewport({ scale: 1 });
+          const viewport = page.getViewport({
+            scale: Math.min(2, 8192 / original.width, 8192 / original.height)
           });
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.ceil(viewport.width);
+          canvas.height = Math.ceil(viewport.height);
           try {
-            await rendering.promise;
-          } catch (error) {
-            rendering.cancel();
-            throw error;
+            const context = canvas.getContext("2d");
+            if (!context) throw new Error("VISUAL_CANVAS_UNAVAILABLE");
+            const rendering = page.render({
+              canvasContext: context,
+              canvas,
+              viewport,
+              intent: "print"
+            });
+            try {
+              await rendering.promise;
+            } catch (error) {
+              rendering.cancel();
+              throw error;
+            }
+            dataUrl = snapshotCanvas(canvas);
+          } finally {
+            canvas.width = 0;
+            canvas.height = 0;
+            page.cleanup();
           }
-          dataUrl = snapshotCanvas(canvas);
-        } finally {
-          canvas.width = 0;
-          canvas.height = 0;
-          page.cleanup();
-        }
 
-        rendered.set(number, dataUrl);
+          rendered.set(number, dataUrl);
+        } catch {
+          unresolved.push(unit.locator);
+          continue;
+        }
       }
       parts.push({ locator: unit.locator, dataUrl });
     }

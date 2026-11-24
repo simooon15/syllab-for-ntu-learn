@@ -93,8 +93,11 @@ function calendarDate(year: number, month: number, day: number): string | null {
 }
 
 function clockTime(hour: string, minute: string): string | null {
-  const parsed = Number(hour);
-  return parsed >= 0 && parsed <= 23 ? `${pad(parsed, 2)}:${minute}` : null;
+  const parsedHour = Number(hour);
+  const parsedMinute = Number(minute);
+  return parsedHour >= 0 && parsedHour <= 23 && parsedMinute >= 0 && parsedMinute <= 59
+    ? `${pad(parsedHour, 2)}:${pad(parsedMinute, 2)}`
+    : null;
 }
 
 /**

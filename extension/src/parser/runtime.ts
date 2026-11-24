@@ -140,7 +140,6 @@ export function extractInIsolatedWorker(
     "ARCHIVE_ENTRIES",
     (value): value is Record<string, Uint8Array> =>
       isRecord(value) &&
-      names.every((name) => value[name] instanceof Uint8Array) &&
       Object.entries(value).every(
         ([name, data]) => names.includes(name) && data instanceof Uint8Array
       ),

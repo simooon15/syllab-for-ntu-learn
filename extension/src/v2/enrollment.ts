@@ -296,7 +296,7 @@ export function academicTermNow(now: Date): { startYear: number; term: 1 | 2 } {
   if (month >= TERM_MONTH) return { startYear: year, term: 1 };
   // January to May is the second term of the academic year that began last August. June and July
   // fall between the two windows and belong to the year that is ending, which is the second term.
-  return { startYear: month <= 5 ? year - 1 : year - 1, term: 2 };
+  return { startYear: year - 1, term: 2 };
 }
 
 async function readMemberships(
@@ -382,6 +382,17 @@ export async function applyDiscovery(
   }
 
   const termIds = new Set(discovery.terms.map((term) => term.nativeTermId));
+  if (current !== null) {
+    for (const semester of knownSemesters.values()) {
+      if (semester.status === "Current" && !termIds.has(semester.nativeSemesterId)) {
+        await store.saveSemester({
+          ...semester,
+          status: "Historical",
+          updatedAt: stamp
+        });
+      }
+    }
+  }
   const semesterIdOf = new Map(
     discovery.terms.map((term) => [
       term.nativeTermId,
@@ -428,6 +439,6 @@ export async function applyDiscovery(
   return {
     semesters: discovery.terms.length,
     courses: listed.size,
-    currentSemesterId: current
+    currentSemesterId: current ? (semesterIdOf.get(current) ?? current) : null
   };
 }

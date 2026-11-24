@@ -81,6 +81,7 @@ export function resetUiState(): void {
   ui = createUiState();
   lastCourseId = undefined;
   lastReviewItemId = undefined;
+  lastScreen = undefined;
   scrollByScreen.clear();
 }
 

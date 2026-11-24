@@ -4,7 +4,6 @@ dist-qa
 .build-meta
 coverage
 docs/versions
-.spike-backups
 artifacts
 *.zip
 # Product-owned inbound Handoff stays byte-identical to its authoritative Drive copy.

@@ -22,7 +22,11 @@ async function readBounded(response: Response, maxBytes: number): Promise<Uint8A
   if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
     throw new Error("ATTACHMENT_SIZE_LIMIT");
   }
-  if (!response.body) return new Uint8Array(await response.arrayBuffer());
+  if (!response.body) {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > maxBytes) throw new Error("ATTACHMENT_SIZE_LIMIT");
+    return bytes;
+  }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
@@ -85,6 +89,7 @@ export async function fetchAttachmentPayload(
       ...(options.signal ? { signal: options.signal } : {})
     });
     if (!response.ok) {
+      await response.body?.cancel();
       return {
         result: { sourceId, status: "failed", httpStatus: response.status, errorCode: "HTTP_ERROR" }
       };

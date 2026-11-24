@@ -79,3 +79,11 @@ when the correct branch is unclear.
 
 Version-specific PRDs, Product Handoffs, acceptance records and engineering handoffs are evidence
 for their version, not additional repository-wide rule sources.
+
+
+<!-- GPT-DRIVE-CODEX:BEGIN -->
+For cross-agent Handoff, receiving handoffs, or shared project sync, use
+$gpt-drive-codex. Read .gpt-drive-codex/config.json for this project only.
+Use Google Drive Desktop local folders; Drive connector is emergency-only.
+Project governance and user authorization remain authoritative.
+<!-- GPT-DRIVE-CODEX:END -->

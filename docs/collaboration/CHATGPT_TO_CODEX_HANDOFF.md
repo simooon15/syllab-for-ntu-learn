@@ -1,54 +1,65 @@
-# ChatGPT → Codex 当前交接｜P2E-v0.3.0-2026-11-02-064
+# Product → Engineering Handoff | P2E-v0.3.0-2026-11-25-066
 
-**Updated At:** 2026-11-02（Asia/Singapore）  
-**From → To:** Product Owner + ChatGPT（产品侧）→ Codex（Engineering）  
-**Status:** READY / RC2 HUMAN GATE5 TYPOGRAPHY FINDING / LIMITED REWORK AUTHORIZED / GATE5 NOT PASS / NO RELEASE / NO NEW PAID  
-**Product/version:** Syllab for NTU Learn **v0.3.0**，仍是同一个 RC2 候选的受限修订，不创建 RC3、v0.4.0 或新 Gate。  
-**Canonical repo:** `/Users/simonluo/罗鑫宇/Vibe Coding/Syllab for NTU Learn`；本地实际 HEAD、dirty、恢复点须按真实状态检查。  
-**Engineering inbound:** E2P-v0.3.0-2026-11-02-054；`docs/versions/v0.3.0/RC2_HUMAN_GATE5_v0.3.0.md`；`artifacts/v0.3.0/rc2/RC2_MANIFEST.json`；P2E-063。  
-**Human feedback:** Human 已看到当前 RC2 隔离预览截图，明确反馈“字体要修改，现在的大字太丑了”。这是 **Human Gate 5 尚未通过**的具体整改项；不应自行记录最终 Gate5 PASS 或整体产品 FAIL 签字。17 项已获授权的语义闭合结果暂保持，不重复审阅。
+Status: READY / PHASE 1 REMEDIATION ONLY / ZERO NEW PAID AI CALLS / HUMAN GATE 5 NOT PASSED / NO RELEASE
+From: Product Side (Product Owner + ChatGPT)
+To: Engineering Side (current authorized development Agent)
+Updated At: 2026-11-25 (Asia/Singapore)
+Project: Syllab for NTU Learn v0.3.0
+Project ID: `03837f29ef364a71b6aacc6e138732a0`
+Handoff ID: `P2E-v0.3.0-2026-11-25-066`
+Source engineering Handoff: `d0d5723257004f8a96f032db699cb7f1` (2026-11-25 00:01 SGT; source Git HEAD `a52d40c40cea25f24c0683cb47b475fed95b39a3`; subsequent audit fixes not yet committed/pushed per report).
 
-## 0. 本轮唯一 Product→Engineering 入站与图像证据
+## Changed Files / Sync Scope
+- `docs/collaboration/CHATGPT_TO_CODEX_HANDOFF.md`
 
-- **Modified** `docs/collaboration/CHATGPT_TO_CODEX_HANDOFF.md`（Google Drive 原位更新原唯一正式 Inbox，不另建第二份）。
-- **New restricted QA evidence** `artifacts/v0.3.0/gate5-062-review-evidence/RC2_Gate5_typography_user_screenshot_20261102.png`；Google Drive file ID `12GoSKyG-nePY00EkSptZMbbAH9bxcaXY`。这是 Human 2026-11-02 指定的当前 RC2 桌面首屏截图，仅用于视觉/排版验收，不是课程事实 gold。该目录为现有用户受限证据目录，非 GitHub / Release。
-- 上述两件是本轮产品侧实际变更；不要求重新上传过去的PDF/17项表，也不创建平行项目目录。
+## 1. Owner direction and scope
 
-## 1. 产品判断与整改边界
+Owner has approved continuing v0.3.0 refinement instead of stopping at the earlier engineering checkpoint. No separate re-onboarding, new version, feature exploration, or wholesale redesign. Preserve the established workflow, trusted/provisional distinction, single Assessment card / organized details / Evidence on demand, Review boundaries, existing visual system (Fraunces for headings/large numbers; sans-serif for body/controls), and local-first/BYOK. Phase 1 fixes known defects and bounded engineering debt; Phase 2 evaluates AI quality and efficiency, Phase 3 refines real product experience, Phase 4 final validation/delivery. Only Phase 1 is authorized to execute now. Do not start later phases autonomously.
 
-这张截图中的主要不协调点：
+Engineering Side is a role, not a particular Agent. Use GPT Drive Codex v0.2.0, existing project binding, same canonical repository and shared baseline; retain old configured Handoff paths. Finish previous writer before another writes; no competing implementations. Check the current canonical root, branch, worktree, remote, dirty state and existing project binding with doctor before inbound plan/apply/inspect. Do not re-init or rename Handoffs. Review current E2P and manifest before acting. Preserve the earlier P2E-065 history and already authorized checkpoint work; this instruction supersedes its stop-after-checkpoint direction, not its privacy and release boundaries.
 
-1. 两张卡片的考核名称字号偏大、笔画太粗、字形偏圆厚：`Part 1 Group Presentation` 与 `Part 2 Multiple Choice Quiz` 在较小信息卡上像 display headline，不像易扫读的产品标题。标题和数值彼此争夺注意力。
-2. 两处 `25%` 字号和粗度也太高，压过关键截止日期；权重仍需突出，但不必作为夸张视觉装饰。
-3. 页眉课程名仍为较强烈的衬线字形，和卡片内圆厚的无衬线大标题不统一。标签、数字和正文间也应有稳定的字重梯度，而不是同时加粗。
-4. 左卡 `Presentation dates` 一行在用户截图中似乎从半行开始显示、上缘有裁切痕迹。**这是需验证的疑似内滚/初始 scroll position/clip 问题**，不应未经复现就认定为确定 bug；如属真实默认显示或恢复位置缺陷，应一起修复，不靠调小字号遮掩。
+## 2. Phase 1 product requirements
 
-**目标气质：干净、安静、克制、实用的课程信息工具**。首眼先认出考核名称、权重、关键日期、待核实；字体不应抢内容。不是重新设计IA、品牌、颜色系统，也不是换一套花哨的字体。
+All ten known UI defects in the latest E2P are in scope. Confirm actual reproduction and fix if still present; if already resolved, record evidence, do not redo.
 
-## 2. 已授权的有限 Typography 修正
+- UI-01 OPEN_SCREEN: preserve semester context; current/historical selection actually works on both surfaces.
+- UI-02 CRS-06: empty course can open Add Assessment, preserving existing manual-add semantics.
+- UI-03 BKP-04: Done on restore failure exits correctly; no partial restore or loss of original state.
+- UI-04 RBL-01: Back returns to the correct prior surface/context without initiating Rebuild.
+- UI-05 same-screen re-render preserves scroll and relevant focus/drafts; do not force old position onto a genuinely new screen or course.
+- UI-06 SYS-07 error feedback remains readable and actionable; transient success/undo behavior remains intact. Follow existing IA; do not invent a new error subsystem.
+- UI-07 Settings from Side Panel opens proper full-page Settings where required and retains side-panel/task context.
+- UI-08 Enter does not refresh extension page; preserve intended submit/keyboard behavior and validation.
+- UI-09 course-name/course-card-status styling no longer conflicts; retain current design tokens and typography.
+- UI-10 accessible names and reading order convey actual fact values and status; keyboard operation and focus remain usable.
 
-- **字体体系统一：**优先用现有已引入、稳定可加载的一套清爽无衬线字体作为课程页标题、考核名称、权重、日期、标签和正文的主体系；减少残余 Fraunces/Space Mono 等字体混搭。具体 font-family/font fallback 由 Codex 判断，避免引入新的运行依赖、网络字体或复杂字体工程。中文和英文并列时不出现明显笔画风格落差。
-- **标题缩小并减重：**考核卡标题改为偏紧凑的 medium/semibold（建议从约20–22px、font-weight 550–600、line-height 1.2–1.3 起验证；以当前CSS实测为准），不再用粗黑圆厚的 display 样式；较长标题能自然换行，不裁切/挤压其它元素。若固定 `Part X` 与名称原结构更适合，可保留，勿写课程特定字符串或强行另做一套解析。
-- **权重收敛：** `25%` 等大数字建议降至约34–38px、medium/semibold，仍是卡中清楚的第一层，但与相邻日期有呼吸空间；其他权重和不同位数数值也要一致，不硬编码25%。日期继续清楚可见，优先稳定行高与排版，不能成为第二个过粗大标题。
-- **课程页标题统一：**取消与卡片强烈冲突的衬线/黑体显示效果，采用同一体系下较小、更轻的页级标题。保留适当课程名称层级，不应因缩字导致识别困难。
-- **正文与辅助层级：**正文 regular、必需动作与标签适当 medium；少量 font-size/weight/line-height/letter-spacing token 即可形成清楚层级。按钮样式与两打印入口保持协调。勿粗暴缩小全部文字、堆叠新图标/颜色/分割线或引入新的设计系统。
-- **布局保护：**单卡、等高、内部滚动、固定详情入口、Summary / Full print、4项正式考核、Evidence及真实 Pending 不变。若标题缩小释放空间，只做必要对齐，不借机塞更多低价值字段。
+Product behavior (PRD v0.3.0 §§6.0, 6.1, 6.7, 7, 8.5; IA §§11–14; inherited v0.2.0 rules):
 
-上面字号是产品建议区间，**不是必须原样照搬的CSS实现方案**。由 Codex 对照截图实测、在现有组件/样式里给出稳定且整体统一的最终值。此次不为每个像素重复发起产品审议。
+- PR-01 Paid retry and cache. Fix PAID_UNVERIFIED deadlock without automatically redispatching an ambiguous/possibly charged request or releasing its reservation. Only verified safe retry may redispatch under existing authorization; verified successful outputs are reused. Preserve unknown records, bounded technical recovery, semantic-round separation, ownership and stale-writer protection. Independent safe tasks may progress; unresolved scopes stay explicit and recoverable. Invalid, incomplete or stale audit cache is not valid completion; preserve raw/evidence/history and do not silently promote unverified results. No new paid calls, wallet queries/reconciliation, reservation release or new provider experiments in this phase.
+- PR-02 Opportunity Checking. Current semester retains automatic checks; historical semester defaults to no automatic checks; manual behavior follows existing rules. Background failure uses bounded backoff and quiet single-failure behavior; prolonged failure can surface Needs attention. Missing or inaccessible Source is not removal, and no change yields quiet end/no AI/no Review. Exact backoff and scheduling are engineering design under existing policy.
+- PR-03 ISC-03/04. Missing API key/permission/authorization enters specific Waiting state with actionable route to settings; configuration recovery resumes existing context and reuses checkpoint where valid. Do not duplicate workflows or label missing permission as empty course.
+- PR-04 Permissions and privacy. Align discovery/fetch/runtime permissions with intended project allowlist and least privilege; do not broaden permission merely to bypass an error. Filter secrets, credentials, tokens and irrelevant private fields before AI context or shared artifacts; preserve legitimate course content and evidence. Review flattenCapturedFields and relevant entry paths. No real user data or private QA profile exposure.
+- PR-05 Spreadsheet discovery. Recognize .xlsx/.xls and maintain original Source identity, format-aware sheet/cell/range locators, provenance and honest coverage; legacy formats follow existing canonicalization capability. Do not claim unsupported/partial formats as complete or add local semantic filtering. If legacy support needs a new external dependency/permission or architecture, report bounded proposal rather than silently changing scope.
+- PR-06 Calendar Export. Apply approved refinement direction: only eligible confirmed, normalized, actionable dates from trusted Current Course State; deadlines, exam/presentation schedules and other confirmed actionable dates are eligible. REFERENCE/BACKGROUND classification alone must not promote a date to calendar; do not export unresolved conflict as settled, do not infer unknown end time, and preserve eligible confirmed dates of kept Possibly Removed objects. Maintain existing event consolidation and no AI/no separate date model. Correct timezone/VTIMEZONE/DTEND encoding and test client compatibility; use explicit end only when supported by existing normalized event semantics. Preserve all-day/date-only vs timed-event meaning; report any ambiguous policy rather than invent a deadline. If existing authoritative policy conflicts with this refinement, report specific conflict before changing that behavior.
 
-## 3. 验收与交付
+## 3. Engineering ownership and technical debt
 
-1. 使用现有 RC2 隔离预览，在**同一初始视图/1280左右桌面视口**与 Human 截图做 before/after 并排可视比较。覆盖完整课程标题、考核卡、权重日期与按钮，而不是只截字形局部。
-2. 对 380px Side Panel 语义预览检查中文/英文、长短标题、25/10/40等不同权重、较长日期及内滚/键盘。截图上左卡日期半行现象须复现和解释，若属实际故障则修复并回归；不能默认无问题。
-3. 重新检查 Summary A4 与 Full A4，保留当前分别约3页/22页的用途，**页数可随排版合理变化**，但不得遗漏全部独立要求、来源、Rubric、关键冲突，也不得重叠/截断。
-4. 按更改实际影响执行最小但充分的类型/CI及浏览器/打印回归；确保真实 Review/备份恢复/known pending 不被CSS或结构变更破坏。保留改动前 RC2 manifest/ZIP 的可追溯恢复点，不静默覆盖旧证据；产生可验的本次 RC2 修订 build + manifest/SHA、更新 Human Gate5 指南与唯一长期 E2P Outbox。
-5. 报告「修改前后对比」「问题是否实际修复」「仍未验证的正式 Side Panel / 校园线上增量 / 非MA6081真实课程 / GAI原页」四类边界。不要将已有工程测试误写成 Human PASS。
+Engineering Side may autonomously choose implementation, targeted regression, fixes for clearly incorrect existing behavior, internal quality improvements, and verified safe cleanup within this scope. Do not invent new product rules, modules, AI pipeline design or review framework. Batch genuinely unresolved product decisions into one evidence-backed handoff with options and recommendation; continue independent authorized work.
 
-## 4. 绝对不变的保护与最终停止点
+- Adapt existing package-delivery.mjs, package-final-handoff.mjs, run-gate.mjs and necessary build/verification paths to current v0.3.0 facts; no fake release artifact, stale gate PASS or private material in packages.
+- Reconcile README, AGENTS, permissions/design-system and governance docs with actual current product. Preserve original historical facts, formal version documents, QA/recovery evidence and rollback paths.
+- For old AI pipeline (~15k LOC), v0.1 legacy modules/backend and ~85 one-off v030 scripts, inspect runtime/build/test/migration/recovery references, then remove only demonstrably obsolete, safe, in-scope items in bounded reversible groups. Do not wholesale delete old pipeline/backend or historical archives; for unclear dependencies or material architectural impact, provide a retirement recommendation, defer deletion. Root duplicate v0.2 docs may be reconciled only without losing canonical historical records or references. Previously deleted 8 files in E2P are not auto-transferred deletions; record explicit deletion inventory, do not recursively mirror deletion. No new separate permanent handoff.
 
-- 本轮**只授权 Typography/必要的滚动裁切修复和关联回归**，不重新跑17项语义审核、不触碰其他产品功能和 trusted，也不重新扫描NTU、不调用模型/付费、不生成新的AI摘要、不做模型修复循环。
-- 原始 Source/Clause/Evidence、私有决策原件、原候选历史、真实 trusted、备份、原 Human profile、旧 RC1 ZIP、成本账本和UNKNOWN均保全。杜绝全目录覆盖、自动清理或 hard reset。
-- 不自发添加新功能，不创建新候选体系。最终**仍停在同一 v0.3.0 RC2 Human Gate5**，由用户实际浏览更新预览后给 PASS/FAIL。未经真实 Human PASS，不 commit/push/tag/release/部署/自动确认课程事实。
-- 如果视觉修正以外发现实质性新产品冲突，提交最小真实 blocker；不要变成又一轮无休止的审计。
+## 4. Checkpoints, evidence and validation
 
-**最终目标：消除当前截图里“大字太丑、风格不统一”的明显视觉问题，用一版更轻、更协调、真正易读的 Course Brief 把同一 RC2 交回 Human Gate5。**
+- Preserve the source checkpoint a52d40c and existing audit changes before modifying. Check actual status and diff, retain unrelated dirty/private state. Previous P2E-065 explicitly authorizes safe commit/push of its existing checkpoint scope; if not already done, complete that checkpoint independently only after proper review, correct remote/branch and privacy checks. Do not treat that authorization as permission to publish new Phase 1 changes or release. Save new Phase 1 changes in a separate traceable local engineering checkpoint; report push status and request explicit authority if needed. No force push, reset --hard, clean -fd, unchecked git add ., tag or GitHub Release.
+- Prior audit CI reported 1008 extension + 20 backend + 2 contracts + 4 QA logical audit tests, lint 0/0. Treat as previous evidence, not current-run results. Reuse valid tests/fixtures; add targeted regressions for repaired behaviors, including both surfaces, keyboard/focus, protected state, paid ambiguity, cache invalidation, historical/current eligibility, backoff, waiting/resume, spreadsheets, privacy and calendar. Use automated scripts first; for real UI where needed run isolated zero-paid browser QA. No new real course scans, paid model calls, original user profile operations or mutation of trusted data. Run necessary integrated CI for the resulting changed code; do not indiscriminately rerun unrelated historical gates or duplicate expensive workflows.
+- Keep outstanding RC2 Human Gate 5 and real online Side Panel, incremental Check/Rebuild, non-MA6081 generalization, GAI original PDF, Literature Review identity, 2h/3h exam conflict, 24%/40% similarity boundaries, Part1 slots and Part3 version/duration gaps explicit. No claim that prior 17 authorized candidate interpretations were independent AI success or Human acceptance. Preserve MA6081 evidence and old RC1 FAIL. Do not attempt new semantic or source correction in Phase 1.
+
+## 5. Documents and stop condition
+
+Read as needed: latest E2P + outbound manifest; PRD_v0.3.0, independent page-organized Interaction_and_Information_Architecture_Spec_v0.3.0, DECISION_LOG, TECHNICAL_DESIGN, RC2_ACCEPTANCE_STATUS / RC2_HUMAN_GATE5, inherited v0.2.0 PRD, current README/governance. Formal facts and any approved clarification belong in existing appropriate docs (PRD/IA/decision log/version record/technical design/engineering report); no parallel PRD or new report per minor fix. Keep existing implementation, product and evidence statements distinguishable.
+
+Stop at Phase 1 engineering delivery. Report each UI-01–10 and PR-01–06: reproduced / fixed / already fixed / blocked, evidence/test, remaining limitations. Report actual cleanup/deletions/deferred retirement, actual CI/build and privacy boundary, local checkpoint SHA and verified remote status if applicable. Document any product questions together and propose next Phase 2 entry, without initiating it. State `PHASE 1 REMEDIATION [actual status] / HUMAN GATE 5 NOT PASSED / NO RELEASE`. Do not ask Owner to repeat full product orientation or Human Gate 5 now.
+
+Use GPT Drive Codex v0.2.0 outbound explicit Changed Files (including configured `docs/collaboration/CODEX_TO_CHATGPT_HANDOFF.md`) via Desktop plan/apply/inspect. Distinguish local readback from cloud visibility; report ID, plan, receipt and evidence boundary. No connector workaround absent explicit emergency authorization. Current owner: Engineering Side after successful inbound verification. Product Side only reviews the delivered result and later-phase decisions.

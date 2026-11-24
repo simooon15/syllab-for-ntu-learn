@@ -4,9 +4,11 @@ export function decodeDirectCapture(raw: string): {
   value: unknown;
   formatRecovery?: DirectFormatRecovery;
 } {
+  let initialError: unknown;
   try {
     return { value: JSON.parse(raw) as unknown };
-  } catch {
+  } catch (error) {
+    initialError = error;
     /* bounded delimiter recovery below */
   }
   const trimmed = raw.trimEnd();
@@ -26,5 +28,5 @@ export function decodeDirectCapture(raw: string): {
       /* no complete JSON value yet */
     }
   }
-  throw Error("JSON");
+  throw initialError instanceof Error ? initialError : new Error("JSON");
 }

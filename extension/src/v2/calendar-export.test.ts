@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import type { EvidenceReference } from "@syllab/contracts";
 
-import { exportCalendar, calendarEvents, calendarFileName } from "./calendar-export";
+import {
+  calendarEvents,
+  calendarFileName,
+  calendarSummary,
+  exportCalendar
+} from "./calendar-export";
 import type { AssessmentRecord, ChangeRecord, ConstraintRecord, FactRecord } from "./domain";
 import { makeCourse, withDates } from "./testing";
 
@@ -445,5 +450,34 @@ describe("Calendar export", () => {
       { title: "Individual Assignment", date: "2026-10-18" }
     ]);
     expect(result.fileName).toBe("MA6081.ics");
+  });
+
+  it("blocks export when a pending CONFLICT change identifies the date by factId", () => {
+    const summary = calendarSummary(
+      withDates({
+        course: makeCourse(),
+        assessments: [assessment()],
+        facts: [fact({ factId: "fact-due-1", field: "due_date" })],
+        changes: [
+          {
+            changeId: "change-conflict-1",
+            courseId: "course-1",
+            workflowId: "wf-1",
+            targetId: "assessment-1",
+            field: "fact-due-1",
+            changeType: "CONFLICT",
+            currentValue: { state: "KNOWN", value: "2026-10-18" },
+            latestValue: { state: "KNOWN", value: "2026-10-25" },
+            currentEvidenceIds: [],
+            newEvidenceIds: [],
+            createdAt: "2026-09-20T00:00:00.000Z",
+            updatedAt: "2026-09-20T00:00:00.000Z"
+          }
+        ]
+      })
+    );
+    expect(summary.events).toHaveLength(0);
+    expect(summary.exportableCount).toBe(0);
+    expect(summary.unresolvedCount).toBe(0);
   });
 });

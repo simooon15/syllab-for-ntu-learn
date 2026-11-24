@@ -37,4 +37,4 @@ dist-qa/
 # Machine-local real acceptance state: the QA Chrome profile and its local config.
 .tmp/
 .real-test.local.json
-artifacts/real-test/
+/.gpt-drive-codex/

@@ -88,6 +88,23 @@ describe("BlackboardMachinePort empty content classification", () => {
     });
     expect(result.text).toContain("contentDetail.resource/x-bb-blti-link.title: Final submission");
     expect(result.text).toContain("contentDetail.resource/x-bb-blti-link.dueDate: 2026-10-18");
+    expect(result.text.split("\n")).toEqual([
+      "contentDetail.resource/x-bb-blti-link.title: Final submission",
+      "contentDetail.resource/x-bb-blti-link.dueDate: 2026-10-18"
+    ]);
+    expect(result.structure).toEqual([
+      "1. contentDetail.resource/x-bb-blti-link.title: Final submission",
+      "2. contentDetail.resource/x-bb-blti-link.dueDate: 2026-10-18"
+    ]);
+  });
+
+  it("leaves out-of-range numeric HTML entities intact without throwing", async () => {
+    const source = discovered({
+      rawText: "<p>Valid &#65; and out-of-range &#99999999; entity</p>"
+    });
+    const result = await machine([source]).fetchAndParse(stored(source), course, 42);
+    expect(result.fetchStatus).toBe("ok");
+    expect(result.text).toBe("Valid A and out-of-range &#99999999; entity");
   });
 });
 

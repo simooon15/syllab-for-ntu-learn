@@ -232,9 +232,21 @@ export function calendarSummary(input: CalendarExportInput): CalendarExportSumma
 
   const events = new Map<string, CalendarEventDraft>();
   const fieldsByEvent = new Map<string, string[]>();
+  let dateCount = 0;
   let exportableCount = 0;
   let unresolvedCount = 0;
   for (const fact of dateFacts) {
+    const owner = resolveOwner(fact, input, assessments, constraints);
+    if (!owner) continue;
+    dateCount += 1;
+    // Conflict-blocked is a third outcome: the date is real, it just is not settled. It is neither
+    // exportable nor unresolved, so it is in neither count.
+    if (
+      isConflicted(blocked, owner.key, fact.field) ||
+      isConflicted(blocked, owner.key, fact.factId)
+    ) {
+      continue;
+    }
     // No resolved date means the Course holds a date this product cannot place. It is counted as
     // unresolved and no event is invented for it.
     const canonical = input.dates.get(fact.factId);
@@ -242,11 +254,6 @@ export function calendarSummary(input: CalendarExportInput): CalendarExportSumma
       unresolvedCount += 1;
       continue;
     }
-    const owner = resolveOwner(fact, input, assessments, constraints);
-    if (!owner) continue;
-    // Conflict-blocked is a third outcome: the date is real, it just is not settled. It is neither
-    // exportable nor unresolved, so it is in neither count.
-    if (isConflicted(blocked, owner.key, fact.field)) continue;
     exportableCount += 1;
     const time =
       canonical.time ?? timeOf(fact, owner, timeFacts, dateCounts, input.course.courseId);
@@ -284,7 +291,7 @@ export function calendarSummary(input: CalendarExportInput): CalendarExportSumma
 
   return {
     events: sorted,
-    dateCount: dateFacts.length,
+    dateCount,
     exportableCount,
     unresolvedCount
   };

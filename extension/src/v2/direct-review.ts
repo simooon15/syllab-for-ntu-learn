@@ -34,31 +34,50 @@ export function directReviewItems(
           f.product &&
           !["REFERENCE", "BACKGROUND"].includes(f.product.disposition)
       );
-      const groups = new Map<string, typeof facts>();
+      const groups = new Map<string, { group: string; ownerScope: boolean; scope: typeof facts }>();
       const base = facts.filter(
         (f) => !f.product?.independentReview && f.product?.disposition !== "ISSUE"
       );
-      if ("assessmentId" in owner) groups.set("Assessment", base);
-      else if (base.length) groups.set("Key rules", base);
+      if ("assessmentId" in owner) {
+        groups.set("__owner__", { group: "Assessment", ownerScope: true, scope: base });
+      } else if (base.length) {
+        groups.set("__rules__", { group: "Key rules", ownerScope: false, scope: base });
+      }
       for (const f of facts.filter(
         (f) => f.product?.independentReview || f.product?.disposition === "ISSUE"
       )) {
-        const key = requirePresent(f.product).group;
-        groups.set(key, [...(groups.get(key) ?? []), f]);
+        const group = requirePresent(f.product).group;
+        const mapKey = `ind:${group}`;
+        const existing = groups.get(mapKey);
+        groups.set(mapKey, {
+          group,
+          ownerScope: false,
+          scope: [...(existing?.scope ?? []), f]
+        });
       }
-      if (!groups.size) groups.set("Identity / applicability", []);
-      for (const [group, scope] of groups) {
+      if (!groups.size) {
+        groups.set("__identity__", {
+          group: "Identity / applicability",
+          ownerScope: false,
+          scope: []
+        });
+      }
+      for (const { group, ownerScope, scope } of groups.values()) {
+        const reviewItemId =
+          !ownerScope && group === "Assessment"
+            ? `initial_${id}_independent_${group}`
+            : `initial_${id}_${group}`;
         items.push({
-          reviewItemId: `initial_${id}_${group}`,
+          reviewItemId,
           courseId,
           workflowId,
           kind: "initial",
           targetId: id,
           payload: {
             productScope: true,
-            ownerScope: group === "Assessment",
+            ownerScope,
             scopeGroup: group,
-            scopeTitle: group === "Assessment" ? name : `${name} · ${group}`,
+            scopeTitle: ownerScope ? name : `${name} · ${group}`,
             scopeFactIds: scope.map((f) => f.factId),
             scopeVersions: scope.map((f) => ({
               factId: f.factId,

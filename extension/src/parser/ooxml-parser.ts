@@ -165,14 +165,13 @@ export function parseDocx(bytes: Uint8Array): ParsedTextUnit[] {
         ...(/c:chart|dgm:relIds/.test(encoded) ? ["chart-or-diagram"] : []),
         ...(/m:oMath/.test(encoded) ? ["equation"] : [])
       ];
+      const embedded = images(encoded);
       units.push({
         locator: `paragraph:${String(paragraph)}`,
         kind: "paragraph",
         text,
         partial: visualGaps.length > 0,
-        ...(images(JSON.stringify(node)).length
-          ? { embeddedImagePaths: images(JSON.stringify(node)) }
-          : {}),
+        ...(embedded.length ? { embeddedImagePaths: embedded } : {}),
         ...(section ? { section } : {}),
         ...(visualGaps.length ? { visualGaps } : {})
       });
@@ -198,15 +197,14 @@ export function parseDocx(bytes: Uint8Array): ParsedTextUnit[] {
           value: textOf(cell, "w:t")
         }))
       );
+      const embedded = images(encoded);
       units.push({
         locator: `table:${String(table)}`,
         kind: "table",
         cells,
         text,
         partial: visualGaps.length > 0,
-        ...(images(JSON.stringify(node)).length
-          ? { embeddedImagePaths: images(JSON.stringify(node)) }
-          : {}),
+        ...(embedded.length ? { embeddedImagePaths: embedded } : {}),
         ...(section ? { section } : {}),
         ...(visualGaps.length ? { visualGaps } : {})
       });
@@ -215,7 +213,12 @@ export function parseDocx(bytes: Uint8Array): ParsedTextUnit[] {
   // Headers/footers are course evidence too, but do not perturb body paragraph numbering.
   for (const path of Object.keys(archive)
     .filter((path) => /^word\/(?:header|footer)\d+\.xml$/.test(path))
-    .sort()) {
+    .sort((left, right) => {
+      const leftKind = left.startsWith("word/header") ? 0 : 1;
+      const rightKind = right.startsWith("word/header") ? 0 : 1;
+      if (leftKind !== rightKind) return leftKind - rightKind;
+      return naturalNumber(left) - naturalNumber(right);
+    })) {
     const xml = strFromU8(archive[path] ?? new Uint8Array());
     const text = textOf(parser.parse(xml), "w:t");
     const hasVisual = /<(?:w:drawing|w:pict|m:oMath)\b/.test(xml);
@@ -294,8 +297,15 @@ export function parseXlsx(bytes: Uint8Array): ParsedTextUnit[] {
           collectObjectText(cell.is, parts);
           value = parts.join(" ").replace(/\s+/g, " ").trim();
         }
-        const formula =
-          typeof cell.f === "string" || typeof cell.f === "number" ? String(cell.f) : undefined;
+        const rawFormula =
+          typeof cell.f === "object" && cell.f !== null && "#text" in cell.f
+            ? (cell.f as Record<string, unknown>)["#text"]
+            : cell.f;
+        const formulaText =
+          typeof rawFormula === "string" || typeof rawFormula === "number"
+            ? String(rawFormula)
+            : undefined;
+        const formula = formulaText !== undefined && formulaText !== "" ? formulaText : undefined;
         return value === "" && formula === undefined
           ? []
           : [{ reference, value, ...(formula === undefined ? {} : { formula }) }];

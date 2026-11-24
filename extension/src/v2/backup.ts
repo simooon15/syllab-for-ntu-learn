@@ -37,9 +37,12 @@ export interface BackupEnvelope {
 }
 
 function stable(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => (item === undefined ? "null" : stable(item))).join(",")}]`;
+  }
   if (isRecord(value)) {
     return `{${Object.keys(value)
+      .filter((key) => value[key] !== undefined)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${stable(value[key])}`)
       .join(",")}}`;

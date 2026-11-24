@@ -127,6 +127,8 @@ export async function runPhysicalWork(o: PhysicalWorkOptions): Promise<PhysicalW
   const persist = () => {
     assertPhysicalAccounting(l);
     const snapshot = structuredClone(l);
+    // Intentionally fail-closed: once a checkpoint write fails, subsequent writes in this run
+    // must also reject so later transitions cannot overwrite or advance past the failed state.
     const p = persistTail.then(() => o.persist(snapshot));
     persistTail = p;
     return p;
@@ -260,7 +262,7 @@ export async function runPhysicalWork(o: PhysicalWorkOptions): Promise<PhysicalW
           if (!u) return;
           const part = u.parts.find((p) => !p.delivered);
           if (!part) {
-            u.parts = [{ text: request, delivered: false }];
+            u.parts = [{ text: u.call.user, delivered: false }];
           }
           const target = u.parts.find((p) => !p.delivered);
           if (target?.visualParts?.length) {

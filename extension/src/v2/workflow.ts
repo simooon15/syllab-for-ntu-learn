@@ -1064,8 +1064,8 @@ export class WorkflowEngine {
       }
       return result;
     };
+    const controller = new AbortController();
     try {
-      const controller = new AbortController();
       this.phaseControllers.set(this.phaseKey(claimed), controller);
       const ownershipWatch = setInterval(() => {
         void this.assertCompletionOwnership(claimed).catch((error: unknown) =>
@@ -1079,7 +1079,10 @@ export class WorkflowEngine {
         this.phaseControllers.delete(this.phaseKey(claimed));
       }
     } catch (error) {
-      if (error instanceof StaleWorkflowCompletion) {
+      if (
+        error instanceof StaleWorkflowCompletion ||
+        (controller.signal.aborted && controller.signal.reason instanceof StaleWorkflowCompletion)
+      ) {
         qaTrace("qa.workflow-stale-completion", { workflowId: claimed.workflowId });
         const current = await this.options.store.readWorkflow(claimed.workflowId);
         const fallback = { ...claimed };
@@ -1125,11 +1128,12 @@ export class WorkflowEngine {
       lastErrorDetail,
       paidRetryAvailable: _paidRetryAvailable,
       retryConsumesApi: _retryConsumesApi,
-      lease: _lease,
+      lease,
       ...carried
     } = workflow;
     const advanced: WorkflowRecord = {
       ...carried,
+      ...(next === REVIEW || !lease ? {} : { lease }),
       phase: next,
       phaseCursor: "start",
       attempt: 0,
@@ -4536,19 +4540,7 @@ export class WorkflowEngine {
 
   private async unitTaskC(workflow: WorkflowRecord): Promise<StepResult> {
     const course = await this.requireCourse(workflow);
-    const apiKey = await this.requireApiKey();
     const context = await this.materializeContext(workflow, course);
-    const classificationIndex = contentIndex(context.sourceRecords);
-    const deferredIds = new Set(
-      (workflow.architecturePolicy ? [] : context.sourceRecords)
-        .filter(
-          (source) =>
-            reusableTeaching(source, context.sourceRecords, undefined, classificationIndex) &&
-            !semanticallyProcess(source)
-        )
-        .map((source) => source.sourceId)
-    );
-    context.evidence = context.evidence.filter((entry) => !deferredIds.has(entry.sourceId));
 
     const snapshot = await this.readStateUnderReview(workflow);
     if (!snapshot) return this.advance(workflow);
@@ -4648,6 +4640,18 @@ export class WorkflowEngine {
       });
       return this.advance(workflow);
     }
+    const apiKey = await this.requireApiKey();
+    const classificationIndex = contentIndex(context.sourceRecords);
+    const deferredIds = new Set(
+      (workflow.architecturePolicy ? [] : context.sourceRecords)
+        .filter(
+          (source) =>
+            reusableTeaching(source, context.sourceRecords, undefined, classificationIndex) &&
+            !semanticallyProcess(source)
+        )
+        .map((source) => source.sourceId)
+    );
+    context.evidence = context.evidence.filter((entry) => !deferredIds.has(entry.sourceId));
     const [decisions, history] = await Promise.all([
       this.options.store.readDecisions(workflow.courseId),
       this.options.store.readHistory(workflow.courseId)

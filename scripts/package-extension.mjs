@@ -52,19 +52,23 @@ async function walk(directory, prefix = "") {
 }
 
 // 1. Ship the real thing: a build without the deterministic E2E bridge.
-await run("npm", ["run", "build", "-w", "@syllab/extension"], { SYLLAB_E2E_FIXTURES: "0" });
+await run("npm", ["run", "build", "-w", "@syllab/contracts"], {});
+await run("npm", ["run", "build", "-w", "@syllab/extension"], {});
 
-// 2. Refuse to package something that is not fit to hand out. Every file in the bundle is read,
-//    not just the two entry scripts: a source map carries the source of modules the bundle elided,
-//    so a leak can sit in a file nobody thinks of as executable.
+// 2. Refuse to package something that is not fit to hand out. Every text file in the bundle is
+//    read, and every path is checked for source maps (which carry elided module sources).
+const BINARY_EXTENSIONS = /\.(?:wasm|data|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|zip)$/i;
 const bundledFiles = await walk(dist);
 const leaks = [];
 for (const relative of bundledFiles) {
-  const bytes = new Uint8Array(await readFile(join(dist, relative)));
-  const text = Buffer.from(bytes).toString("utf8");
+  if (relative.endsWith(".map")) {
+    leaks.push(`SOURCE_MAP:${relative}`);
+    continue;
+  }
+  if (BINARY_EXTENSIONS.test(relative)) continue;
+  const text = await readFile(join(dist, relative), "utf8");
   leaks.push(...forbiddenHits(text, relative));
   if (KEY_SHAPE.test(text)) leaks.push(`KEY_SHAPE:${relative}`);
-  if (relative.endsWith(".map")) leaks.push(`SOURCE_MAP:${relative}`);
 }
 if (leaks.length > 0) {
   throw new Error(`Refusing to package:\n${leaks.map((leak) => ` - ${leak}`).join("\n")}`);

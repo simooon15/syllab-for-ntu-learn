@@ -249,11 +249,16 @@ export function validateCourseProduct(raw: unknown, draft: CourseDraft): CourseP
       state === "KNOWN" &&
       ["percent_course", "percent_rubric", "count", "minutes", "hours"].includes(unit)
     ) {
-      const n = Number(String(value).replace(/%$/, ""));
-      if (!Number.isFinite(n) || n < 0 || (unit.startsWith("percent") && n > 100))
+      const normalized = String(value).replace(/%$/, "").trim();
+      const n = Number(normalized);
+      if (
+        normalized.length === 0 ||
+        !Number.isFinite(n) ||
+        n < 0 ||
+        (unit.startsWith("percent") && n > 100)
+      )
         fail("NUMERIC_UNIT");
-      if (!support.some((s) => s.quote.includes(String(value).replace(/%$/, ""))))
-        fail("VALUE_SUPPORT");
+      if (!support.some((s) => s.quote.includes(normalized))) fail("VALUE_SUPPORT");
     }
     if (unit === "duration" && typeof value === "number") fail("DURATION_UNIT_REQUIRED");
     if (
@@ -407,23 +412,30 @@ export function courseProductPacket(draft: CourseDraft) {
 }
 
 export function courseProductDiagnostics(raw: unknown, draft: CourseDraft) {
-  const body = obj(obj(raw).product ?? raw),
-    props = arr(body.propositions);
+  const safeObj = (v: unknown): Record<string, unknown> => (isRecord(v) ? v : {});
+  const safeArr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+  const root = safeObj(raw);
+  const body = safeObj(root.product ?? raw),
+    props = safeArr(body.propositions);
   const clauses = new Map(
     [...draft.clauses, ...(draft.retiredClauses ?? [])].map((c) => [c.clauseId, c])
   );
   const issues: Array<Record<string, unknown>> = [];
+  if (!isRecord(raw) || !Array.isArray(body.propositions)) {
+    issues.push({ code: "INVALID_PRODUCT_SHAPE" });
+  }
   for (const value of props) {
-    const p = obj(value);
-    for (const ref of arr(p.clauseRefs))
+    const p = safeObj(value);
+    const clauseRefs = safeArr(p.clauseRefs);
+    for (const ref of clauseRefs)
       if (typeof ref !== "string" || !clauses.has(ref))
         issues.push({ code: "UNKNOWN_CLAUSE", propositionRef: p.propositionRef, clauseRef: ref });
-    for (const support of arr(p.support)) {
-      const s = obj(support),
+    for (const support of safeArr(p.support)) {
+      const s = safeObj(support),
         c = typeof s.clauseRef === "string" ? clauses.get(s.clauseRef) : undefined;
       if (
         !c ||
-        !arr(p.clauseRefs).includes(s.clauseRef) ||
+        !clauseRefs.includes(s.clauseRef) ||
         typeof s.quote !== "string" ||
         ![c.content, ...c.evidence.map((e) => e.excerpt)].some((t) => t.includes(s.quote as string))
       )
@@ -435,13 +447,16 @@ export function courseProductDiagnostics(raw: unknown, draft: CourseDraft) {
           ...(c ? { originalContent: c.content } : {})
         });
     }
+    const val = safeObj(p.value);
     if (
       ["percent_course", "percent_rubric", "count", "minutes", "hours"].includes(String(p.unit)) &&
-      obj(p.value).state === "KNOWN"
+      val.state === "KNOWN"
     ) {
-      const value = obj(p.value).value;
-      const number = Number(String(value).replace(/%$/, ""));
+      const value = val.value;
+      const normalized = String(value).replace(/%$/, "").trim();
+      const number = Number(normalized);
       if (
+        normalized.length === 0 ||
         !Number.isFinite(number) ||
         number < 0 ||
         (String(p.unit).startsWith("percent") && number > 100)
@@ -453,11 +468,11 @@ export function courseProductDiagnostics(raw: unknown, draft: CourseDraft) {
           value
         });
     }
-    if (p.unit === "duration" && typeof obj(p.value).value === "number")
+    if (p.unit === "duration" && typeof val.value === "number")
       issues.push({
         code: "DURATION_UNIT_REQUIRED",
         propositionRef: p.propositionRef,
-        value: obj(p.value).value
+        value: val.value
       });
     if (
       (p.predicate === "weight" && p.unit !== "percent_course") ||
@@ -473,8 +488,8 @@ export function courseProductDiagnostics(raw: unknown, draft: CourseDraft) {
       });
   }
   const covered = new Set([
-    ...props.flatMap((p) => arr(obj(p).clauseRefs)),
-    ...arr(body.context).flatMap((c) => arr(obj(c).clauseRefs))
+    ...props.flatMap((p) => safeArr(safeObj(p).clauseRefs)),
+    ...safeArr(body.context).flatMap((c) => safeArr(safeObj(c).clauseRefs))
   ]);
   const missing = draft.clauses.filter((c) => !covered.has(c.clauseId)).map((c) => c.clauseId);
   return { issues, missingClauseRefs: missing };

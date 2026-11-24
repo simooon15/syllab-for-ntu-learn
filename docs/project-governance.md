@@ -7,8 +7,8 @@ repository-wide hard rules; detailed long-term rules are grouped by subject here
   collaboration model, Google Drive Shared Project Mirror, filesystem-native synchronization,
   Handoff / Sync Manifest, conflict protection and role/file authority.
 - [`DOCUMENTATION_GOVERNANCE.md`](DOCUMENTATION_GOVERNANCE.md) — documentation audiences, language
-  classification, the four Feishu Core Product Archives, README lifecycle and source-of-truth
-  boundaries.
+  classification, the Core Product Archives (three from v0.3.0 onward; four historically in
+  v0.2.0), README lifecycle and source-of-truth boundaries.
 - [`rules/product-version-archives.md`](rules/product-version-archives.md) — version directories,
   version transitions, Product archive synchronization and the boundary between Product archives
   and engineering records.

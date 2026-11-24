@@ -697,4 +697,126 @@ describe("Change and identity dependency audit", () => {
       expect(decision.details?.productScope).toBeUndefined(); // An identity/change decision is not base approval.
     }
   );
+
+  it("UI-01: OPEN_SCREEN preserves semesterId in surfaceRoutes", async () => {
+    const database = new LocalDatabase();
+    const store = new LocalStore(database);
+    await store.initialize();
+    const surfaceRoutes = new Map<
+      string,
+      {
+        surface: "full-page" | "side-panel";
+        screen: "SEM-02";
+        courseId?: string;
+        semesterId?: string;
+      }
+    >();
+    const views = {
+      build: vi.fn((input: { semesterId?: string }) =>
+        Promise.resolve({ screen: "SEM-02", semesterId: input.semesterId })
+      )
+    } as unknown as ViewBuilder;
+    const handler = new ViewHandler({
+      store,
+      database,
+      staging: {} as RebuildStagingStore,
+      session: { get: () => Promise.resolve(undefined), set: () => Promise.resolve() },
+      views,
+      engine: {} as WorkflowEngine,
+      surfaceRoutes,
+      now: () => new Date(NOW),
+      driveWorkflow: vi.fn(),
+      resolveScanTab: () => Promise.resolve(undefined),
+      exportBackup: () => Promise.resolve(),
+      exportCalendar: () => Promise.resolve(),
+      setApiKey: () => Promise.resolve(),
+      validateApiKey: () => Promise.resolve("valid"),
+      setAuthorization: () => Promise.resolve(),
+      productVersion: "0.3.0"
+    });
+    const res = await handler.handle({
+      contract: V2_MESSAGE_CONTRACT,
+      type: "OPEN_SCREEN",
+      surface: "full-page",
+      screen: "SEM-02",
+      semesterId: "sem-historical"
+    });
+    expect(res.ok).toBe(true);
+    expect(surfaceRoutes.get("full-page:default")).toMatchObject({
+      screen: "SEM-02",
+      semesterId: "sem-historical"
+    });
+  });
+
+  it("PR-03: SET_API_KEY and SET_AUTHORIZATION resume matching waiting workflows", async () => {
+    const database = new LocalDatabase();
+    const store = new LocalStore(database);
+    await store.initialize();
+    const driveWorkflow = vi.fn();
+    await store.saveWorkflow({
+      workflowId: "wf-key",
+      courseId: "course-1",
+      kind: "initial",
+      state: "waiting",
+      waitingReason: "api-key",
+      phase: "task-b",
+      phaseCursor: "start",
+      attempt: 0,
+      baseCourseRevision: 0,
+      createdAt: NOW,
+      updatedAt: NOW
+    });
+    await store.saveWorkflow({
+      workflowId: "wf-privacy",
+      courseId: "course-2",
+      kind: "initial",
+      state: "waiting",
+      waitingReason: "privacy-authorization",
+      phase: "task-b",
+      phaseCursor: "start",
+      attempt: 0,
+      baseCourseRevision: 0,
+      createdAt: NOW,
+      updatedAt: NOW
+    });
+    const handler = new ViewHandler({
+      store,
+      database,
+      staging: {} as RebuildStagingStore,
+      session: { get: () => Promise.resolve(undefined), set: () => Promise.resolve() },
+      views: { build: vi.fn(() => Promise.resolve({})) } as unknown as ViewBuilder,
+      engine: {} as WorkflowEngine,
+      surfaceRoutes: new Map(),
+      now: () => new Date(NOW),
+      driveWorkflow,
+      resolveScanTab: () => Promise.resolve(undefined),
+      exportBackup: () => Promise.resolve(),
+      exportCalendar: () => Promise.resolve(),
+      setApiKey: () => Promise.resolve(),
+      validateApiKey: () => Promise.resolve("valid"),
+      setAuthorization: () => Promise.resolve(),
+      productVersion: "0.3.0"
+    });
+
+    await handler.handle({
+      contract: V2_MESSAGE_CONTRACT,
+      type: "SET_API_KEY",
+      surface: "full-page",
+      apiKey: "test-key"
+    });
+    expect(driveWorkflow).toHaveBeenCalledWith("wf-key");
+    expect(await store.readWorkflow("wf-key")).toMatchObject({ state: "saved" });
+    expect((await store.readWorkflow("wf-key"))?.waitingReason).toBeUndefined();
+    expect((await store.readWorkflow("wf-privacy"))?.state).toBe("waiting");
+
+    await handler.handle({
+      contract: V2_MESSAGE_CONTRACT,
+      type: "SET_AUTHORIZATION",
+      surface: "full-page",
+      kind: "privacy",
+      granted: true
+    });
+    expect(driveWorkflow).toHaveBeenCalledWith("wf-privacy");
+    expect(await store.readWorkflow("wf-privacy")).toMatchObject({ state: "saved" });
+  });
 });

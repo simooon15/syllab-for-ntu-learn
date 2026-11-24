@@ -107,12 +107,12 @@ export function renderCourse(ctx: ScreenContext, screen: ScreenId): HTMLElement 
       return root;
     }
   }
-  if (course.noAssessments) {
-    root.append(renderNoAssessments(ctx, course));
-    return root;
-  }
   if (ctx.ui.addingAssessment) {
     root.append(renderAddForm(ctx, course));
+    return root;
+  }
+  if (course.noAssessments) {
+    root.append(renderNoAssessments(ctx, course));
     return root;
   }
   root.append(briefBody(ctx, course));
@@ -982,9 +982,11 @@ function organizedDetails(ctx: ScreenContext, input: FactView[], key: string): H
       const list = el("ul", "product-action-children");
       for (const child of descendants) {
         if (rendered.has(child.factId)) continue;
+        const item = el("li", "product-action-child");
         const chapter = el("details", "product-details");
         chapter.append(el("summary", "", detailTitle(child)), draw(child));
-        list.append(chapter);
+        item.append(chapter);
+        list.append(item);
       }
       node.append(list);
     } else if (
@@ -1187,53 +1189,57 @@ function renderEditForm(ctx: ScreenContext, assessment: AssessmentCardView): HTM
     editors.push(editor);
   }
 
+  const submitEdit = (): void => {
+    for (const { fact, input, state, modality, conditions, exceptions } of editors) {
+      const semantics =
+        modality && conditions && exceptions
+          ? {
+              modality: modality.value.trim(),
+              conditions: conditions.value
+                .split("\n")
+                .map((s) => s.trim())
+                .filter(Boolean),
+              exceptions: exceptions.value
+                .split("\n")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            }
+          : undefined;
+      if (
+        input.value === (fact.rawDisplay ?? fact.display) &&
+        state.value === fact.knowledge &&
+        JSON.stringify(semantics) === JSON.stringify(fact.semantics)
+      )
+        continue;
+      ctx.actions.onMutation({
+        kind: "EditFact",
+        factId: fact.factId,
+        ...(semantics ? { semantics } : {}),
+        value: {
+          state: state.value as FactValue["state"],
+          ...(state.value === "EXPLICITLY_UNKNOWN" ? {} : { value: input.value }),
+          ...(state.value === "UNCERTAIN" ? { competingValues: fact.competingValues ?? [] } : {})
+        }
+      });
+    }
+    if (nameInput.value.trim().length > 0 && nameInput.value !== assessment.name) {
+      ctx.actions.onMutation({
+        kind: "RenameAssessment",
+        assessmentId: assessment.assessmentId,
+        name: nameInput.value.trim()
+      });
+    }
+    ctx.ui.editingAssessmentId = undefined;
+    ctx.repaint();
+  };
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitEdit();
+  });
+
   form.append(
     actionRow(
-      primaryAction(t("save"), () => {
-        for (const { fact, input, state, modality, conditions, exceptions } of editors) {
-          const semantics =
-            modality && conditions && exceptions
-              ? {
-                  modality: modality.value.trim(),
-                  conditions: conditions.value
-                    .split("\n")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                  exceptions: exceptions.value
-                    .split("\n")
-                    .map((s) => s.trim())
-                    .filter(Boolean)
-                }
-              : undefined;
-          if (
-            input.value === (fact.rawDisplay ?? fact.display) &&
-            state.value === fact.knowledge &&
-            JSON.stringify(semantics) === JSON.stringify(fact.semantics)
-          )
-            continue;
-          ctx.actions.onMutation({
-            kind: "EditFact",
-            factId: fact.factId,
-            ...(semantics ? { semantics } : {}),
-            value: {
-              state: state.value as FactValue["state"],
-              ...(state.value === "EXPLICITLY_UNKNOWN" ? {} : { value: input.value }),
-              ...(state.value === "UNCERTAIN"
-                ? { competingValues: fact.competingValues ?? [] }
-                : {})
-            }
-          });
-        }
-        if (nameInput.value.trim().length > 0 && nameInput.value !== assessment.name) {
-          ctx.actions.onMutation({
-            kind: "RenameAssessment",
-            assessmentId: assessment.assessmentId,
-            name: nameInput.value.trim()
-          });
-        }
-        ctx.ui.editingAssessmentId = undefined;
-        ctx.repaint();
-      }),
+      primaryAction(t("save"), submitEdit),
       secondaryAction(t("cancel"), () => {
         ctx.ui.editingAssessmentId = undefined;
         ctx.repaint();
@@ -1251,11 +1257,13 @@ function renderAddForm(ctx: ScreenContext, course: CourseView): HTMLElement {
   nameRow.append(el("span", "field-label", t("addAssessmentNameLabel")));
   const nameInput = el("input", "text-input");
   nameInput.type = "text";
+  nameInput.dataset.editKey = `add:${course.courseId}:name`;
   nameRow.append(nameInput);
 
   const kindRow = el("label", "field-row");
   kindRow.append(el("span", "field-label", t("addAssessmentKindLabel")));
   const select = el("select", "select-input");
+  select.dataset.editKey = `add:${course.courseId}:kind`;
   for (const kind of KIND_ORDER) {
     const option = el("option", undefined, kindLabel(kind));
     option.value = kind;
@@ -1263,21 +1271,27 @@ function renderAddForm(ctx: ScreenContext, course: CourseView): HTMLElement {
   }
   kindRow.append(select);
 
+  const submitAdd = (): void => {
+    const name = nameInput.value.trim();
+    const kind = select.value as AssessmentKindView;
+    if (name.length === 0) return;
+    ctx.ui.addingAssessment = false;
+    ctx.actions.onMutation({
+      kind: "AddAssessment",
+      assessment: { name, kind },
+      facts: []
+    });
+    ctx.repaint();
+  };
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitAdd();
+  });
+
   form.append(sectionHeading(t("addAssessmentHeading")), nameRow, kindRow);
   form.append(
     actionRow(
-      primaryAction(t("addAssessmentSubmit"), () => {
-        const name = nameInput.value.trim();
-        const kind = select.value as AssessmentKindView;
-        if (name.length === 0) return;
-        ctx.ui.addingAssessment = false;
-        ctx.actions.onMutation({
-          kind: "AddAssessment",
-          assessment: { name, kind },
-          facts: []
-        });
-        ctx.repaint();
-      }),
+      primaryAction(t("addAssessmentSubmit"), submitAdd),
       secondaryAction(t("cancel"), () => {
         ctx.ui.addingAssessment = false;
         ctx.repaint();

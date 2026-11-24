@@ -24,6 +24,7 @@ export function renderRebuild(ctx: ScreenContext, screen: ScreenId): HTMLElement
   const header = el("header", "course-header");
   header.append(
     backAction("course", () => {
+      ctx.ui.rebuildConfirmOpen = false;
       const courseId = ctx.view.courseId;
       ctx.open(
         ctx.surface === "side-panel" ? "CRS-02" : "CRS-01",

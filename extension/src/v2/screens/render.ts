@@ -114,8 +114,10 @@ export function renderApp(
   };
 
   const paint = (): void => {
+    const previousCourseId = lastCourseId;
+    const activeCourseId = view.courseId ?? view.course?.courseId;
     // A different Course starts clean; the first paint of a Course keeps what was set up.
-    if (lastCourseId !== undefined && view.courseId !== lastCourseId) {
+    if (lastCourseId !== undefined && activeCourseId !== lastCourseId) {
       context.ui.detailAssessmentId = undefined;
       context.ui.editingAssessmentId = undefined;
       context.ui.addingAssessment = false;
@@ -125,7 +127,7 @@ export function renderApp(
       context.ui.evidence = [];
       context.ui.expanded = [];
     }
-    lastCourseId = view.courseId;
+    lastCourseId = activeCourseId;
     // Structural corrections belong to the item they were opened on, never to the next one.
     if (lastReviewItemId !== undefined && view.review?.reviewItemId !== lastReviewItemId) {
       context.ui.splitOpen = false;
@@ -139,12 +141,13 @@ export function renderApp(
     const screen = resolveScreen(view, context.ui, surface);
     const scroller = scrollingElement(root);
     const previous = scroller?.scrollTop ?? 0;
-    const keepScroll = lastScreen === screen;
+    const sameCourse = previousCourseId === undefined || activeCourseId === previousCourseId;
+    const keepScroll = lastScreen === screen && sameCourse;
     const bar = errorBar(context);
     const tree = buildScreen(context, screen);
     // A refused request is the only thing that renders outside the screen it happened on.
     replaceSurface(root, bar ? [bar, tree] : [tree], keepScroll);
-    if (scroller) scroller.scrollTop = keepScroll ? (scrollByScreen.get(screen) ?? previous) : 0;
+    if (scroller) scroller.scrollTop = keepScroll ? previous : 0;
     scrollByScreen.set(screen, scroller?.scrollTop ?? 0);
     lastScreen = screen;
   };

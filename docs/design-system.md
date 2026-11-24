@@ -61,23 +61,24 @@ change and rebuilds from scratch. There is no diffing, no reconciliation, and no
 
 `extension/scripts/build.mjs` copies files verbatim into `extension/dist`:
 
-- `extension/src/popup/popup.css` → `dist/popup.css`
-- `extension/popup.html` → `dist/popup.html` (loads `popup.css` via `<link>`, `popup.js` as a module)
+- `extension/src/app/app.css` → `dist/app.css`
+- `extension/sidepanel.html` and `extension/app.html` → `dist/sidepanel.html`, `dist/app.html` (load `app.css` via `<link>`, `app.js` as a module)
 - `extension/public/fonts/` → `dist/fonts/`
 
 Three consequences you must respect:
 
-1. **`@font-face` URLs resolve relative to `dist/popup.css`** — write `url("fonts/x.woff2")`, never a
+1. **`@font-face` URLs resolve relative to `dist/app.css`** — write `url("fonts/x.woff2")`, never a
    path into `src/`.
-2. **Do not add `import "./popup.css"` to `index.ts`.** The import makes esbuild bundle the CSS a
-   second time and try to resolve its `url()` references against `src/popup/`, which fails the build.
-   The `<link>` in `popup.html` and the `cp` in `build.mjs` are the only paths that should exist.
+2. **Do not add `import "./app.css"` to `index.ts`.** The import makes esbuild bundle the CSS a
+   second time and try to resolve its `url()` references against `src/app/`, which fails the build.
+   The `<link>` in `sidepanel.html` / `app.html` and the `cp` in `build.mjs` are the only paths that
+   should exist.
 3. **The extension page has a strict CSP and no network.** Fonts, textures and images must all be
    local or `data:` URIs. There is no webfont CDN, and adding one would break offline use.
 
-The coupling between the two files is **class names only**. `index.ts` writes `className` strings;
-`popup.css` styles them. Nothing else links them, so a class that `index.ts` writes but the CSS
-never styles is invisible, and a class the CSS styles but `index.ts` never writes is dead code.
+The coupling between the two layers is **class names only**. `extension/src/v2/screens/` writes
+`className` strings; `app.css` styles them. Nothing else links them, so a class that a screen writes
+but the CSS never styles is invisible, and a class the CSS styles but no screen writes is dead code.
 Check both directions when you finish (see §12).
 
 ---
@@ -126,7 +127,7 @@ one place. The only literals allowed in component rules are the few hairlines th
 | `--green-tint`  | `#e2efe4` | hover fills and selection only                              |
 | `--clay`        | `#bd6a3f` | the attention accent: a bar, a dot, a hover                 |
 | `--clay-wash`   | `#f7e8de` | the attention band's fill (opaque)                          |
-| `--surface-2`   | `#f6f5ee` | the Dashboard's second card tone — see below                |
+| `--surface-2`   | `#fafbf4` | the Dashboard's second card tone — see below                |
 
 **The Semester Dashboard alternates two card tones.** Cards on `--surface` and `--surface-2`
 alternate so that no two cards that touch share a tone; the second tone sits between the page and
@@ -455,18 +456,16 @@ DeepSeek key belongs to the backend and is supplied by the user's own shell.
 Before calling UI work done:
 
 1. `npm run ci` — Prettier, build, strict typecheck, ESLint, tests, manifest validation, secret scan.
-2. **Check both directions of the class contract.** Every class `index.ts` writes should have a rule,
-   and every class in the CSS should be written by something:
+2. **Check both directions of the class contract.** Every class `extension/src/v2/screens/` writes
+   should have a rule, and every class in the CSS should be written by something:
    ```sh
-   grep -o 'className = "[^"]*"' extension/src/popup/index.ts | sort -u
-   grep -oE '^\.[a-z-]+' extension/src/popup/popup.css | sort -u
+   grep -rho 'className = "[^"]*"' extension/src/v2/screens | sort -u
+   grep -oE '^\.[a-z-]+' extension/src/app/app.css | sort -u
    ```
 3. **Look at it.** A stylesheet that reads correctly can still render wrong; several defects in this
    file were only found in a screenshot (a missing container rule for `.brief-child` twice, a section
-   strip indented by an invisible marker). `Syllab_UI_Preview.html` in the repository root renders
-   every state at the real 380px width from the built stylesheet — open it in Chrome. It reads
-   `extension/dist/popup.css`, so run a build first, and delete the file once it has served its
-   purpose.
+   strip indented by an invisible marker). Verify both Side Panel and Full-page layouts in Chrome
+   after building `extension/dist/app.css`.
 4. **Reload the extension and refresh the NTU Learn tab.** A reloaded unpacked extension leaves
    already-open tabs with a dead content script.
 

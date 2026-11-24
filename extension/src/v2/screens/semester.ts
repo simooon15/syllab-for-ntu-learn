@@ -78,7 +78,7 @@ function renderSemesterHeader(ctx: ScreenContext, semester: SemesterView): HTMLE
     ctx.repaint();
   });
   toggle.setAttribute("aria-expanded", String(ctx.ui.semesterSwitcherOpen));
-  toggle.setAttribute("aria-label", t("semesterSwitch"));
+  toggle.setAttribute("aria-label", `${semester.label} — ${t("semesterSwitch")}`);
   const left = el("div", "semester-title");
   left.append(toggle);
   if (semester.lifecycle === "Historical") {
@@ -124,7 +124,9 @@ function renderSwitcher(ctx: ScreenContext, semester: SemesterView, surface: Sur
     });
     data(item, { lifecycle: option.lifecycle, selected: String(selected) });
     item.setAttribute("aria-current", selected ? "true" : "false");
-    if (selected) item.append(el("span", "switcher-current", t("semesterCurrentBadge")));
+    if (option.lifecycle === "Current") {
+      item.append(el("span", "switcher-current", t("semesterCurrentBadge")));
+    }
     panel.append(item);
   }
   return panel;

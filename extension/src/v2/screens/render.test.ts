@@ -1438,3 +1438,100 @@ it("allows an unresolved conflict to stay Uncertain without dropping original al
     }
   ]);
 });
+
+describe("Phase 1 UI regressions (UI-01..UI-10)", () => {
+  it("UI-01: marks the Current lifecycle semester with the Current badge even when viewing a historical semester", () => {
+    const { root } = renderView(
+      {
+        surface: "full-page",
+        screen: "SEM-04",
+        semester: historicalSemester
+      },
+      { ui: { semesterSwitcherOpen: true } }
+    );
+    const rows = root.querySelectorAll(".switcher-option");
+    const curRow = rows.find((r) => r.dataset.lifecycle === "Current");
+    const oldRow = rows.find((r) => r.dataset.lifecycle === "Historical");
+    expect(curRow?.querySelector(".switcher-current")).not.toBeNull();
+    expect(oldRow?.querySelector(".switcher-current")).toBeNull();
+    const toggle = root.querySelector(".semester-switcher-toggle");
+    expect(toggle?.getAttribute("aria-label")).toContain(historicalSemester.label);
+  });
+
+  it("UI-02: opens the Add Assessment form from CRS-06 empty state", () => {
+    const emptyCourse = {
+      ...structuredClone(courseView),
+      assessments: [],
+      noAssessments: true
+    };
+    const { root } = renderView(
+      { ...withCourseFixture(), screen: "CRS-06", course: emptyCourse },
+      { ui: { addingAssessment: true } }
+    );
+    expect(
+      root.querySelector(`input[data-edit-key="add:${emptyCourse.courseId}:name"]`)
+    ).not.toBeNull();
+  });
+
+  it("UI-04: RBL-01 Back chevron clears rebuildConfirmOpen and returns to CRS-01", () => {
+    const { root, actions } = renderView(
+      { ...withCourseFixture(), screen: "RBL-01" },
+      { ui: { rebuildConfirmOpen: true } }
+    );
+    const back = root.querySelector(".back-action");
+    expect(back).not.toBeNull();
+    back?.click();
+    expect(uiState().rebuildConfirmOpen).toBe(false);
+    expect(actions.screens).toContain("CRS-01");
+  });
+
+  it("UI-05: preserves live scrollTop on same-screen re-render and resets on screen or course change", () => {
+    const doc = installTestDom("full-page");
+    const root = installAppRoot(doc);
+    resetUiState();
+    const actions = createActions({
+      hints: {},
+      notice: undefined,
+      error: undefined,
+      restoreStage: undefined
+    });
+    const first = withCourseFixture();
+    renderApp(root as unknown as HTMLElement, first, actions);
+    const scroller = doc.scrollingElement;
+    scroller.scrollTop = 240;
+
+    renderApp(root as unknown as HTMLElement, first, actions);
+    expect(scroller.scrollTop).toBe(240);
+
+    const otherCourse = {
+      ...structuredClone(first),
+      courseId: "other-course",
+      course: { ...structuredClone(courseView), courseId: "other-course" }
+    };
+    renderApp(root as unknown as HTMLElement, otherCourse, actions);
+    expect(scroller.scrollTop).toBe(0);
+  });
+
+  it("UI-08 & UI-10: Add Assessment form prevents default submit and fact buttons include display in aria-label", () => {
+    const { root: formRoot } = renderView(withCourseFixture(), { ui: { addingAssessment: true } });
+    const form = formRoot.querySelector("form.edit-form");
+    expect(form).not.toBeNull();
+    let prevented = false;
+    form?.dispatchEvent({
+      type: "submit",
+      preventDefault: () => {
+        prevented = true;
+      },
+      stopPropagation: () => undefined
+    });
+    expect(prevented).toBe(true);
+
+    const { root: briefRoot } = renderView(withCourseFixture());
+    const factButtons = briefRoot.querySelectorAll(".is-fact");
+    expect(factButtons.length).toBeGreaterThan(0);
+    for (const btn of factButtons) {
+      const label = btn.getAttribute("aria-label") ?? "";
+      expect(label).toContain("—");
+    }
+  });
+});

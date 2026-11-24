@@ -480,4 +480,93 @@ describe("Calendar export", () => {
     expect(summary.exportableCount).toBe(0);
     expect(summary.unresolvedCount).toBe(0);
   });
+
+  it("PR-06: excludes REFERENCE/BACKGROUND facts and REFERENCE assessments from calendar export", () => {
+    const events = calendarEvents(
+      withDates({
+        course: makeCourse(),
+        assessments: [
+          assessment({ assessmentId: "a-current", productDisposition: "CURRENT" }),
+          assessment({ assessmentId: "a-ref", productDisposition: "REFERENCE" })
+        ],
+        facts: [
+          fact({
+            factId: "f-action",
+            assessmentId: "a-current",
+            value: { state: "KNOWN", value: "2026-10-18" },
+            product: {
+              propositionRef: "p1",
+              predicate: "due_date",
+              title: "Due",
+              group: "Date",
+              role: "action",
+              relation: "INDEPENDENT",
+              disposition: "ACTION",
+              modality: "must",
+              conditions: [],
+              exceptions: [],
+              unit: "date",
+              clauseRefs: ["c1"],
+              support: [{ clauseRef: "c1", quote: "2026-10-18" }],
+              basis: "explicit deadline",
+              independentReview: false,
+              sourceVersions: []
+            }
+          }),
+          fact({
+            factId: "f-ref",
+            assessmentId: "a-current",
+            value: { state: "KNOWN", value: "2026-10-19" },
+            product: {
+              propositionRef: "p2",
+              predicate: "due_date",
+              title: "Example date",
+              group: "Date",
+              role: "reference",
+              relation: "INDEPENDENT",
+              disposition: "REFERENCE",
+              modality: "info",
+              conditions: [],
+              exceptions: [],
+              unit: "date",
+              clauseRefs: ["c2"],
+              support: [{ clauseRef: "c2", quote: "2026-10-19" }],
+              basis: "example date",
+              independentReview: false,
+              sourceVersions: []
+            }
+          }),
+          fact({
+            factId: "f-bg",
+            assessmentId: "a-current",
+            value: { state: "KNOWN", value: "2026-10-20" },
+            product: {
+              propositionRef: "p3",
+              predicate: "due_date",
+              title: "Historical date",
+              group: "Date",
+              role: "reference",
+              relation: "INDEPENDENT",
+              disposition: "BACKGROUND",
+              modality: "info",
+              conditions: [],
+              exceptions: [],
+              unit: "date",
+              clauseRefs: ["c3"],
+              support: [{ clauseRef: "c3", quote: "2026-10-20" }],
+              basis: "historical date",
+              independentReview: false,
+              sourceVersions: []
+            }
+          }),
+          fact({
+            factId: "f-ref-owner",
+            assessmentId: "a-ref",
+            value: { state: "KNOWN", value: "2026-10-21" }
+          })
+        ]
+      })
+    );
+    expect(events.map((e) => e.date)).toEqual(["2026-10-18"]);
+  });
 });

@@ -15,6 +15,7 @@ interface FakeChrome {
   changes: Array<(changes: Record<string, unknown>, area: string) => void>;
   responses: ViewResponse[];
   storage: Record<string, unknown>;
+  tabsCreated: string[];
 }
 
 let document: TestDocument;
@@ -36,7 +37,8 @@ function installFakeChrome(initial: ViewResponse[]): FakeChrome {
     messages: [],
     changes: [],
     responses: initial,
-    storage: {}
+    storage: {},
+    tabsCreated: []
   };
   const chrome = {
     runtime: {
@@ -68,7 +70,10 @@ function installFakeChrome(initial: ViewResponse[]): FakeChrome {
     },
     tabs: {
       query: () => Promise.resolve([] as Array<{ id?: number; url?: string }>),
-      create: () => Promise.resolve({})
+      create: (opts: { url?: string }) => {
+        if (opts.url) state.tabsCreated.push(opts.url);
+        return Promise.resolve({});
+      }
     }
   };
   (globalThis as unknown as { chrome: unknown }).chrome = chrome;
@@ -181,5 +186,93 @@ describe("mount", () => {
     }
     await tick();
     expect(root.querySelector('[data-pattern="SYS-07"]')).toBeNull();
+  });
+
+  it("UI-06: SYS-07 error survives the follow-up GET_VIEW after a failed mutation", async () => {
+    const { mount } = await import("../v2/screens/mount");
+    const doc = installTestDom("full-page");
+    const testRoot = installAppRoot(doc);
+    installFakeChrome([
+      { ok: true, view: bootView() },
+      {
+        ok: false,
+        error: { code: "CONFLICT", copy: "That change could not be saved." }
+      },
+      { ok: true, view: bootView() }
+    ]);
+    const handle = mount({ root: testRoot as unknown as HTMLElement, surface: "full-page" });
+    await tick();
+    const moreBtn = testRoot
+      .querySelectorAll("button")
+      .find((b) => b.textContent.trim() === "More");
+    expect(moreBtn).toBeDefined();
+    moreBtn?.click();
+    const checkBtn = testRoot
+      .querySelectorAll("button")
+      .find((b) => b.textContent.trim() === "Check for updates");
+    expect(checkBtn).toBeDefined();
+    checkBtn?.click();
+    await tick();
+    const bar = testRoot.querySelector('[data-pattern="SYS-07"]');
+    expect(bar?.textContent).toContain("That change could not be saved.");
+    handle.dispose();
+  });
+
+  it("UI-03 & UI-07: mount clears BKP-04 on Done and preserves Side Panel when opening Settings", async () => {
+    const { mount } = await import("../v2/screens/mount");
+    // UI-07: Side Panel opening Settings routes full-page to SET-01 without overwriting Side Panel.
+    const spDoc = installTestDom("side-panel");
+    const spRoot = installAppRoot(spDoc);
+    const spChrome = installFakeChrome([
+      { ok: true, view: { ...bootView(), surface: "side-panel", screen: "SEM-02" } },
+      { ok: true, view: { ...bootView(), surface: "full-page", screen: "SET-01" } }
+    ]);
+    const spHandle = mount({ root: spRoot as unknown as HTMLElement, surface: "side-panel" });
+    await tick();
+    expect(spRoot.querySelectorAll("[data-screen]").map((e) => e.dataset.screen)).toContain(
+      "SEM-02"
+    );
+    const settingsBtn = spRoot
+      .querySelectorAll("button")
+      .find((b) => b.textContent.trim() === "Settings");
+    expect(settingsBtn).not.toBeNull();
+    settingsBtn?.click();
+    await tick();
+    expect(spRoot.querySelectorAll("[data-screen]").map((e) => e.dataset.screen)).toContain(
+      "SEM-02"
+    );
+    expect(spChrome.tabsCreated).toContain("chrome-extension://fake/app.html");
+    spHandle.dispose();
+
+    // UI-03: Leaving BKP-04 via Done clears screenOverride so the next view renders normally.
+    const fpDoc = installTestDom("full-page");
+    const fpRoot = installAppRoot(fpDoc);
+    installFakeChrome([
+      {
+        ok: true,
+        view: {
+          ...bootView(),
+          screen: "BKP-04",
+          backupSummary: { semesters: ["2025/26 Semester 2"], courseCount: 1, assessmentCount: 1 }
+        }
+      },
+      { ok: true, view: { ...bootView(), screen: "SEM-01" } }
+    ]);
+    const fpHandle = mount({ root: fpRoot as unknown as HTMLElement, surface: "full-page" });
+    await tick();
+    expect(fpRoot.querySelectorAll("[data-screen]").map((e) => e.dataset.screen)).toContain(
+      "BKP-04"
+    );
+    const doneBtn = fpRoot.querySelectorAll("button").find((b) => b.textContent.trim() === "Done");
+    expect(doneBtn).not.toBeNull();
+    doneBtn?.click();
+    await tick();
+    expect(fpRoot.querySelectorAll("[data-screen]").map((e) => e.dataset.screen)).not.toContain(
+      "BKP-04"
+    );
+    expect(fpRoot.querySelectorAll("[data-screen]").map((e) => e.dataset.screen)).toContain(
+      "SEM-01"
+    );
+    fpHandle.dispose();
   });
 });

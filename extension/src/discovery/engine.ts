@@ -139,8 +139,10 @@ function resolveAttachmentUrl(raw: string, origin: string): string | undefined {
 
 function extensionHint(value: string | undefined): boolean {
   if (!value) return false;
-  return /\.(?:pdf|pptx?|docx?)(?:$|[?#])/i.test(value) || /\/bbcswebdav\//i.test(value);
+  return /\.(?:pdf|pptx?|docx?|xlsx?)(?:$|[?#])/i.test(value) || /\/bbcswebdav\//i.test(value);
 }
+
+const SENSITIVE_FIELD_KEY = /token|cookie|auth|session|password|user|grade|submission|attempt/i;
 
 function escapeHtml(value: string): string {
   return value
@@ -172,6 +174,7 @@ function flattenCapturedFields(
     const entries = Array.isArray(current)
       ? current.map((entry, index) => [`${item.path}[${String(index)}]`, entry] as const)
       : Object.entries(current)
+          .filter(([key]) => !SENSITIVE_FIELD_KEY.test(key))
           .sort(([left], [right]) => left.localeCompare(right))
           .map(([key, entry]) => [item.path ? `${item.path}.${key}` : key, entry] as const);
     if (!entries.length) output.push([item.path, Array.isArray(current) ? "[]" : "{}"]);

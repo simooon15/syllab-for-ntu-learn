@@ -277,7 +277,7 @@ function factValue(ctx: ScreenContext, key: string, fact: FactView): HTMLElement
     toggleEvidence(ctx, key);
     ctx.repaint();
   });
-  attr(node, { "aria-label": t("showEvidence", { label: fact.label }) });
+  attr(node, { "aria-label": `${fact.display} — ${t("showEvidence", { label: fact.label })}` });
   return node;
 }
 
@@ -448,15 +448,16 @@ export function noticeBar(ctx: ScreenContext, notice: RuntimeNotice): HTMLElemen
     notice.screen === undefined
       ? el("div", "notice")
       : screenNode(el("div", "notice"), notice.screen);
+  node.setAttribute("role", "status");
   node.append(el("span", "notice-message", notice.message));
   if (notice.actionLabel !== undefined && notice.onAction !== undefined) {
     node.append(linkAction(notice.actionLabel, notice.onAction));
   }
-  node.append(
-    control(t("noticeDismiss"), "notice-dismiss", () => {
-      ctx.actions.onDismissNotice();
-    })
-  );
+  const dismiss = control(t("noticeDismiss"), "notice-dismiss", () => {
+    ctx.actions.onDismissNotice();
+  });
+  dismiss.setAttribute("aria-label", t("cancel"));
+  node.append(dismiss);
   return node;
 }
 
@@ -470,6 +471,7 @@ export function errorBar(ctx: ScreenContext): HTMLElement | null {
   const error = ctx.actions.runtime.error;
   if (!error) return null;
   const block = patternNode(el("div", "error-bar"), "SYS-07");
+  block.setAttribute("role", "alert");
   block.append(paragraph("error-copy", error.copy));
   const open = isExpanded(ctx, "error-details");
   block.append(

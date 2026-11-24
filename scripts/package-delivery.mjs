@@ -8,6 +8,7 @@
  * Interaction & IA Spec's screenshots — resolve after unzipping instead of breaking.
  */
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -22,27 +23,35 @@ const outputPath = resolve("artifacts", `Syllab_v${version}_delivery.zip`);
 const extensionPackage = `artifacts/release/syllab-for-ntu-learn-v${version}.zip`;
 
 /** Everything a reader of this delivery needs, at the path the documents expect. */
-const contents = [
+const versionDoc = (name) => {
+  const versioned = `docs/versions/v${version}/${name}`;
+  return existsSync(resolve(versioned)) ? versioned : name;
+};
+
+const requiredContents = [
   "README.md",
-  "PRD_v0.2.0.md",
-  "PRODUCT_HANDOFF_v0.2.0.md",
-  "Interaction_and_Information_Architecture_Spec_v0.2.0.md",
+  versionDoc(`PRD_v${version}.md`),
+  versionDoc(`Interaction_and_Information_Architecture_Spec_v${version}.md`),
   `docs/versions/v${version}/TECHNICAL_DESIGN_v${version}.md`,
   `docs/versions/v${version}/IMPLEMENTATION_PLAN_v${version}.md`,
   `docs/versions/v${version}/DIRECTION_ADJUSTMENTS_v${version}.md`,
   // The visual contract, including the spacing scale. A reader comparing the screenshots against
   // the design needs the rules the screenshots are meant to satisfy.
   "docs/design-system.md",
+  extensionPackage,
+  // The PRD embeds the Product Mark from this directory, and the SVG Master is the locked source
+  // of the PNGs the extension ships. A delivery that omits it cannot show its own brand archive.
+  "assets/logo"
+];
+
+const optionalContents = [
+  versionDoc(`PRODUCT_HANDOFF_v${version}.md`),
   `docs/versions/v${version}/gate-1-core-loop-acceptance.md`,
   `docs/versions/v${version}/gate-2-release-acceptance.md`,
   `artifacts/gates/v${version}/gate-1/REPORT.md`,
   `artifacts/gates/v${version}/gate-1/report.json`,
   `artifacts/gates/v${version}/gate-2/REPORT.md`,
-  `artifacts/gates/v${version}/gate-2/report.json`,
-  extensionPackage,
-  // The PRD embeds the Product Mark from this directory, and the SVG Master is the locked source
-  // of the PNGs the extension ships. A delivery that omits it cannot show its own brand archive.
-  "assets/logo"
+  `artifacts/gates/v${version}/gate-2/report.json`
 ];
 
 async function walk(directory, prefix = "") {
@@ -59,9 +68,9 @@ async function walk(directory, prefix = "") {
 const staging = await mkdtemp(join(tmpdir(), "syllab-delivery-"));
 const root = join(staging, folderName);
 
-// 1. Copy the set, failing loudly if a document a reader expects is missing.
+// 1. Copy the set, failing loudly if a required document a reader expects is missing.
 const missing = [];
-for (const relative of contents) {
+for (const relative of requiredContents) {
   const target = join(root, relative);
   await mkdir(join(target, ".."), { recursive: true });
   try {
@@ -70,13 +79,19 @@ for (const relative of contents) {
     missing.push(relative);
   }
 }
-const images = await walk(resolve(`docs/versions/v${version}/images`));
-await mkdir(join(root, `docs/versions/v${version}/images`), { recursive: true });
-await cp(
-  resolve(`docs/versions/v${version}/images`),
-  join(root, `docs/versions/v${version}/images`),
-  { recursive: true }
-);
+for (const relative of optionalContents) {
+  if (!existsSync(resolve(relative))) continue;
+  const target = join(root, relative);
+  await mkdir(join(target, ".."), { recursive: true });
+  await cp(resolve(relative), target, { recursive: true });
+}
+const imagesDir = resolve(`docs/versions/v${version}/images`);
+let images = [];
+if (existsSync(imagesDir)) {
+  images = await walk(imagesDir);
+  await mkdir(join(root, `docs/versions/v${version}/images`), { recursive: true });
+  await cp(imagesDir, join(root, `docs/versions/v${version}/images`), { recursive: true });
+}
 if (missing.length > 0) {
   await rm(staging, { recursive: true, force: true });
   process.stderr.write(`Delivery is incomplete, missing: ${missing.join(", ")}\n`);

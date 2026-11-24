@@ -4,6 +4,7 @@
  */
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -12,33 +13,47 @@ import { zipSync } from "fflate";
 const version = JSON.parse(
   await readFile(resolve("extension", "public", "manifest.json"), "utf8")
 ).version;
+const acceptancePath = resolve(`docs/versions/v${version}/FINAL_ACCEPTANCE_v${version}.md`);
+if (!existsSync(acceptancePath)) {
+  process.stderr.write(
+    `Refusing to package Final Closure Handoff for v${version}: ${acceptancePath} does not exist.\n`
+  );
+  process.exit(1);
+}
+const acceptanceText = await readFile(acceptancePath, "utf8");
+if (
+  /FINAL_ACCEPTANCE:\s*FAIL|Human Gate 5.*(?:FAIL|失败|NOT PASSED|尚未通过)|尚未发布/i.test(
+    acceptanceText
+  )
+) {
+  process.stderr.write(
+    `Refusing to package a RELEASED/PASS Final Closure Handoff for v${version}: Final Acceptance / Human Gate 5 has not passed.\n`
+  );
+  process.exit(1);
+}
+
 const folderName = `Syllab-v${version}-final-handoff`;
 const handoffDirectory = resolve("artifacts", "handoffs");
 const outputPath = join(handoffDirectory, `Syllab_v${version}_Final_Closure_Handoff.zip`);
 const publicPackage = resolve("artifacts", "release", `syllab-for-ntu-learn-v${version}.zip`);
-const releaseCommit = "79f73365a78b01c3f2ac36247ae159225b8f8f5a";
 const releaseTag = `v${version}`;
 const releaseUrl = `https://github.com/simooon15/syllab-for-ntu-learn/releases/tag/${releaseTag}`;
 
-const documents = [
+const candidateDocuments = [
   "README.md",
-  "PRD_v0.2.0.md",
-  "PRODUCT_HANDOFF_v0.2.0.md",
-  "Interaction_and_Information_Architecture_Spec_v0.2.0.md",
-  "docs/versions/v0.2.0/README_v0.2.0.md",
+  `docs/versions/v${version}/PRD_v${version}.md`,
+  `docs/versions/v${version}/Interaction_and_Information_Architecture_Spec_v${version}.md`,
+  `docs/versions/v${version}/README_v${version}.md`,
   "docs/DOCUMENTATION_GOVERNANCE.md",
-  "docs/versions/v0.2.0/AI_DESIGN_v0.2.0.md",
-  "docs/versions/v0.2.0/DECISION_LOG_v0.2.0.md",
-  "docs/versions/v0.2.0/ENGINEERING_REPORT_v0.2.0.md",
-  "docs/versions/v0.2.0/TECHNICAL_DESIGN_v0.2.0.md",
-  "docs/versions/v0.2.0/FINAL_ACCEPTANCE_v0.2.0.md",
-  "docs/versions/v0.2.0/FINAL_PROJECT_CLOSURE_v0.2.0.md",
-  "docs/versions/v0.2.0/RELEASE_NOTES_v0.2.0.md",
-  "docs/versions/v0.2.0/LOCAL_WORKSPACE_CONSOLIDATION_v0.2.0.md",
-  "docs/versions/v0.2.0/PRD_TO_ENGINEERING_FREEZE_DECISION_DELTA_v0.2.0.md",
-  "docs/versions/v0.2.0/ENGINEERING_FREEZE_HANDOFF_INDEX_v0.2.0.md",
-  "docs/versions/v0.2.0/images"
+  `docs/versions/v${version}/DECISION_LOG_v${version}.md`,
+  `docs/versions/v${version}/ENGINEERING_REPORT_v${version}.md`,
+  `docs/versions/v${version}/TECHNICAL_DESIGN_v${version}.md`,
+  `docs/versions/v${version}/FINAL_ACCEPTANCE_v${version}.md`,
+  `docs/versions/v${version}/FINAL_PROJECT_CLOSURE_v${version}.md`,
+  `docs/versions/v${version}/RELEASE_NOTES_v${version}.md`,
+  `docs/versions/v${version}/images`
 ];
+const documents = candidateDocuments.filter((relative) => existsSync(resolve(relative)));
 
 async function walk(directory, prefix = "") {
   const files = [];
@@ -78,12 +93,10 @@ const index = `# Syllab v${version} — Final Closure Handoff Index
 
 ## Canonical Git state
 
-- Repository: /Users/simonluo/罗鑫宇/Vibe Coding/Syllab for NTU Learn
+- Repository: ${basename(process.cwd())}
 - Branch: ${gitBranch}
 - HEAD at packaging time: ${gitHead}
-- Release commit: ${releaseCommit}
 - Release tag: ${releaseTag}
-- Frozen product baseline: 43de61aafd23661abcce3ba9335284f2e752ea41
 
 ## CURRENT AUTHORITATIVE
 

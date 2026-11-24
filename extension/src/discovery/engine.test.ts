@@ -408,3 +408,50 @@ it("exhausts pagination beyond 600 responses and container/attachment depths wit
     result.checkpoint.sources.find((source) => source.nativeItemId === "deep-leaf")?.depth
   ).toBeGreaterThan(20);
 });
+
+it("PR-04 & PR-05: filters sensitive keys from flattened fields and discovers .xlsx/.xls attachments", async () => {
+  const api = new FixtureApi(
+    new Map<string, object | Error>([
+      [
+        `${base}/contents/ROOT/children`,
+        {
+          items: [
+            {
+              id: "sheet_item",
+              title: "Grading Schedule",
+              contentHandler: "resource/x-bb-document",
+              body: { rawText: "See attached schedule." },
+              accessToken: "tok123",
+              nestedAuth: { apiKey: "key123", cookie: "sid=123" },
+              attachments: [
+                {
+                  id: "att_xlsx",
+                  fileName: "schedule.xlsx",
+                  url: `${origin}/bbcswebdav/schedule.xlsx`
+                },
+                {
+                  id: "att_xls",
+                  fileName: "legacy.xls",
+                  url: `${origin}/bbcswebdav/legacy.xls`
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      [`${base}/announcements`, { announcements: [] }]
+    ])
+  );
+  const result = await runDiscovery({
+    scanId: "scan_pr04_pr05",
+    courseId: "course_fixture",
+    origin,
+    api
+  });
+  const doc = result.checkpoint.sources.find((s) => s.sourceId === "content:sheet_item");
+  expect(doc?.rawText).not.toContain("tok123");
+  expect(doc?.rawText).not.toContain("key123");
+  expect(doc?.rawText).not.toContain("sid=123");
+  const attachments = result.checkpoint.sources.filter((s) => s.kind === "attachment");
+  expect(attachments.map((a) => a.title).sort()).toEqual(["legacy.xls", "schedule.xlsx"]);
+});

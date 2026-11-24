@@ -1505,3 +1505,27 @@ it("exposes cross-owner rules sharing native evidence without widening approval 
     )
   ).rejects.toThrow("LOCAL_REPAIR_SCOPE");
 });
+
+it("PR-01: saves invalid audit candidates only under :diagnostic without polluting the main cache key", async () => {
+  const saved = new Map<string, unknown>();
+  const io = {
+    load: (key: string) => Promise.resolve(saved.get(key)),
+    save: (key: string, value: unknown) => {
+      saved.set(key, value);
+      return Promise.resolve();
+    },
+    capture: () =>
+      Promise.resolve({
+        taskRef: "wrong-ref",
+        complete: false,
+        checkedRefs: [],
+        issues: []
+      })
+  };
+  await expect(auditCourseProduct(packet(), product(), io, "audit system")).rejects.toThrow(
+    "AUDIT_INCOMPLETE_SCOPE"
+  );
+  const keys = [...saved.keys()];
+  expect(keys.length).toBeGreaterThan(0);
+  expect(keys.every((k) => k.endsWith(":diagnostic"))).toBe(true);
+});

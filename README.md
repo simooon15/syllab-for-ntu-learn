@@ -1,6 +1,6 @@
 # Syllab for NTU Learn
 
-> v0.3.0 当前状态：RC1 Human Gate 5 验收失败；已批准阶段 B，RC2 整改与工程回归已推进，真实语义/增量验收受资源核销阻塞；尚未发布。见 [人工验收记录](docs/versions/v0.3.0/FINAL_ACCEPTANCE_v0.3.0.md)。
+> v0.3.0 当前状态：RC1 Human Gate 5 验收失败；RC2 Phase 1 集中整改与工程回归正在推进，Human Gate 5 尚未通过，尚未发布。见 [人工验收记录](docs/versions/v0.3.0/FINAL_ACCEPTANCE_v0.3.0.md)。
 
 <img src="assets/logo/syllab-logo-master.svg" alt="Syllab" width="72" height="72">
 
@@ -169,8 +169,9 @@ npm run gate:2
 
 ### 项目状态
 
-v0.2.0 已完成开发、真实验证、Engineering Freeze 与 Final Acceptance；当前仓库正在等待
-Product Owner 批准后续 tag、push 与 GitHub Release。本状态不等于已经公开发布。
+v0.2.0 已完成开发、真实验证与归档发布。当前主分支处于 **v0.3.0 RC2 Phase 1 集中整改** 阶段，
+Human Gate 5 尚未通过，v0.3.0 尚未发布。详见
+[v0.3.0 人工验收记录](docs/versions/v0.3.0/FINAL_ACCEPTANCE_v0.3.0.md)。
 
 ### License / Contribution
 
@@ -179,6 +180,8 @@ Product Owner 批准后续 tag、push 与 GitHub Release。本状态不等于已
 ---
 
 ## English
+
+> v0.3.0 current status: RC1 Human Gate 5 failed; RC2 Phase 1 concentrated remediation and engineering regression are underway. Human Gate 5 has not passed and v0.3.0 is not released. See [Final Acceptance Record](docs/versions/v0.3.0/FINAL_ACCEPTANCE_v0.3.0.md).
 
 Syllab is a Chrome extension for NTU Learn (Blackboard Ultra). It keeps one Course's Current Course
 State up to date over a semester, organised around Assessments, with every fact traceable to its
@@ -357,9 +360,10 @@ npm run gate:2
 
 ### Project status
 
-v0.2.0 development, real verification, Engineering Freeze and Final Acceptance are complete. The
-repository is awaiting Product Owner approval for tag, push and GitHub Release; it is not yet a
-public release.
+v0.2.0 development, real verification and archival release are complete. The main branch is
+currently in **v0.3.0 RC2 Phase 1 concentrated remediation**; Human Gate 5 has not passed and
+v0.3.0 is not released. See
+[v0.3.0 Final Acceptance Record](docs/versions/v0.3.0/FINAL_ACCEPTANCE_v0.3.0.md).
 
 ### License / contributions
 

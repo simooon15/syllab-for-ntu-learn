@@ -14,7 +14,8 @@ export default tseslint.config(
       // Chrome's own bundled extensions, whose shipped source is not this repository's to lint.
       "artifacts/**",
       "evidence/private/**",
-      ".tmp/**"
+      ".tmp/**",
+      ".gpt-drive-codex/**"
     ]
   },
   eslint.configs.recommended,

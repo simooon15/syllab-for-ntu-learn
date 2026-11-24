@@ -183,6 +183,7 @@ export class ViewHandler {
           const route: Route = {
             surface: message.surface,
             screen: message.screen,
+            ...(message.semesterId ? { semesterId: message.semesterId } : {}),
             ...(message.reviewItemId ? { reviewItemId: message.reviewItemId } : {}),
             ...(message.courseId ? { courseId: message.courseId } : {})
           };
@@ -308,11 +309,44 @@ export class ViewHandler {
   }
 
   private async setApiKey(apiKey: string): Promise<void> {
-    await this.dependencies.setApiKey(apiKey.trim());
+    const trimmed = apiKey.trim();
+    await this.dependencies.setApiKey(trimmed);
+    if (trimmed.length > 0) await this.resumeWaiting("api-key");
   }
 
   private async setAuthorization(kind: "privacy" | "apiUsage", granted: boolean): Promise<void> {
     await this.dependencies.setAuthorization(kind, granted);
+    if (granted) {
+      await this.resumeWaiting(
+        kind === "privacy" ? "privacy-authorization" : "api-usage-authorization"
+      );
+    }
+  }
+
+  private async resumeWaiting(
+    reason: "api-key" | "privacy-authorization" | "api-usage-authorization"
+  ): Promise<void> {
+    const now = this.dependencies.now().toISOString();
+    const waiting = (await this.dependencies.store.listWorkflows()).filter(
+      (workflow) => workflow.state === "waiting" && workflow.waitingReason === reason
+    );
+    for (const workflow of waiting) {
+      const {
+        waitingReason: _waitingReason,
+        errorCode: _errorCode,
+        lastErrorDetail: _lastErrorDetail,
+        paidRetryAvailable: _paidRetryAvailable,
+        retryConsumesApi: _retryConsumesApi,
+        lease: _lease,
+        ...carried
+      } = workflow;
+      await this.dependencies.store.saveWorkflow({
+        ...carried,
+        state: "saved",
+        updatedAt: now
+      });
+      this.dependencies.driveWorkflow(workflow.workflowId);
+    }
   }
 
   /**

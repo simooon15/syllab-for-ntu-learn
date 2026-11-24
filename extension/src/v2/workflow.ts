@@ -86,6 +86,7 @@ import {
 } from "./task-b-ledger";
 import { isRecord } from "@syllab/contracts";
 import { AiUnitFailure } from "./deepseek-complete";
+import { afterTransientFailure } from "./opportunity";
 import { evidenceRegistry, GROUNDED_B_SCHEMA } from "./task-b-grounding";
 import { semanticCoverage } from "./semantic-coverage";
 import {
@@ -1467,11 +1468,36 @@ export class WorkflowEngine {
         );
         const partial = coverage.partialCoverage || saved.partial === true;
         const now = this.nowIso();
+        const backoff = partial
+          ? afterTransientFailure(
+              {
+                ...(course.lastSuccessfulCheckAt
+                  ? { lastSuccessfulCheckAt: course.lastSuccessfulCheckAt }
+                  : {}),
+                ...(course.nextCheckAt ? { nextAttemptAt: course.nextCheckAt } : {}),
+                unchangedStreak: course.unchangedStreak ?? 0,
+                consecutiveFailures: course.consecutiveCheckFailures,
+                currentSemester: true,
+                established: course.established
+              },
+              new Date(now)
+            )
+          : undefined;
+        const { nextCheckAt: _previousNextCheckAt, ...courseBase } = course;
         await this.options.store.upsertCourse({
-          ...course,
+          ...courseBase,
           lastCheckAttemptAt: now,
-          ...(partial ? {} : { lastSuccessfulCheckAt: now }),
-          consecutiveCheckFailures: partial ? course.consecutiveCheckFailures + 1 : 0,
+          ...(partial
+            ? {
+                consecutiveCheckFailures:
+                  backoff?.consecutiveFailures ?? course.consecutiveCheckFailures + 1,
+                ...(backoff?.nextAttemptAt ? { nextCheckAt: backoff.nextAttemptAt } : {})
+              }
+            : {
+                lastSuccessfulCheckAt: now,
+                unchangedStreak: (course.unchangedStreak ?? 0) + 1,
+                consecutiveCheckFailures: 0
+              }),
           updatedAt: now
         });
         return { workflow: await this.complete(workflow), progressed: false };
@@ -2662,21 +2688,32 @@ export class WorkflowEngine {
         const m = await this.options.store.readMetadataValue(key);
         const saved = isRecord(m) && isRecord(m.ledger) ? m.ledger : undefined;
         if (saved?.value !== undefined) return saved.value;
-        if (saved)
+        if (saved?.status === "dispatching")
           throw new EngineError("NETWORK_TRANSIENT", false, "COURSE_DRAFT_PAID_UNVERIFIED");
         const apiKey = await this.requireApiKey();
         await this.options.store.writePhysicalWorkLedger(workflow, key, { status: "dispatching" });
-        const outcome = await this.execute({
-          call,
-          apiKey,
-          workflow,
-          course,
-          task: call.task === "task-c" ? "task-c" : "task-b",
-          context: {
-            knownSourceIds: new Set(context.sourceRecords.map((s) => s.sourceId)),
-            evidence: context.evidence
+        let outcome: Awaited<ReturnType<WorkflowEngine["execute"]>>;
+        try {
+          outcome = await this.execute({
+            call,
+            apiKey,
+            workflow,
+            course,
+            task: call.task === "task-c" ? "task-c" : "task-b",
+            context: {
+              knownSourceIds: new Set(context.sourceRecords.map((s) => s.sourceId)),
+              evidence: context.evidence
+            }
+          });
+        } catch (error) {
+          if (error instanceof AiUnitFailure && !error.failure.consumesApi) {
+            await this.options.store.writePhysicalWorkLedger(workflow, key, {
+              status: "safe-retry",
+              error: error.message
+            });
           }
-        });
+          throw error;
+        }
         await this.options.store.writePhysicalWorkLedger(workflow, key, {
           status: "captured",
           value: outcome.value
@@ -2916,22 +2953,36 @@ export class WorkflowEngine {
       if (saved && saved.snapshot !== snapshot)
         throw new EngineError("AI_CONTRACT", false, "DIRECT_RESUME_MISMATCH");
       if (saved?.value !== undefined) return saved.value;
-      if (saved) throw new EngineError("NETWORK_TRANSIENT", false, "DIRECT_PAID_UNVERIFIED");
+      if (saved?.status === "dispatching")
+        throw new EngineError("NETWORK_TRANSIENT", false, "DIRECT_PAID_UNVERIFIED");
+      const apiKey = await this.requireApiKey();
       await this.options.store.writePhysicalWorkLedger(workflow, key, {
         snapshot,
         status: "dispatching"
       });
-      const outcome = await this.execute({
-        call,
-        apiKey: "",
-        workflow,
-        course,
-        task: captureInput.comparisonOnly ? "task-c" : "task-b",
-        context: {
-          knownSourceIds: new Set(context.sourceRecords.map((s) => s.sourceId)),
-          evidence: context.evidence
+      let outcome: Awaited<ReturnType<WorkflowEngine["execute"]>>;
+      try {
+        outcome = await this.execute({
+          call,
+          apiKey,
+          workflow,
+          course,
+          task: captureInput.comparisonOnly ? "task-c" : "task-b",
+          context: {
+            knownSourceIds: new Set(context.sourceRecords.map((s) => s.sourceId)),
+            evidence: context.evidence
+          }
+        });
+      } catch (error) {
+        if (error instanceof AiUnitFailure && !error.failure.consumesApi) {
+          await this.options.store.writePhysicalWorkLedger(workflow, key, {
+            snapshot,
+            status: "safe-retry",
+            error: error.message
+          });
         }
-      });
+        throw error;
+      }
       await this.options.store.writePhysicalWorkLedger(workflow, key, {
         snapshot,
         status: "captured",
@@ -5090,10 +5141,10 @@ export class WorkflowEngine {
 
   private async requireApiKey(): Promise<string> {
     if (!(await this.options.ai.privacyAuthorized())) {
-      throw new EngineError("AUTHORIZATION_REQUIRED", false, "Permission required");
+      throw new EngineError("PRIVACY_AUTHORIZATION_REQUIRED", false, "Permission required");
     }
     if (!(await this.options.ai.usageAuthorized())) {
-      throw new EngineError("AUTHORIZATION_REQUIRED", false, "Permission required");
+      throw new EngineError("USAGE_AUTHORIZATION_REQUIRED", false, "Permission required");
     }
     const apiKey = await this.options.ai.apiKey();
     if (!apiKey) throw new EngineError("CONFIG_REQUIRED", false, "DeepSeek API key required");
@@ -5191,8 +5242,22 @@ export class WorkflowEngine {
       updatedAt: this.nowIso()
     };
     await this.options.store.saveWorkflow(record, owner);
-    if (record.kind === "check")
+    if (record.kind === "check") {
       await this.options.staging.clear(record.courseId, record.workflowId);
+      const course = await this.options.store.readCourse(record.courseId);
+      if (course) {
+        const now = this.nowIso();
+        const { nextCheckAt: _previousNextCheckAt, ...courseBase } = course;
+        await this.options.store.upsertCourse({
+          ...courseBase,
+          lastCheckAttemptAt: now,
+          lastSuccessfulCheckAt: now,
+          unchangedStreak: 0,
+          consecutiveCheckFailures: 0,
+          updatedAt: now
+        });
+      }
+    }
     return record;
   }
 
@@ -5217,13 +5282,30 @@ export class WorkflowEngine {
 
   private async fail(workflow: WorkflowRecord, error: unknown): Promise<WorkflowRecord> {
     const code = failureCode(error);
+    const waitingReason =
+      code === "CONFIG_REQUIRED"
+        ? ("api-key" as const)
+        : code === "PRIVACY_AUTHORIZATION_REQUIRED"
+          ? ("privacy-authorization" as const)
+          : code === "USAGE_AUTHORIZATION_REQUIRED"
+            ? ("api-usage-authorization" as const)
+            : undefined;
+    if (waitingReason) {
+      const { lease: _lease, userRetryAuthorized: _authorization, ...carried } = workflow;
+      const record: WorkflowRecord = {
+        ...carried,
+        state: "waiting",
+        waitingReason,
+        updatedAt: this.nowIso()
+      };
+      await this.options.store.saveWorkflow(record, workflow);
+      return record;
+    }
     const retryable = failureRetryable(error);
     const attempt = workflow.attempt + 1;
     const paid = workflow.phase.startsWith("task");
     const boundedB =
-      (workflow.architecturePolicy &&
-        error instanceof Error &&
-        error.message.includes("PAID_UNVERIFIED")) ||
+      (error instanceof Error && error.message.includes("PAID_UNVERIFIED")) ||
       (workflow.phase === "task-b" &&
         ((await this.options.staging.read(workflow.courseId, workflow.workflowId))
           ?.taskBRecovery !== undefined ||
@@ -5250,6 +5332,33 @@ export class WorkflowEngine {
     await this.observePostProcessing(workflow, "terminal-state-write", () =>
       this.options.store.saveWorkflow(record, workflow)
     );
+    if (workflow.kind === "check") {
+      const course = await this.options.store.readCourse(workflow.courseId);
+      if (course) {
+        const now = this.nowIso();
+        const nowDate = new Date(now);
+        const nextSchedule = afterTransientFailure(
+          {
+            ...(course.lastSuccessfulCheckAt
+              ? { lastSuccessfulCheckAt: course.lastSuccessfulCheckAt }
+              : {}),
+            ...(course.nextCheckAt ? { nextAttemptAt: course.nextCheckAt } : {}),
+            unchangedStreak: course.unchangedStreak ?? 0,
+            consecutiveFailures: course.consecutiveCheckFailures,
+            currentSemester: true,
+            established: course.established
+          },
+          nowDate
+        );
+        await this.options.store.upsertCourse({
+          ...course,
+          lastCheckAttemptAt: now,
+          consecutiveCheckFailures: nextSchedule.consecutiveFailures,
+          ...(nextSchedule.nextAttemptAt ? { nextCheckAt: nextSchedule.nextAttemptAt } : {}),
+          updatedAt: now
+        });
+      }
+    }
     return record;
   }
 }

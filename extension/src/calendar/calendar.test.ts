@@ -73,4 +73,16 @@ describe("calendar export", () => {
     expect(first.match(/UID:[^\r]+/)?.[0]).toBe(second.match(/UID:[^\r]+/)?.[0]);
     expect(first).not.toMatch(/(?<!\r)\n/);
   });
+
+  it("PR-06: emits VTIMEZONE for timed Asia/Singapore events without inventing DTEND", () => {
+    const timed = calendarEventsFromBrief([
+      item({
+        currentValue: { title: "Lab Submission", dueDate: "2026-11-19", time: "23:59" }
+      })
+    ]);
+    const ics = serializeCalendar("course", timed, new Date("2026-09-17T00:00:00.000Z"));
+    expect(ics).toContain("BEGIN:VTIMEZONE\r\nTZID:Asia/Singapore\r\n");
+    expect(ics).toContain("DTSTART;TZID=Asia/Singapore:20261119T235900\r\n");
+    expect(ics).not.toContain("DTEND");
+  });
 });

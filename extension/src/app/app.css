@@ -91,7 +91,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
@@ -115,7 +116,10 @@ button:disabled {
 
 button:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+.assessment-card-scroll:focus-visible {
   outline: 2px solid var(--green);
   outline-offset: 2px;
 }
@@ -308,7 +312,7 @@ html[data-surface="side-panel"] .screen {
   color: var(--ink-2);
 }
 
-html[data-surface="side-panel"] .course-name {
+html[data-surface="side-panel"] .course-name:not(.is-compact) {
   font-size: 22px;
 }
 
@@ -362,7 +366,9 @@ html[data-surface="side-panel"] .course-name {
 }
 
 .status-area[data-kind="checking"] .status-cue,
-.status-area[data-kind="freshness"] .status-cue {
+.status-area[data-kind="freshness"] .status-cue,
+.course-card-status[data-kind="checking"] .status-cue,
+.course-card-status[data-kind="freshness"] .status-cue {
   border-color: transparent;
   padding-left: 0;
   padding-right: 0;
@@ -373,7 +379,11 @@ html[data-surface="side-panel"] .course-name {
 .status-area[data-kind="needs-attention"] .status-cue,
 .status-area[data-kind="api-key"] .status-cue,
 .status-area[data-kind="permission"] .status-cue,
-.status-area[data-kind="authorization"] .status-cue {
+.status-area[data-kind="authorization"] .status-cue,
+.course-card-status[data-kind="needs-attention"] .status-cue,
+.course-card-status[data-kind="api-key"] .status-cue,
+.course-card-status[data-kind="permission"] .status-cue,
+.course-card-status[data-kind="authorization"] .status-cue {
   border-color: transparent;
   padding-left: 0;
   padding-right: 0;
@@ -384,7 +394,11 @@ html[data-surface="side-panel"] .course-name {
 .status-area[data-kind="needs-attention"] .status-cue::before,
 .status-area[data-kind="api-key"] .status-cue::before,
 .status-area[data-kind="permission"] .status-cue::before,
-.status-area[data-kind="authorization"] .status-cue::before {
+.status-area[data-kind="authorization"] .status-cue::before,
+.course-card-status[data-kind="needs-attention"] .status-cue::before,
+.course-card-status[data-kind="api-key"] .status-cue::before,
+.course-card-status[data-kind="permission"] .status-cue::before,
+.course-card-status[data-kind="authorization"] .status-cue::before {
   content: "";
   width: 5px;
   height: 5px;
@@ -572,7 +586,7 @@ html[data-surface="side-panel"] .semester-name {
   padding: 12px 16px;
 }
 
-.course-name {
+.course-card .course-name {
   display: block;
   margin-top: 4px;
   font: 500 19px/1.35 var(--font-display);

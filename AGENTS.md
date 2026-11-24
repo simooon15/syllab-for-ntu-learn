@@ -8,22 +8,25 @@ second repository-wide rule source to grow beside `AGENTS.md`.
 
 ## Repository map
 
-Syllab is a Chrome extension for NTU Learn (Blackboard Ultra) with a small extraction-model proxy.
-The extension and backend are separate workspaces joined only by versioned API contracts.
+Syllab is a local-first Chrome extension (Side Panel + Full-page Workspace) for NTU Learn
+(Blackboard Ultra) using a BYOK DeepSeek key stored in local extension storage. The repository also
+retains the legacy v0.1.0 `backend/` extraction-model proxy workspace and `packages/contracts/`
+until Product explicitly approves retirement.
 
 | Path                  | Purpose                                                                            |
 | --------------------- | ---------------------------------------------------------------------------------- |
 | `extension/`          | Manifest V3 extension; `extension/dist/` is the ignored, loadable build.           |
-| `backend/`            | AI proxy and the repository's only secret boundary.                                |
+| `backend/`            | Legacy v0.1.0 AI proxy workspace (reads `DEEPSEEK_API_KEY` from environment only). |
 | `packages/contracts/` | Versioned contracts shared by extension and backend.                               |
 | `docs/`               | Long-term governance, acceptance records, product feedback and interface guidance. |
 | `scripts/`            | Repository-level checks run by `npm run ci`.                                       |
 
 ## Hard rules
 
-**Secrets never touch this repository, a log, a commit or a chat transcript.** The backend reads
-`DEEPSEEK_API_KEY` from its environment only. Naming the variable is safe; its value is not. Ask the
-user to supply it through their own environment when required.
+**Secrets never touch this repository, a log, a commit or a chat transcript.** The extension stores
+the user's BYOK key locally in `chrome.storage.local` and never exports it in backups or logs; the
+legacy `backend/` reads `DEEPSEEK_API_KEY` from its environment only. Naming the variable is safe;
+its value is not. Ask the user to supply it through their own environment when required.
 
 **A user-visible change is a Product decision, not an implementation detail.** Get the user's
 sign-off before adding a derived value, changing a control's behaviour or changing confirmed copy.
@@ -48,12 +51,13 @@ Product documents and release state retain their separate authorities defined in
 
 ## Completion gate
 
-Run `npm run ci` before calling implementation work finished. It covers formatting, build, strict
-typecheck, lint, tests, manifest validation and secret scanning; success means zero failures.
+Run `npm run ci` before calling implementation work finished. It covers formatting, build,
+build-separation verification, strict typecheck, lint, tests, manifest validation and secret
+scanning; success means zero failures.
 
 After any change that affects the extension bundle, reload the unpacked extension and refresh every
 already-open NTU Learn tab. Reloading alone leaves those tabs with a dead content script and can make
-the popup lose its course context.
+the Side Panel lose its course context.
 
 ## Rule index
 
@@ -80,8 +84,8 @@ when the correct branch is unclear.
 Version-specific PRDs, Product Handoffs, acceptance records and engineering handoffs are evidence
 for their version, not additional repository-wide rule sources.
 
-
 <!-- GPT-DRIVE-CODEX:BEGIN -->
+
 For cross-agent Handoff, receiving handoffs, or shared project sync, use
 $gpt-drive-codex. Read .gpt-drive-codex/config.json for this project only.
 Use Google Drive Desktop local folders; Drive connector is emergency-only.

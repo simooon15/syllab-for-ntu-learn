@@ -17,7 +17,7 @@ export function checkSchedule(candidates: OpportunityCandidate[], now: Date): st
     .filter((candidate) => candidate.currentSemester && candidate.established)
     .flatMap((candidate) => {
       const at = nextOpportunityAt(candidate.schedule, now);
-      if (!at || at.getTime() > now.getTime()) return [];
+      if (!at || Number.isNaN(at.getTime()) || at.getTime() > now.getTime()) return [];
       return [{ courseId: candidate.courseId, at: at.getTime() }];
     })
     .sort((left, right) => left.at - right.at);

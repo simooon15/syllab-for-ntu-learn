@@ -856,8 +856,6 @@ async function auditProductTasks(
         reasoningCycleGuard: true,
         singlePhysicalAttempt: true
       }));
-    // Save even invalid candidates for local diagnostics; they never become a certificate.
-    await port.save(key, raw);
     if (
       !isRecord(raw) ||
       raw.taskRef !== task.taskRef ||
@@ -869,8 +867,10 @@ async function auditProductTasks(
       !Array.isArray(raw.issues) ||
       (raw.valid !== undefined &&
         (typeof raw.valid !== "boolean" || raw.valid !== (raw.issues.length === 0)))
-    )
+    ) {
+      await port.save(`${key}:diagnostic`, raw);
       return stop("AUDIT_INCOMPLETE_SCOPE");
+    }
     for (const issue of raw.issues) {
       if (
         !isRecord(issue) ||
@@ -908,10 +908,13 @@ async function auditProductTasks(
                 !Array.isArray(task.payload.evidence) ||
                 !task.payload.evidence.some((e) => isRecord(e) && e.ref === ref)
             )))
-      )
+      ) {
+        await port.save(`${key}:diagnostic`, raw);
         stop("AUDIT_SCOPE");
+      }
       issues.push({ ...(issue as ProductAuditIssue), auditTaskRef: task.taskRef });
     }
+    await port.save(key, raw);
     if (isRecord(task.payload) && isRecord(task.payload.recoveryScope) && raw.issues.length)
       return { tasks, issues, semanticAuditComplete: false };
     if (reuseKey && isRecord(raw) && raw.issues.length === 0)
@@ -1114,16 +1117,20 @@ export async function captureReviewScopeCompletion(
       reasoningCycleGuard: true,
       singlePhysicalAttempt: true
     }));
-  await port.save(key, verdict);
-  if (!isRecord(verdict) || verdict.complete !== true) stop("REVIEW_SCOPE_COMPLETION_UNRESOLVED");
+  if (!isRecord(verdict) || verdict.complete !== true) {
+    await port.save(`${key}:diagnostic`, verdict);
+    stop("REVIEW_SCOPE_COMPLETION_UNRESOLVED");
+  }
   const result = verdict as Record<string, unknown>;
   if (
     result.schema !== AI_SCHEMAS.product ||
     result.taskRef !== taskRef ||
     !Array.isArray(result.fields) ||
     Object.keys(result).some((k) => !["schema", "taskRef", "complete", "fields"].includes(k))
-  )
+  ) {
+    await port.save(`${key}:diagnostic`, verdict);
     stop("REVIEW_SCOPE_COMPLETION_SCOPE");
+  }
   const fields = result.fields as Record<string, unknown>[];
   if (
     fields.length !== refs.length ||
@@ -1138,8 +1145,11 @@ export async function captureReviewScopeCompletion(
         !f.basis.trim() ||
         Object.keys(f).some((k) => !["propositionRef", "independentReview", "basis"].includes(k))
     )
-  )
+  ) {
+    await port.save(`${key}:diagnostic`, verdict);
     stop("REVIEW_SCOPE_COMPLETION_SCOPE");
+  }
+  await port.save(key, verdict);
   const completed = structuredClone(patch);
   for (const p of completed.propositions) {
     const field = fields.find((f) => f.propositionRef === p.propositionRef);
@@ -1274,15 +1284,16 @@ export async function captureProductRepair(
       reasoningCycleGuard: true,
       singlePhysicalAttempt: true
     }));
-  await port.save(key, raw);
   if (
     !isRecord(raw) ||
     raw.unresolved === true ||
     !Array.isArray(raw.propositions) ||
     !Array.isArray(raw.entities) ||
     !Array.isArray(raw.context)
-  )
+  ) {
+    await port.save(`${key}:diagnostic`, raw);
     return stop("LOCAL_REPAIR_UNRESOLVED");
+  }
   if (
     raw.propositions.some(
       (p) =>
@@ -1293,8 +1304,11 @@ export async function captureProductRepair(
     ) ||
     raw.entities.some((e) => !isRecord(e) || typeof e.ownerRef !== "string") ||
     raw.context.some((c) => !isRecord(c) || !Array.isArray(c.clauseRefs))
-  )
+  ) {
+    await port.save(`${key}:diagnostic`, raw);
     return stop("LOCAL_REPAIR_INVALID_SHAPE");
+  }
+  await port.save(key, raw);
   const patch = {
     ...scope,
     propositions: raw.propositions as ProductProposition[],

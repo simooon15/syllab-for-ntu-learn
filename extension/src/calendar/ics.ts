@@ -49,6 +49,26 @@ function nextDate(date: string): string {
   return next.toISOString().slice(0, 10).replaceAll("-", "");
 }
 
+function compactTime(time: string): string {
+  const parts = time.split(":").map((part) => part.padStart(2, "0"));
+  const hh = parts[0] ?? "00";
+  const mm = parts[1] ?? "00";
+  const ss = parts[2] ?? "00";
+  return `${hh}${mm}${ss}`;
+}
+
+const SINGAPORE_VTIMEZONE = [
+  "BEGIN:VTIMEZONE",
+  "TZID:Asia/Singapore",
+  "BEGIN:STANDARD",
+  "DTSTART:19820101T000000",
+  "TZOFFSETFROM:+0800",
+  "TZOFFSETTO:+0800",
+  "TZNAME:SGT",
+  "END:STANDARD",
+  "END:VTIMEZONE"
+];
+
 export function serializeCalendar(
   courseId: string,
   events: readonly CalendarEvent[],
@@ -64,13 +84,16 @@ export function serializeCalendar(
     "PRODID:-//Syllab//NTU Learn//EN",
     "CALSCALE:GREGORIAN"
   ];
+  if (events.some((event) => Boolean(event.time))) {
+    lines.push(...SINGAPORE_VTIMEZONE);
+  }
   for (const event of events) {
     lines.push("BEGIN:VEVENT");
     lines.push(`UID:${stableHash(`${courseId}|${event.eventId}`)}@syllab.local`);
     lines.push(`DTSTAMP:${timestamp}`);
     if (event.time) {
       lines.push(
-        `DTSTART;TZID=Asia/Singapore:${compactDate(event.date)}T${event.time.replace(":", "")}00`
+        `DTSTART;TZID=Asia/Singapore:${compactDate(event.date)}T${compactTime(event.time)}`
       );
     } else {
       lines.push(`DTSTART;VALUE=DATE:${compactDate(event.date)}`);

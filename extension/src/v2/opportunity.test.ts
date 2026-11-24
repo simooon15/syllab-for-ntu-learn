@@ -44,6 +44,22 @@ describe("Opportunity Checking throttle", () => {
     );
   });
 
+  it("PR-02: ignores malformed timestamps instead of producing Invalid Date", () => {
+    const due = nextOpportunityAt(
+      {
+        nextAttemptAt: "not-a-date",
+        lastSuccessfulCheckAt: "also-bad",
+        unchangedStreak: 0,
+        consecutiveFailures: 0,
+        currentSemester: true,
+        established: true
+      },
+      now
+    );
+    expect(due).not.toBeNull();
+    expect(Number.isFinite(due?.getTime() ?? Number.NaN)).toBe(true);
+  });
+
   it("retries quietly and escalates only after repeated failure", () => {
     const initial = {
       unchangedStreak: 0,

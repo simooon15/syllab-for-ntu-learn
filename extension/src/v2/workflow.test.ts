@@ -31,6 +31,7 @@ import { ViewBuilder } from "./view";
 import { ViewHandler } from "./handler";
 import { V2_MESSAGE_CONTRACT } from "./contract";
 import { DeepSeekFailure } from "./deepseek";
+import { AiUnitFailure } from "./deepseek-complete";
 import type { FactRecord } from "./schema";
 import { SELECTIVE_COURSE_SCHEMA, type Clause } from "./selective-course";
 
@@ -3828,4 +3829,147 @@ it("recovers an undated hidden instruction through the production workflow into 
     required(accepted.facts[0]).evidenceRefs.map((e) => required(e.evidenceId))
   );
   expect(native.some((e) => e.excerpt.includes(instruction))).toBe(true);
+});
+
+describe("Phase 1 workflow regressions (PR-01, PR-02, PR-03)", () => {
+  it("PR-03: parks workflows in waiting state with specific waitingReason when API key or authorizations are missing", async () => {
+    const cases: Array<{
+      label: string;
+      setupAi: (ai: FakeAi) => void;
+      expectedReason: "api-key" | "privacy-authorization" | "api-usage-authorization";
+    }> = [
+      {
+        label: "missing api key",
+        setupAi: (ai) => {
+          ai.key = null;
+        },
+        expectedReason: "api-key"
+      },
+      {
+        label: "missing privacy authorization",
+        setupAi: (ai) => {
+          ai.privacy = false;
+        },
+        expectedReason: "privacy-authorization"
+      },
+      {
+        label: "missing usage authorization",
+        setupAi: (ai) => {
+          ai.usage = false;
+        },
+        expectedReason: "api-usage-authorization"
+      }
+    ];
+    for (const c of cases) {
+      const store = await freshStore();
+      const clock = new VirtualClock();
+      const course = courseRecord();
+      await store.upsertCourse(course);
+      const machine = new FakeMachine();
+      const ai = new FakeAi();
+      c.setupAi(ai);
+      const engine = engineFor({
+        store,
+        machine,
+        ai,
+        clock,
+        staging: new RebuildStagingStore(memoryStorage()),
+        directCourse: true,
+        selectiveCourse: true
+      });
+      const wf = await engine.start(course, "initial");
+      await engine.run(wf.workflowId);
+      expect(await store.readWorkflow(wf.workflowId), c.label).toMatchObject({
+        state: "waiting",
+        waitingReason: c.expectedReason
+      });
+    }
+  });
+
+  it("PR-01: allows safe retry on consumesApi=false failure, but locks ambiguous dispatching failure with paidRetryAvailable=false", async () => {
+    const store = await freshStore();
+    const clock = new VirtualClock();
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    const machine = new FakeMachine();
+    machine.sources = [
+      {
+        sourceId: "syllabus",
+        title: "Syllabus",
+        kind: "document",
+        text: "Final exam is 100%."
+      }
+    ];
+    let calls = 0;
+    const ai = new FakeAi();
+    ai.execute = () => {
+      calls++;
+      if (calls === 1) {
+        return Promise.reject(
+          new AiUnitFailure({
+            errorCode: "AI_AUTH",
+            consumesApi: false,
+            detail: "preflight auth rejected before inference"
+          })
+        );
+      }
+      return Promise.reject(
+        new DeepSeekFailure("NETWORK_TRANSIENT", true, "socket dropped mid-flight")
+      );
+    };
+    const engine = engineFor({
+      store,
+      machine,
+      ai,
+      clock,
+      staging: new RebuildStagingStore(memoryStorage()),
+      directCourse: true,
+      selectiveCourse: true
+    });
+    const wf = await engine.start(course, "initial");
+    await engine.run(wf.workflowId);
+    const afterSafeFail = required(await store.readWorkflow(wf.workflowId));
+    expect(afterSafeFail.state).toBe("failed");
+    expect(afterSafeFail.paidRetryAvailable).toBe(true);
+
+    // Retry after consumesApi=false failure reaches the provider again (not COURSE_DRAFT_PAID_UNVERIFIED).
+    await store.saveWorkflow({ ...afterSafeFail, state: "saved", userRetryAuthorized: true });
+    await engine.run(wf.workflowId);
+    expect(calls).toBe(2);
+    const afterAmbiguous = required(await store.readWorkflow(wf.workflowId));
+    expect(afterAmbiguous.state).toBe("failed");
+
+    // Next retry sees the dispatching entry from the ambiguous timeout and locks paidRetryAvailable=false.
+    await store.saveWorkflow({ ...afterAmbiguous, state: "saved", userRetryAuthorized: true });
+    await engine.run(wf.workflowId);
+    expect(calls).toBe(2);
+    expect(await store.readWorkflow(wf.workflowId)).toMatchObject({
+      state: "failed",
+      lastErrorDetail: "COURSE_DRAFT_PAID_UNVERIFIED",
+      paidRetryAvailable: false,
+      retryConsumesApi: false
+    });
+  });
+
+  it("PR-02: failed maintenance check increments consecutiveCheckFailures and sets nextCheckAt backoff", async () => {
+    const store = await freshStore();
+    const clock = new VirtualClock();
+    const course = { ...courseRecord(), established: true };
+    await store.upsertCourse(course);
+    const machine = new FakeMachine();
+    machine.discover = () => Promise.reject(new Error("NETWORK_OFFLINE"));
+    const engine = engineFor({
+      store,
+      machine,
+      ai: new FakeAi(),
+      clock,
+      staging: new RebuildStagingStore(memoryStorage())
+    });
+    const wf = await engine.start(course, "check");
+    await engine.run(wf.workflowId);
+    const updated = required(await store.readCourse(course.courseId));
+    expect(updated.consecutiveCheckFailures).toBe(1);
+    expect(updated.nextCheckAt).toBeDefined();
+    expect(Date.parse(updated.nextCheckAt ?? "")).toBeGreaterThan(clock.now().getTime());
+  });
 });

@@ -28,10 +28,14 @@ export interface CheckSchedule {
 
 export function nextOpportunityAt(schedule: CheckSchedule, now: Date): Date | null {
   if (!schedule.currentSemester || !schedule.established) return null;
-  if (schedule.nextAttemptAt) return new Date(schedule.nextAttemptAt);
-  const last = schedule.lastSuccessfulCheckAt
+  if (schedule.nextAttemptAt) {
+    const parsed = Date.parse(schedule.nextAttemptAt);
+    if (Number.isFinite(parsed)) return new Date(parsed);
+  }
+  const parsedLast = schedule.lastSuccessfulCheckAt
     ? Date.parse(schedule.lastSuccessfulCheckAt)
-    : now.getTime() - 6 * HOUR;
+    : Number.NaN;
+  const last = Number.isFinite(parsedLast) ? parsedLast : now.getTime() - 6 * HOUR;
   const interval = schedule.unchangedStreak <= 0 ? 6 : schedule.unchangedStreak === 1 ? 12 : 24;
   return new Date(last + interval * HOUR);
 }

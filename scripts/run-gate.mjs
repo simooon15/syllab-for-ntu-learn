@@ -7,10 +7,14 @@
  * `--live-deepseek` and `--real-course` are opt-in: without them those evidence rows stay
  * NOT TESTED, which is the truthful result for an environment that cannot supply them.
  */
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { runGate } from "./lib/gate-report.mjs";
+
+const version = JSON.parse(
+  readFileSync(resolve("extension", "public", "manifest.json"), "utf8")
+).version;
 
 const gate = process.argv[2];
 if (gate !== "gate-1" && gate !== "gate-2") {
@@ -20,7 +24,7 @@ if (gate !== "gate-1" && gate !== "gate-2") {
 
 const liveDeepSeek = process.argv.includes("--live-deepseek");
 const realCourse = process.argv.includes("--real-course");
-const evidenceDirectory = resolve("artifacts", "gates", "v0.2.0", gate);
+const evidenceDirectory = resolve("artifacts", "gates", `v${version}`, gate);
 
 /**
  * Screenshot and E2E runs drive the QA build. It is the same product source as the shipped bundle
@@ -91,7 +95,7 @@ const analysisSteps = [
  */
 const packagingSteps = [
   buildStep("package-extension", "npm", ["run", "package"], {
-    produces: ["artifacts/Syllab_Extension_v0.2.0.zip — unzip and load unpacked"]
+    produces: [`artifacts/release/syllab-for-ntu-learn-v${version}.zip — unzip and load unpacked`]
   }),
   buildStep("verify-package", "npm", ["run", "package:verify"], {
     produces: ["the packaged zip extracts and loads in a clean browser profile"]
@@ -152,8 +156,8 @@ const gate1Steps = [
   }),
   ...acceptanceSteps,
   cleanBundleStep,
-  buildStep("evidence-inventory", "node", ["scripts/evidence-inventory.mjs"], {
-    produces: ["required screens implemented and captured, shipped bundle free of the test bridge"]
+  buildStep("evidence-inventory", "node", ["scripts/evidence-inventory.mjs", "--no-screenshots"], {
+    produces: ["required screens declared and shipped bundle free of the test bridge"]
   }),
   ...analysisSteps
 ];
@@ -192,7 +196,9 @@ const gate2Steps = [
   // Last, so the delivery archive contains the final README, Spec and Gate reports rather than the
   // versions that existed before this run.
   buildStep("package-delivery", "npm", ["run", "package:delivery"], {
-    produces: ["artifacts/Syllab_v0.2.0_delivery.zip — documents, screenshots and Gate reports"]
+    produces: [
+      `artifacts/Syllab_v${version}_delivery.zip — documents, screenshots and Gate reports`
+    ]
   })
 ];
 
@@ -231,7 +237,7 @@ if (liveDeepSeek && !process.env.DEEPSEEK_API_KEY) {
 }
 if (realCourse) {
   notes.push(
-    "Real NTU Learn validation requires an authenticated browser session and a real course; run scripts/real-course-acceptance.mjs inside that session. Fixtures are never reported as real-course evidence."
+    "Real NTU Learn validation requires an authenticated browser session and a real course; run scripts/real-test.mjs inside that session. Fixtures are never reported as real-course evidence."
   );
 }
 

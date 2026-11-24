@@ -121,6 +121,11 @@ export function mount(options: MountOptions): MountHandle {
       sendMutation(mutation);
     },
     onOpenScreen: (screen, context) => {
+      if (screenOverride === "BKP-04") {
+        screenOverride = undefined;
+        restorePayload = undefined;
+        restoreStaged = false;
+      }
       void runRequest({
         contract: V2_MESSAGE_CONTRACT,
         type: "OPEN_SCREEN",
@@ -135,15 +140,18 @@ export function mount(options: MountOptions): MountHandle {
       // Settings is a Full-page entry (Interaction Spec §12), so from the Side Panel that means the
       // Full-page surface rather than rendering a four-section configuration page into a column the
       // width of a phone. The route is recorded for the Full-page surface first, so the tab it opens
-      // lands on Settings rather than on the dashboard.
+      // lands on Settings rather than on the dashboard, without overwriting the Side Panel's own
+      // view/task context.
       if (surface === "side-panel") {
-        void runRequest({
-          contract: V2_MESSAGE_CONTRACT,
-          type: "OPEN_SCREEN",
-          surface: "full-page",
-          screen: "SET-01"
-        });
-        void chrome.tabs.create({ url: chrome.runtime.getURL("app.html") });
+        void (async () => {
+          await send({
+            contract: V2_MESSAGE_CONTRACT,
+            type: "OPEN_SCREEN",
+            surface: "full-page",
+            screen: "SET-01"
+          });
+          await chrome.tabs.create({ url: chrome.runtime.getURL("app.html") });
+        })();
         return;
       }
       void runRequest({
@@ -288,11 +296,14 @@ export function mount(options: MountOptions): MountHandle {
   }
 
   /** Takes in whatever the service worker answered and reports whether it was a real view. */
-  function absorb(response: ViewResponse | undefined): boolean {
+  function absorb(
+    response: ViewResponse | undefined,
+    options: { preserveError?: boolean } = {}
+  ): boolean {
     if (response?.ok === true) {
       view = response.view;
       revision = response.view.course?.revision ?? revision;
-      runtime.error = undefined;
+      if (!options.preserveError) runtime.error = undefined;
       clearTimeout(retryTimer);
       return true;
     }
@@ -325,7 +336,7 @@ export function mount(options: MountOptions): MountHandle {
     }, RETRY_MS);
   }
 
-  async function requestView(): Promise<void> {
+  async function requestView(options: { preserveError?: boolean } = {}): Promise<void> {
     if (isDisposed()) return;
     clearTimeout(retryTimer);
     const seq = ++viewSequence;
@@ -338,7 +349,7 @@ export function mount(options: MountOptions): MountHandle {
       ...(tabId === undefined ? {} : { tabId })
     });
     if (isDisposed() || seq !== viewSequence) return;
-    const ok = absorb(response);
+    const ok = absorb(response, options);
     permissionPatterns = await missingRecordedPermissionPatterns().catch(() => []);
     if (isDisposed() || seq !== viewSequence) return;
     paint();
@@ -365,7 +376,7 @@ export function mount(options: MountOptions): MountHandle {
       const ok = absorb(response);
       busy -= 1;
       if (busy === 0) paint();
-      if (!ok) await requestView();
+      if (!ok) await requestView({ preserveError: true });
     });
   }
 
@@ -381,7 +392,7 @@ export function mount(options: MountOptions): MountHandle {
       if (options.notice) setNotice(options.notice);
       return;
     }
-    await requestView();
+    await requestView({ preserveError: true });
   }
 
   /**

@@ -1,4 +1,5 @@
 import { DIRECT_COURSE_SCHEMA } from "../v2/direct-course";
+import { isAllowedOptionalOrigin } from "../v2/permission-recovery";
 import { SELECTIVE_COURSE_SCHEMA } from "../v2/selective-course";
 import { AI_SCHEMAS } from "../v2/contract-registry";
 import { authorizeB2Compensation } from "../v2/architecture-compensation";
@@ -277,7 +278,7 @@ async function readRecordedOrigins(): Promise<string[]> {
   for (const value of [durableValue, sessionValue]) {
     if (!Array.isArray(value)) continue;
     for (const item of value as unknown[]) {
-      if (typeof item === "string") origins.push(item);
+      if (typeof item === "string" && isAllowedOptionalOrigin(item)) origins.push(item);
     }
   }
   return [...new Set(origins)];
@@ -287,6 +288,7 @@ let permissionOriginWriteQueue: Promise<void> = Promise.resolve();
 
 /** Remembers an Origin a download redirected to, so the run can ask the user for it. */
 function recordPermissionOrigin(origin: string): Promise<void> {
+  if (!isAllowedOptionalOrigin(origin)) return Promise.resolve();
   const run = permissionOriginWriteQueue.then(async () => {
     const recorded = await readRecordedOrigins();
     if (recorded.includes(origin)) return;
@@ -1850,25 +1852,36 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 /** Opportunity Checking: local machine comparison first; a paid call only after a difference. */
 async function opportunityCheck(): Promise<void> {
   if (__SYLLAB_QA_RECOVERY_HOLD__) return;
-  const workflows = await store.listWorkflows();
-  const courses = (await store.readCourses()).filter(
-    (course) => course.established && automaticCheckPermitted(workflows, course.courseId)
+  const [workflows, semestersList, allCourses] = await Promise.all([
+    store.listWorkflows(),
+    store.readSemesters(),
+    store.readCourses()
+  ]);
+  const semesters = new Map(semestersList.map((semester) => [semester.semesterId, semester]));
+  const courses = allCourses.filter(
+    (course) =>
+      course.established &&
+      !course.missingFromNative &&
+      automaticCheckPermitted(workflows, course.courseId)
   );
-  const candidates: OpportunityCandidate[] = courses.map((course: CourseRecord) => ({
-    courseId: course.courseId,
-    currentSemester: true,
-    established: course.established,
-    schedule: {
-      ...(course.lastSuccessfulCheckAt
-        ? { lastSuccessfulCheckAt: course.lastSuccessfulCheckAt }
-        : {}),
-      ...(course.nextCheckAt ? { nextAttemptAt: course.nextCheckAt } : {}),
-      unchangedStreak: course.unchangedStreak ?? 0,
-      consecutiveFailures: course.consecutiveCheckFailures,
-      currentSemester: true,
-      established: course.established
-    }
-  }));
+  const candidates: OpportunityCandidate[] = courses.map((course: CourseRecord) => {
+    const currentSemester = semesters.get(course.semesterId)?.status === "Current";
+    return {
+      courseId: course.courseId,
+      currentSemester,
+      established: course.established,
+      schedule: {
+        ...(course.lastSuccessfulCheckAt
+          ? { lastSuccessfulCheckAt: course.lastSuccessfulCheckAt }
+          : {}),
+        ...(course.nextCheckAt ? { nextAttemptAt: course.nextCheckAt } : {}),
+        unchangedStreak: course.unchangedStreak ?? 0,
+        consecutiveFailures: course.consecutiveCheckFailures,
+        currentSemester,
+        established: course.established
+      }
+    };
+  });
   const due = checkSchedule(candidates, new Date());
   const course = courses.find((item) => item.courseId === due[0]);
   if (!course) return;

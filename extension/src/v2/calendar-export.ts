@@ -212,7 +212,11 @@ export function calendarSummary(input: CalendarExportInput): CalendarExportSumma
   const label = courseLabel(input.course);
 
   const dateFacts = input.facts.filter(
-    (fact) => isResolved(fact) && (DATE_FACT_FIELDS as readonly string[]).includes(fact.field)
+    (fact) =>
+      isResolved(fact) &&
+      (DATE_FACT_FIELDS as readonly string[]).includes(fact.field) &&
+      fact.product?.disposition !== "REFERENCE" &&
+      fact.product?.disposition !== "BACKGROUND"
   );
   const timeFacts = input.facts
     .filter(
@@ -238,6 +242,14 @@ export function calendarSummary(input: CalendarExportInput): CalendarExportSumma
   for (const fact of dateFacts) {
     const owner = resolveOwner(fact, input, assessments, constraints);
     if (!owner) continue;
+    const assessmentOwner = fact.assessmentId ? assessments.get(fact.assessmentId) : undefined;
+    const constraintOwner = fact.constraintId ? constraints.get(fact.constraintId) : undefined;
+    if (
+      assessmentOwner?.productDisposition === "REFERENCE" ||
+      constraintOwner?.productDisposition === "REFERENCE"
+    ) {
+      continue;
+    }
     dateCount += 1;
     // Conflict-blocked is a third outcome: the date is real, it just is not settled. It is neither
     // exportable nor unresolved, so it is in neither count.

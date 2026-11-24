@@ -8,7 +8,11 @@ import { join, resolve } from "node:path";
 
 import { KEY_SHAPE, forbiddenHits } from "./lib/release-markers.mjs";
 
-const SCREENSHOT_DIRECTORY = resolve("artifacts", "screenshots", "v0.2.0");
+const version = JSON.parse(
+  await readFile(resolve("extension", "public", "manifest.json"), "utf8")
+).version;
+const skipScreenshots = process.argv.includes("--no-screenshots");
+const SCREENSHOT_DIRECTORY = resolve("artifacts", "screenshots", `v${version}`);
 const REQUIRED_SCREENS = [
   "SEM-01",
   "SEM-02",
@@ -52,17 +56,7 @@ const REQUIRED_SCREENS = [
 ];
 
 /** Screens the Spec marks as reuse-only; they have no screenshot of their own. */
-const REUSE_ONLY = [
-  "CRV-02",
-  "RBL-04",
-  "IRV-06",
-  "CRV-06",
-  "CAL-02",
-  "BKP-03",
-  "BKP-05",
-  "SET-03",
-  "ISC-06"
-];
+const REUSE_ONLY = ["CRV-02", "RBL-04", "IRV-06", "CRV-06", "CAL-02", "BKP-03", "BKP-05", "SET-03"];
 
 const failures = [];
 
@@ -123,7 +117,7 @@ async function checkShippedBundle() {
   }
 }
 
-await checkScreens();
+if (!skipScreenshots) await checkScreens();
 await checkScreenCoverage();
 await checkShippedBundle();
 

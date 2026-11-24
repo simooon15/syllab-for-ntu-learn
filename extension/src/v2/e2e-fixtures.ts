@@ -1,3 +1,4 @@
+import { activityHub } from "./activity";
 /**
  * Deterministic browser E2E and screenshot bridge. Routes are reachable only when the bundle is
  * built with `SYLLAB_E2E_FIXTURES=1`, which the acceptance build sets and the shipped build does
@@ -25,7 +26,9 @@ export interface E2eActionMessage {
     | "AcceptFirstChange"
     | "ConfirmFirstReviewItem"
     | "StaleRevisionMutation"
-    | "ExcludeFirstReviewItem";
+    | "ExcludeFirstReviewItem"
+    | "StartSyntheticActivity"
+    | "EndSyntheticActivity";
 }
 
 /** Routes a surface to a named screen so acceptance can capture every required state. */
@@ -92,6 +95,31 @@ export async function handleE2e(store: LocalStore, message: E2eMessage): Promise
       reviewItemIds: result.reviewItemIds,
       changeIds: result.changeIds
     };
+  }
+  if (message.action === "StartSyntheticActivity" || message.action === "EndSyntheticActivity") {
+    const workflow = (await store.listWorkflows()).find(
+      (item) => item.courseId === FIXTURE_COURSE_ID && item.state === "working"
+    );
+    if (!workflow) return { ok: false, reviewItemIds: [], changeIds: [], errorCode: "NO_WORKFLOW" };
+    if (message.action === "EndSyntheticActivity") activityHub.end("synthetic-activity");
+    else {
+      activityHub.start(
+        "synthetic-activity",
+        { courseId: FIXTURE_COURSE_ID, workflowId: workflow.workflowId, task: "A" },
+        ""
+      );
+      activityHub.delta(
+        "synthetic-activity",
+        "Comparing the assessment requirements with the source evidence.",
+        "reasoning"
+      );
+      activityHub.delta(
+        "synthetic-activity",
+        '{"sourceId":"src_synthetic","drafts":[]}',
+        "content"
+      );
+    }
+    return { ok: true, courseId: FIXTURE_COURSE_ID, reviewItemIds: [], changeIds: [] };
   }
   const courseId = FIXTURE_COURSE_ID;
   const snapshot = await store.readSnapshot(courseId);

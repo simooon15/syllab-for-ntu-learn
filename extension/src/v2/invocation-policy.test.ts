@@ -21,9 +21,8 @@ describe("DeepSeek invocation policy", () => {
     const ceiling = computeOutputSafetyCeiling("task-b", huge, huge);
     expect(ceiling).toBeGreaterThan(0);
     expect(ceiling).toBeLessThanOrEqual(DEEPSEEK_FLASH_CAPABILITIES.providerMaxOutput);
-    expect(estimateInputTokens(huge, huge) + contextMargin() + ceiling).toBeLessThanOrEqual(
-      DEEPSEEK_FLASH_CAPABILITIES.contextLimit
-    );
+    expect(ceiling).toBe(DEEPSEEK_FLASH_CAPABILITIES.providerMaxOutput);
+    expect(estimateInputTokens(huge, huge)).toBeGreaterThan(0);
   });
 
   it("keeps task guards independent from the expected output size", () => {
@@ -46,4 +45,18 @@ describe("DeepSeek invocation policy", () => {
     );
     expect(invocationFingerprint(base)).not.toContain("request");
   });
+});
+
+it("does not reuse a receipt when task reasoning effort changes", () => {
+  const request = {
+    task: "task-b" as const,
+    promptVersion: "bounded-product-audit/1",
+    schemaVersion: "synthetic",
+    system: "Audit",
+    user: "One scope",
+    maxTokens: 8192
+  };
+  expect(invocationFingerprint({ ...request, reasoningEffort: "low" })).not.toBe(
+    invocationFingerprint({ ...request, reasoningEffort: "high" })
+  );
 });

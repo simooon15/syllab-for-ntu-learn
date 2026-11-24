@@ -1,4 +1,5 @@
-import { randomId } from "./crypto";
+import { randomId, stableStringify } from "./crypto";
+import { qaTrace } from "./qa-telemetry";
 import {
   ACTIVE_GENERATION_KEY,
   DURABLE_TABLES,
@@ -14,6 +15,37 @@ export const DATABASE_NAME = "syllab-local";
 
 /** Metadata is a fixed store, never a caller-selected one; this keeps the generics honest. */
 const METADATA_STORE: V2StoreName = "appMetadata";
+
+let transactionSequence = 0;
+let transactionObservation = false;
+/** Explicit diagnostic opt-in prevents normal ownership polls flooding the QA trace. */
+export function setTransactionObservation(enabled: boolean): void {
+  transactionObservation = enabled;
+}
+/** Observation only: listeners do not keep transactions alive or change settlement. */
+function observeTransaction(transaction: IDBTransaction): void {
+  if (!transactionObservation) return;
+  const transactionId = ++transactionSequence;
+  const started = performance.now();
+  const fields = {
+    transactionId,
+    mode: transaction.mode,
+    tables: Array.from(transaction.objectStoreNames)
+  };
+  qaTrace("qa.idb-transaction", { ...fields, phase: "open" });
+  for (const phase of ["complete", "abort", "error"] as const)
+    transaction.addEventListener(
+      phase,
+      () =>
+        qaTrace("qa.idb-transaction", {
+          ...fields,
+          phase,
+          elapsedMs: performance.now() - started,
+          errorName: transaction.error?.name ?? null
+        }),
+      { once: true }
+    );
+}
 
 /**
  * A record as it exists on disk. Durable tables carry the restore generation; the
@@ -164,7 +196,34 @@ class TransactionImpl<Tables extends V2StoreName> implements Transaction<Tables>
     return promise;
   }
 
-  put(table: Tables, record: Record<string, unknown>): Promise<void> {
+  async put(table: Tables, record: Record<string, unknown>): Promise<void> {
+    const keyPath = this.store(table).keyPath;
+    if (
+      typeof keyPath === "string" &&
+      typeof record[keyPath] === "string" &&
+      typeof record.courseId === "string"
+    ) {
+      const previous = await this.get<Record<string, unknown>>(table, record[keyPath]);
+      if (previous && previous.courseId !== record.courseId)
+        throw new Error("CROSS_COURSE_IDENTITY_COLLISION");
+      if (table === "evidence" && previous) {
+        const identity = (row: Record<string, unknown>) =>
+          stableStringify(
+            Object.fromEntries(
+              [
+                "courseId",
+                "sourceId",
+                "locator",
+                "excerpt",
+                "page",
+                "region",
+                "representationHash"
+              ].map((key) => [key, row[key]])
+            )
+          );
+        if (identity(previous) !== identity(record)) throw new Error("EVIDENCE_IDENTITY_COLLISION");
+      }
+    }
     const target = table;
     const payload =
       this.generation && DURABLE_TABLES.includes(target as DurableTable)
@@ -245,11 +304,13 @@ export class LocalDatabase {
   async open(): Promise<IDBDatabase> {
     if (this.connection) return this.connection;
     const request = this.factory.open(this.name, V2_DATABASE_VERSION);
+    request.addEventListener("blocked", () => qaTrace("qa.idb-connection", { phase: "blocked" }));
     request.addEventListener("upgradeneeded", () => {
       upgrade(request.result);
     });
     const connection = await requestResult(request);
     connection.addEventListener("versionchange", () => {
+      qaTrace("qa.idb-connection", { phase: "versionchange" });
       connection.close();
       this.connection = null;
     });
@@ -270,6 +331,7 @@ export class LocalDatabase {
     const connection = await this.open();
     const generation = await this.readGeneration();
     const transaction = connection.transaction(tables, "readonly");
+    observeTransaction(transaction);
     const implementation = new TransactionImpl<Tables>(transaction, tables, generation);
     const result = await body(implementation);
     await transactionComplete(transaction);
@@ -285,6 +347,7 @@ export class LocalDatabase {
     // cannot be awaited across, so no metadata work may happen inside this window.
     const generation = await this.ensureGeneration();
     const transaction = connection.transaction(tables, "readwrite");
+    observeTransaction(transaction);
     const implementation = new TransactionImpl<Tables>(transaction, tables, generation);
     let result: T;
     try {
@@ -304,6 +367,7 @@ export class LocalDatabase {
   async ensureGeneration(): Promise<string> {
     const connection = await this.open();
     const transaction = connection.transaction(["appMetadata"], "readwrite");
+    observeTransaction(transaction);
     const store = transaction.objectStore("appMetadata");
     const existing = await requestResult<AppMetadataRecord | undefined>(
       store.get(ACTIVE_GENERATION_KEY) as IDBRequest<AppMetadataRecord | undefined>
@@ -321,6 +385,7 @@ export class LocalDatabase {
   async readGeneration(): Promise<string | null> {
     const connection = await this.open();
     const transaction = connection.transaction(["appMetadata"], "readonly");
+    observeTransaction(transaction);
     const existing = await requestResult<AppMetadataRecord | undefined>(
       transaction.objectStore("appMetadata").get(ACTIVE_GENERATION_KEY) as IDBRequest<
         AppMetadataRecord | undefined

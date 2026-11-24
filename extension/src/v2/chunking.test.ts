@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  CHUNK_HARD_LIMIT_CHARS,
   CHUNK_OVERLAP_LIMIT_CHARS,
-  CHUNK_TARGET_CHARS,
-  planChunks,
+  planChunks as planFileChunks,
   stableDigest,
   type Chunk,
   type ChunkStructureSegment
 } from "./chunking";
+
+// Exercise split geometry with a small provider budget; production defaults are file-sized.
+const planChunks = (input: Parameters<typeof planFileChunks>[0]) =>
+  planFileChunks(input, { targetChars: 10_000, hardLimitChars: 14_000 });
 
 function paragraph(seed: number, length: number): string {
   const unit = `Synthetic paragraph ${String(seed)} for chunking behaviour only. `;
@@ -44,6 +46,17 @@ function expectedOverlap(text: string, chunk: Chunk): number {
 }
 
 describe("long-Source chunking", () => {
+  it("keeps a multi-page Source in one default logical request", () => {
+    const text = documentSections([20_000, 20_000, 20_000]);
+    const chunks = planFileChunks({
+      sourceId: "file",
+      text,
+      structure: ["Synthetic paragraph 0", "Synthetic paragraph 1", "Synthetic paragraph 2"]
+    });
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]?.text).toBe(text);
+    expect(chunks[0]?.locators).toHaveLength(3);
+  });
   it("covers every character of a long Source without leaving a gap", () => {
     const text = documentSections([2_000, 3_000, 1_500, 4_000, 2_500, 900, 5_000, 1_200, 3_200]);
     const chunks = planChunks({ sourceId: "src-1", locator: "Handout", text, structure: [] });
@@ -58,11 +71,11 @@ describe("long-Source chunking", () => {
     const text = documentSections([9_000, 9_000, 9_000, 9_000]);
     const chunks = planChunks({ sourceId: "src-1", text, structure: [] });
     for (const chunk of chunks) {
-      expect(chunk.text.length).toBeLessThanOrEqual(CHUNK_HARD_LIMIT_CHARS);
+      expect(chunk.text.length).toBeLessThanOrEqual(14_000);
     }
     const withoutOverlap = chunks.map((chunk) => chunk.end - chunk.start);
     expect(Math.max(...withoutOverlap.slice(0, -1))).toBeLessThanOrEqual(
-      CHUNK_TARGET_CHARS + CHUNK_OVERLAP_LIMIT_CHARS
+      10_000 + CHUNK_OVERLAP_LIMIT_CHARS
     );
   });
 
@@ -71,7 +84,7 @@ describe("long-Source chunking", () => {
     const chunks = planChunks({ sourceId: "src-1", text, structure: [] });
     expect(chunks.length).toBeGreaterThan(1);
     for (const chunk of chunks) {
-      expect(chunk.text.length).toBeLessThanOrEqual(CHUNK_HARD_LIMIT_CHARS);
+      expect(chunk.text.length).toBeLessThanOrEqual(14_000);
     }
     expect(coversWholeText(text, chunks)).toBe(true);
   });

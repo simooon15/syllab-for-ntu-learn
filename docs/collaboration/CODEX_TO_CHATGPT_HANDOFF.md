@@ -1,90 +1,36 @@
-# Codex → ChatGPT 当前交接
+# Engineering → Product 当前交接｜E2P-v0.3.0-2026-11-02-055
 
-Handoff ID: E2P-2026-09-22-001
-Updated At: 2026-09-22
-From: Codex / Engineering Side
-To: ChatGPT Web / Product Side
-Current Stage: Collaboration Workflow Consolidation
-Status: READY
-Source Git HEAD: 2778ad75bab9a104cba3d9f85444719bbf565089
+入站P2E-064。Typography限定整改，同一RC2更新。HUMAN_GATE5_PENDING / NOT_TRUSTED / NO_RELEASE。
 
-## 本轮发生了什么
+本轮只改Course screen CSS：按Owner最终指示用现有Fraunces衬线统一课程名/考核及章节标题/主值大字，正文/标签/按钮保持无衬线，标题20px/550、权重36px/500（380为34px）、日期17px/500。独立Course字体系声明真实100–900字重，不影响其他页面、无新资产。四卡布局、内部滚动、P063的17项语义、Review及双打印保留。完整实际结果见RC2_TYPOGRAPHY_REFINEMENT报告与RC2_MANIFEST。
 
-- 已从 Google Drive Desktop 挂载目录读取并采用最新版协作模型与入站 Handoff。
-- 已将协作模型、两份长期 Handoff、`AGENTS.md` 与 `docs/project-governance.md` 从 Drive 安全同步到 canonical local repo。
-- 已建立两个长期 Handoff 作为后续跨智能体协作入口，并保留各自的文件所有权。
-- 已使用本地文件系统完成协作完整镜像审计；没有使用 Google Drive API、专用同步服务或 destructive `--delete`。
-- 已将 Drive 缺少的三项 Git-tracked、安全协作文件补齐：UI 预览和两张公开安全的日历导入验收截图。
-- 未修改产品行为、Extension、backend、AI runtime、v0.2.0 tag/release 或 public artifact。
+疑似裁切：新开1280/380首行完整；在可滚动区域主动滚到行中可复现半行，详情返回保留、Home恢复；未证明默认缺字，未强制重置用户位置。修改前后同尺寸截图在私有product-064/before-after-1280.png与380.png。
 
-## 发生变化的文件
+实际CI、浏览器四卡/135 Fact、Review操作、打印摘要3页37 Fact/完整22页135 Fact通过；PDF全部页渲染检查。语义候选SHA不变，原证据原件不动。P063 backup/rebuild及结构检查继承，不冒称本轮重测。原生Side Panel、真实校园增量/非样本课程和GAI原页仍待Human。
 
-Drive → Local：
+唯一候选仍artifacts/v0.3.0/rc2/Syllab_v0.3.0_RC2_candidate.zip；新隔离入口 `node scripts/v030-product-064-open-preview.mjs`。验收指南 `docs/versions/v0.3.0/RC2_HUMAN_GATE5_v0.3.0.md`。旧ZIP/manifest/CSS在私有product-064/before/保全，恢复SHA见manifest。未操作正式profile；正式装包需reload扩展并刷新已开NTU标签页。
 
-- `docs/PROJECT_COLLABORATION_MODEL.md`
-- `docs/collaboration/CHATGPT_TO_CODEX_HANDOFF.md`
+成本/扫描/trusted变更/发布/提交均0。停止Human Gate5，未经用户实际PASS不发布。
+
+## Changed Files
+
+以下18项payload，另加product-064/CHANGED_FILES.json与SYNC_RECEIPT.json。逐文件基线保护、大小/SHA挂载回读；实际清单/校验见这两个控制文件。非云端服务器确认，私有课程证据未上传。唯一Outbox原位更新，旧054按字节归档。
+
+- `extension/src/app/app.css`
+- `scripts/v030-product-064-seed.mjs`
+- `scripts/v030-product-064-open-preview.mjs`
+- `scripts/v030-product-064-preview-check.mjs`
+- `scripts/v030-product-064-print-audit.py`
+- `scripts/v030-product-064-typography-check.mjs`
+- `docs/versions/v0.3.0/PRD_v0.3.0.md`
+- `docs/versions/v0.3.0/Interaction_and_Information_Architecture_Spec_v0.3.0.md`
+- `docs/versions/v0.3.0/DECISION_LOG_v0.3.0.md`
+- `docs/versions/v0.3.0/TECHNICAL_DESIGN_v0.3.0.md`
+- `docs/versions/v0.3.0/ENGINEERING_REPORT_v0.3.0.md`
+- `docs/versions/v0.3.0/RC2_ACCEPTANCE_STATUS_v0.3.0.md`
+- `docs/versions/v0.3.0/RC2_HUMAN_GATE5_v0.3.0.md`
+- `docs/versions/v0.3.0/RC2_TYPOGRAPHY_REFINEMENT_v0.3.0.md`
+- `docs/versions/v0.3.0/engineering-handoffs/E2P-v0.3.0-2026-11-02-054.md`
+- `artifacts/v0.3.0/rc2/Syllab_v0.3.0_RC2_candidate.zip`
+- `artifacts/v0.3.0/rc2/RC2_MANIFEST.json`
 - `docs/collaboration/CODEX_TO_CHATGPT_HANDOFF.md`
-- `AGENTS.md`
-- `docs/project-governance.md`
-
-Local → Drive 补齐：
-
-- `Syllab_UI_Preview.html`
-- `artifacts/acceptance-evidence/apple-calendar-import-2026-09-17.png`
-- `artifacts/acceptance-evidence/google-calendar-import-2026-09-17.png`
-- 本交接完成后的上述协作文档最终版本
-
-## ChatGPT 需要重点阅读
-
-- `docs/PROJECT_COLLABORATION_MODEL.md`
-- `docs/collaboration/CODEX_TO_CHATGPT_HANDOFF.md`
-- `AGENTS.md`
-- `docs/project-governance.md`
-
-无需重新读取整个 repository。
-
-## 同步结果
-
-- Drive → Local 权威入口文件同步：完成。
-- Local → Drive 协作镜像补齐：完成。
-- Markdown 原格式：保留，未转换为 Google Docs。
-- `.git/`、`node_modules/`、真实 `.env`、credential/session、QA profile、private/raw course data、reasoning trace、cache 与纯临时文件：未上传。
-- Drive-only 根文件 `PROJECT_COLLABORATION_MODEL.md`：作为首次 API 阶段留下的非破坏性历史副本保留；权威路径是 `docs/PROJECT_COLLABORATION_MODEL.md`，本轮未执行删除。
-- 同步冲突：无。
-
-## 验证
-
-- `npm run secret:scan`：PASS。
-- `npm run docs:verify`：PASS。
-- `npm run readme:verify`：PASS。
-- `npm run format:check`：三份从 Drive 原样同步的 Markdown 因既有空行格式报警；为遵守原格式保留要求，本轮未用 Prettier 改写。
-- Real NTU Learn QA：未运行；本轮没有产品或运行时变化。
-
-## Git
-
-- Branch: `main`
-- Initial HEAD: `2778ad75bab9a104cba3d9f85444719bbf565089`
-- Result commit: 本文件所在的 collaboration workflow conventional commit；精确 hash 与 push 状态以该提交完成后的工程返回为准。
-- Push target: `origin/main`
-- Force push / tag / release: 均未执行。
-
-## 已知问题 / 冲突
-
-- Product-impacting Technical Conflict: 无。
-- Sync blocker: 无。
-- Security blocker: 无。
-- Git commit hash 不能预先写入包含自身的同一个提交，否则会形成不可满足的自引用；因此本文件以“所在提交”为权威定位，精确 hash 在提交完成后由 Git 与最终工程返回提供。
-
-## 下一步
-
-ChatGPT 后续从本文件进入，只读取本交接指定的 Changed Files；日常同步采用：
-
-Handoff → Sync Manifest → Changed Files Only → filesystem-native incremental sync。
-
-- Documents: Drive ↔ Local。
-- Code: Local → Drive。
-- Code authority: canonical local repo。
-- Git / GitHub: version and release history authority。
-- Google Drive: Shared Working State。
-
-本轮到此停止，不开始 v0.3.0 产品开发。

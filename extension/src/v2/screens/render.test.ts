@@ -14,6 +14,8 @@ import {
   usedCopyKeys,
   type CopyKey
 } from "../copy";
+import { distinctDetailFacts } from "./course";
+import { fact } from "./fixtures";
 import type { Mutation, ScreenId } from "../contract";
 import {
   allFixtures,
@@ -341,6 +343,110 @@ function clickValue(root: TestElement, selector: string): void {
 }
 
 describe("assessment grouping and hierarchy", () => {
+  it("deduplicates only exactly equal operative claims and unions source evidence", () => {
+    const original = fact({
+      factId: "one",
+      field: "requirement",
+      display: "Bring A OR B",
+      semantics: { modality: "must", conditions: ["if attending"], exceptions: ["unless exempt"] }
+    });
+    const copy = {
+      ...structuredClone(original),
+      factId: "two",
+      evidence: [
+        {
+          evidenceId: "other",
+          sourceTitle: "Other source",
+          locator: "p.1",
+          excerpt: "Bring A OR B"
+        }
+      ]
+    };
+    const optional = {
+      ...structuredClone(copy),
+      factId: "three",
+      semantics: {
+        ...original.semantics,
+        modality: "may",
+        conditions: ["if attending"],
+        exceptions: ["unless exempt"]
+      }
+    };
+    const result = distinctDetailFacts([original, copy, optional]);
+    expect(result).toHaveLength(2);
+    expect(result[0]?.ids).toEqual(["one", "two"]);
+    expect(result[0]?.fact.evidence).toHaveLength(2);
+    expect(result[0]?.fact.display).toBe("Bring A OR B");
+    expect(result[1]?.ids).toEqual(["three"]);
+  });
+  it("keeps separate rubric criteria with equal scores instead of merging their identities", () => {
+    const rubric = fact({
+      factId: "clarity",
+      field: "marks",
+      label: "Clarity",
+      display: "5",
+      product: {
+        propositionRef: "clarity",
+        title: "Clarity",
+        group: "Rubric",
+        role: "rubric",
+        relation: "INDEPENDENT",
+        disposition: "ACTION"
+      }
+    });
+    const other = {
+      ...structuredClone(rubric),
+      factId: "delivery",
+      label: "Delivery",
+      product: {
+        ...rubric.product,
+        propositionRef: "delivery",
+        title: "Delivery",
+        group: "Rubric",
+        role: "rubric" as const,
+        relation: "INDEPENDENT" as const,
+        disposition: "ACTION" as const
+      }
+    };
+    expect(distinctDetailFacts([rubric, other])).toHaveLength(2);
+  });
+  it("exposes product scheme components without losing unweighted tasks or submission children", () => {
+    const base = structuredClone(courseView);
+    const item = base.assessments[0];
+    if (!item) throw Error("ASSESSMENT_FIXTURE_REQUIRED");
+    item.productDisposition = "CURRENT";
+    item.role = "component";
+    const newTask = {
+      ...structuredClone(item),
+      assessmentId: "new-task",
+      name: "New task without dates or weight",
+      facts: []
+    };
+    base.assessments = [
+      {
+        ...structuredClone(item),
+        assessmentId: "scheme",
+        name: "Scheme",
+        role: "series",
+        components: [item],
+        facts: [],
+        seriesInstances: []
+      },
+      newTask
+    ];
+    const { root } = renderView({ ...withCourseFixture(), course: base });
+    const direct = root
+      .querySelectorAll(".assessment-cards > .assessment")
+      .map((n) => n.dataset.assessmentId);
+    expect(direct).toContain(item.assessmentId);
+    expect(direct).toContain("new-task");
+    expect(direct).not.toContain("scheme");
+    expect(textOf(root)).toContain("Assessment scheme and source relationships");
+    expect(root.querySelectorAll(".assessment-cards > .assessment").length).toBe(2);
+    expect(root.querySelectorAll(".course-body > .assessment").length).toBe(0);
+    expect(root.querySelectorAll(".group-heading").length).toBe(0);
+  });
+
   it("orders groups Assignments, Projects, Quizzes & Tests, Exams, Other", () => {
     const { root } = renderView(withCourseFixture());
     const groups = root.querySelectorAll(".group-heading").map((node) => node.textContent);
@@ -526,6 +632,32 @@ describe("facts and evidence", () => {
 });
 
 describe("review", () => {
+  it("keeps complete source coverage in one disclosure before confirmation", () => {
+    const view = withCourseFixture();
+    const { root } = renderView({
+      ...view,
+      screen: "IRV-01",
+      review: initialReviewFixture(),
+      course: {
+        ...courseView,
+        sourceContext: {
+          readingScope: [
+            "Sources discovered and selectively read",
+            "Native signal inspection is not detailed understanding",
+            "Some diagrams remain visually unresolved",
+            "Detailed per-source inspection decision"
+          ],
+          questions: [],
+          evidence: []
+        }
+      }
+    });
+    expect(root.querySelectorAll(".review-reading-scope")).toHaveLength(1);
+    expect(textOf(root)).toContain("Some diagrams remain visually unresolved");
+    expect(textOf(root)).toContain("Detailed per-source inspection decision");
+    expect(pieceOf(root, ".review-reading-scope").getAttribute("open")).toBeNull();
+    expect(pieceOf(root, ".primary-action").textContent).toBe("Confirm");
+  });
   it("focuses one Assessment with light progress and hides structural actions behind More…", () => {
     const { root } = renderView({
       ...withCourseFixture(),
@@ -669,6 +801,40 @@ describe("review", () => {
     ]);
   });
 
+  it("shows scoped judgments and witness sources for every change disposition, even without a replacement scalar", () => {
+    for (const [screen, changeType] of [
+      ["CRV-01", "CHANGED"],
+      ["CRV-03", "CONFLICT"],
+      ["CRV-04", "POSSIBLY_REMOVED"],
+      ["CRV-05", "IDENTITY_UNCERTAIN"]
+    ] as const) {
+      const { root } = renderView({
+        ...withCourseFixture(),
+        screen,
+        review: {
+          reviewItemId: "witness-review",
+          kind: "change",
+          changeType,
+          title: "Registration",
+          position: { index: 1, total: 1 },
+          unresolvedQuestions: ["New notice withdraws registration only if approved."],
+          issueEvidence: [
+            {
+              evidenceId: "withdrawal-source",
+              sourceTitle: "Update",
+              locator: "native-text",
+              excerpt: "Registration is withdrawn if approved."
+            }
+          ],
+          actions: []
+        }
+      });
+      expect(textOf(root)).toContain("New notice withdraws registration only if approved.");
+      clickText(root, t("showEvidence", { label: t("evidenceCourseSource") }));
+      expect(textOf(root)).toContain("Registration is withdrawn if approved.");
+      resetUiState();
+    }
+  });
   it("keeps or removes a possibly removed Assessment", () => {
     const { root, actions } = renderView({
       ...withCourseFixture(),
@@ -730,6 +896,7 @@ describe("review", () => {
 function initialReviewFixture() {
   return {
     reviewItemId: "ri-initial",
+    targetAssessmentId: "a-project",
     kind: "initial" as const,
     title: "Group Project",
     position: { index: 2, total: 5 },
@@ -1214,4 +1381,60 @@ describe("copy", () => {
     expect([...SCAN_STAGES]).toEqual([...contract]);
     expect(t("reviewProgress", { index: 2, total: 5 })).toBe("2 of 5");
   });
+});
+
+it("selects the displayed review's layout after navigating from a different change kind", () => {
+  const { root, actions } = renderView({
+    ...withCourseFixture(),
+    screen: "CRV-03",
+    review: initialReviewFixture()
+  });
+  expect(pieceOf(root, ".primary-action").textContent).toBe("Confirm");
+  pieceOf(root, ".primary-action").click();
+  expect(actions.mutations).toEqual([{ kind: "ConfirmReviewItem", reviewItemId: "ri-initial" }]);
+});
+
+it("allows an unresolved conflict to stay Uncertain without dropping original alternatives", () => {
+  const { root, actions } = renderView(
+    {
+      ...withCourseFixture(),
+      screen: "CRV-03",
+      review: {
+        reviewItemId: "conflict-state",
+        kind: "change",
+        changeType: "CONFLICT",
+        title: "Deadline",
+        position: { index: 1, total: 1 },
+        unresolvedQuestions: [],
+        actions: ["ChooseValue", "EditValue"],
+        current: {
+          label: "Current",
+          value: { state: "KNOWN", value: "10 Oct" },
+          values: [{ display: "10 Oct", evidence: [] }]
+        },
+        latest: {
+          label: "Other values",
+          value: { state: "UNCERTAIN", competingValues: ["18 Oct", "20 Oct"] },
+          values: [{ display: "18 Oct", evidence: [] }]
+        }
+      }
+    },
+    { ui: { conflictEditing: true } }
+  );
+  const select = pieceOf(root, 'select[data-edit-key="conflict-state:conflict-state"]');
+  select.value = "UNCERTAIN";
+  const input = pieceOf(root, 'input[data-edit-key="conflict:conflict-state"]');
+  input.value = "Needs clarification";
+  clickText(root, "Save value");
+  expect(actions.mutations).toEqual([
+    {
+      kind: "ResolveConflict",
+      changeId: "conflict-state",
+      value: {
+        state: "UNCERTAIN",
+        value: "Needs clarification",
+        competingValues: ["10 Oct", "18 Oct", "20 Oct"]
+      }
+    }
+  ]);
 });

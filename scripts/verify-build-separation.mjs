@@ -100,6 +100,8 @@ for (const target of ["dist", "dist-qa"]) {
  */
 const QA_LAYER_MODULES = new Set([
   "src/v2/qa-telemetry.ts",
+  "src/v2/qa-stream-archive.ts", // Private QA evidence only, never semantic/product state.
+  "src/v2/stream-render.ts",
   "src/v2/qa-telemetry.disabled.ts",
   "src/v2/e2e-fixtures.ts",
   "src/v2/e2e-fixtures.disabled.ts",

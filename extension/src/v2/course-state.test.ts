@@ -10,6 +10,8 @@ import type {
 import { makeCourse, makeSnapshot } from "./testing";
 import {
   acceptChange,
+  factsForReview,
+  constraintForReview,
   applyInitialReviewDecision,
   editFact,
   keepCurrent,
@@ -76,8 +78,9 @@ function reviewItem(overrides: Partial<ReviewItemRecord> = {}): ReviewItemRecord
  * `exactOptionalPropertyTypes` is on, so a test that wants "no latest value" omits the key
  * rather than passing undefined.
  */
-type ChangeOverrides = Omit<Partial<ChangeRecord>, "latestValue" | "field"> & {
+type ChangeOverrides = Omit<Partial<ChangeRecord>, "latestValue" | "currentValue" | "field"> & {
   latestValue?: ChangeRecord["latestValue"] | undefined;
+  currentValue?: ChangeRecord["currentValue"] | undefined;
   field?: string | undefined;
 };
 
@@ -101,6 +104,69 @@ function change(overrides: ChangeOverrides = {}): ChangeRecord {
     ...Object.entries(overrides).filter(([, value]) => value !== undefined)
   ]) as ChangeRecord;
 }
+
+it("confirms one new object with all its source fact proposals once, without leaving phantom NEW cards", () => {
+  const facts = [
+    fact(),
+    fact({
+      factId: "independent-rule",
+      field: "requirement",
+      value: { state: "KNOWN", value: "If assigned, submit a separate checklist" }
+    })
+  ];
+  const newWeight = change({ changeType: "NEW", changeId: "new-weight" }),
+    newRule = change({ changeType: "NEW", changeId: "new-rule", field: "requirement" }),
+    other = change({ targetId: "other-assessment", changeId: "other-change" });
+  const snapshot = makeSnapshot({
+    assessments: [assessment()],
+    facts,
+    changes: [newWeight, newRule, other],
+    reviewItems: [reviewItem({ reviewItemId: "new-weight", kind: "change", changeType: "NEW" })]
+  });
+  const result = acceptChange(snapshot, {
+    changeId: "new-weight",
+    expectedRevision: snapshot.course.currentRevision,
+    now
+  });
+  expect(result.snapshot.changes.map((c) => c.changeId)).toEqual(["other-change"]);
+  expect(result.snapshot.facts).toEqual(facts);
+  expect(result.snapshot.reviewItems).toHaveLength(0);
+  expect(result.decisions).toHaveLength(1);
+});
+
+it("confirming additions to an existing owner preserves Current and stores every new fact", () => {
+  const current = fact({ value: { state: "KNOWN", value: "41%" }, userEdited: true });
+  const proposal = {
+    ...current,
+    value: { state: "KNOWN" as const, value: "45%" },
+    userEdited: false
+  };
+  const addition = fact({
+    factId: "new-independent",
+    field: "requirement",
+    value: { state: "KNOWN", value: "No title registration is required" }
+  });
+  const state = makeSnapshot({
+    assessments: [assessment()],
+    facts: [current],
+    reviewItems: [reviewItem({ changeType: "NEW" })]
+  });
+  const result = applyInitialReviewDecision(state, {
+    reviewItemId: state.reviewItems[0]?.reviewItemId ?? "",
+    kind: "Confirm",
+    assessment: assessment(),
+    facts: factsForReview([current], [proposal, addition], "NEW"),
+    expectedRevision: state.course.currentRevision,
+    now
+  });
+  expect(result.snapshot.facts.find((f) => f.factId === current.factId)?.value).toEqual(
+    current.value
+  );
+  expect(result.snapshot.facts.find((f) => f.factId === current.factId)?.userEdited).toBe(true);
+  expect(result.snapshot.facts.find((f) => f.factId === addition.factId)?.value).toEqual(
+    addition.value
+  );
+});
 
 function snapshot(overrides: Partial<CourseSnapshot> = {}): CourseSnapshot {
   return makeSnapshot(overrides);
@@ -424,5 +490,307 @@ describe("rebuild", () => {
       "assessment-new"
     ]);
     expect(result.snapshot.history[0]?.event).toBe("REBUILT_STATE_USED");
+  });
+});
+
+describe("precise requirement and Rule decisions", () => {
+  it("rejects ambiguous requirement updates and changes exactly the named fact", () => {
+    const a = assessment();
+    const one = fact({
+        factId: "one",
+        field: "requirement",
+        value: { state: "KNOWN", value: "First instruction" }
+      }),
+      two = fact({
+        factId: "two",
+        field: "requirement",
+        value: { state: "KNOWN", value: "Second instruction" }
+      });
+    const c = change({
+      field: "requirement",
+      latestValue: { state: "KNOWN", value: "Revised second instruction" }
+    });
+    const snapshot = makeSnapshot({ assessments: [a], facts: [one, two], changes: [c] });
+    expect(() =>
+      acceptChange(snapshot, {
+        changeId: c.changeId,
+        expectedRevision: snapshot.course.currentRevision,
+        now
+      })
+    ).toThrow("CHANGE_FIELD_AMBIGUOUS");
+    c.field = "two";
+    const result = acceptChange(
+      { ...snapshot, changes: [c] },
+      { changeId: c.changeId, expectedRevision: snapshot.course.currentRevision, now }
+    );
+    expect(result.snapshot.facts.find((f) => f.factId === "one")?.value.value).toBe(
+      "First instruction"
+    );
+    expect(result.snapshot.facts.find((f) => f.factId === "two")?.value.value).toBe(
+      "Revised second instruction"
+    );
+  });
+  it("applies a Rule content change only after an explicit decision and refuses unresolved text", () => {
+    const rule = {
+      constraintId: "rule",
+      courseId: "course-1",
+      content: "Original rule",
+      evidenceRefs: [],
+      marks: [],
+      createdBy: "ai" as const,
+      updatedAt: now
+    };
+    const c = change({
+      targetId: "rule",
+      field: "content",
+      latestValue: { state: "KNOWN", value: "Revised rule" }
+    });
+    const snapshot = makeSnapshot({ constraints: [rule], changes: [c] });
+    const result = acceptChange(snapshot, {
+      changeId: c.changeId,
+      expectedRevision: snapshot.course.currentRevision,
+      now
+    });
+    expect(snapshot.constraints[0]?.content).toBe("Original rule");
+    expect(result.snapshot.constraints[0]?.content).toBe("Revised rule");
+    c.changeType = "CONFLICT";
+    expect(() =>
+      resolveConflict(
+        { ...snapshot, changes: [c] },
+        {
+          changeId: c.changeId,
+          resolution: { state: "UNCERTAIN", value: "Maybe" },
+          expectedRevision: snapshot.course.currentRevision,
+          now
+        }
+      )
+    ).toThrow("CONSTRAINT_VALUE_UNRESOLVED");
+    expect(
+      resolveConflict(
+        { ...snapshot, changes: [c] },
+        {
+          changeId: c.changeId,
+          resolution: { state: "KNOWN", value: "Chosen rule" },
+          expectedRevision: snapshot.course.currentRevision,
+          now
+        }
+      ).snapshot.constraints[0]?.content
+    ).toBe("Chosen rule");
+  });
+});
+
+it("removes only the explicitly reviewed Rule, preserving independent trusted assessments", () => {
+  const c = change({ targetId: "rule", field: "content", changeType: "POSSIBLY_REMOVED" });
+  const source = makeSnapshot({
+    assessments: [assessment()],
+    facts: [fact()],
+    constraints: [
+      {
+        constraintId: "rule",
+        courseId: "course-1",
+        content: "Old rule",
+        evidenceRefs: [],
+        marks: [],
+        createdBy: "ai",
+        updatedAt: now
+      }
+    ],
+    changes: [c]
+  });
+  const result = removeAssessment(source, {
+    changeId: c.changeId,
+    expectedRevision: source.course.currentRevision,
+    now
+  });
+  expect(source.constraints[0]?.superseded).toBeUndefined();
+  expect(result.snapshot.constraints[0]?.superseded).toBe(true);
+  expect(result.snapshot.assessments).toEqual(source.assessments);
+  expect(result.snapshot.facts).toEqual(source.facts);
+  expect(result.history[0]?.event).toBe("CONSTRAINT_REMOVED");
+});
+
+describe("evidenced additions to trusted assessment fields", () => {
+  it("adds a previously absent field only through explicit acceptance and preserves existing facts", () => {
+    const addition = change({
+      field: "submissionFormat",
+      currentValue: undefined,
+      latestValue: { state: "KNOWN", value: "PDF" }
+    });
+    const before = snapshot({ assessments: [assessment()], facts: [fact()], changes: [addition] });
+    const evidenceRefs = [{ evidenceId: "ev-new", sourceId: "source-1", locator: "page:1" }];
+    const result = acceptChange(before, {
+      changeId: addition.changeId,
+      expectedRevision: 0,
+      now,
+      evidenceRefs
+    });
+    expect(before.facts).toEqual([fact()]);
+    expect(result.snapshot.facts).toHaveLength(2);
+    expect(result.snapshot.facts[0]).toEqual(before.facts[0]);
+    expect(result.snapshot.facts[1]).toMatchObject({
+      field: "submissionFormat",
+      value: { state: "KNOWN", value: "PDF" },
+      evidenceRefs
+    });
+    expect(result.snapshot.changes).toEqual([]);
+    expect(result.snapshot.course.currentRevision).toBe(1);
+    expect(result.history).toHaveLength(1);
+  });
+  it("rejects unsupported insertion, uncertain values, and invented prior values", () => {
+    const addition = change({ field: "submissionFormat", currentValue: undefined });
+    const state = snapshot({ assessments: [assessment()], changes: [addition] });
+    const args = { changeId: addition.changeId, expectedRevision: 0, now };
+    expect(() => acceptChange(state, args)).toThrow("NEW_FIELD_NOT_SUPPORTED");
+    expect(() =>
+      acceptChange(
+        { ...state, changes: [{ ...addition, latestValue: { state: "UNCERTAIN" } }] },
+        { ...args, evidenceRefs: [{ evidenceId: "ev", sourceId: "source", locator: "page:1" }] }
+      )
+    ).toThrow("NEW_FIELD_NOT_SUPPORTED");
+    expect(() =>
+      acceptChange(
+        {
+          ...state,
+          changes: [{ ...addition, currentValue: { state: "KNOWN", value: "invented" } }]
+        },
+        args
+      )
+    ).toThrow("FACT_NOT_FOUND");
+  });
+});
+
+it("keeps a Rule addition uncertain and preserves its original proof after Human Confirm", () => {
+  const rule = {
+    constraintId: "rule",
+    courseId: makeCourse().courseId,
+    content: "Existing attendance rule",
+    evidenceRefs: [],
+    marks: [],
+    createdBy: "ai" as const,
+    updatedAt: now
+  };
+  const addition = fact({
+    constraintId: "rule",
+    factId: "new-rule-clause",
+    field: "content",
+    value: { state: "UNCERTAIN", value: "The checklist may count toward participation" },
+    semanticClause: {
+      clauseId: "c",
+      content: "The checklist may count toward participation",
+      modality: "may",
+      conditions: ["grading decision not confirmed"],
+      exceptions: [],
+      applicability: "CURRENT",
+      context: "Current course update",
+      judgmentBasis: "Unconfirmed authored update",
+      originalState: "UNCERTAIN"
+    }
+  });
+  delete addition.assessmentId;
+  const item = reviewItem({ targetId: "rule", changeType: "NEW" });
+  const state = makeSnapshot({ constraints: [rule], reviewItems: [item] });
+  const reviewed = constraintForReview(rule, rule, [], [addition], "NEW");
+  expect(reviewed.content).toContain("Existing attendance rule");
+  expect(reviewed.content).toContain("UNCERTAIN — may:");
+  expect(reviewed.content).toContain("grading decision not confirmed");
+  const result = applyInitialReviewDecision(state, {
+    reviewItemId: item.reviewItemId,
+    kind: "Confirm",
+    constraint: reviewed,
+    facts: [addition],
+    expectedRevision: state.course.currentRevision,
+    now
+  });
+  expect(result.snapshot.facts.find((f) => f.factId === addition.factId)?.value.state).toBe(
+    "UNCERTAIN"
+  );
+  expect(result.snapshot.constraints[0]?.content).toBe(reviewed.content);
+  expect(() =>
+    applyInitialReviewDecision(state, {
+      reviewItemId: item.reviewItemId,
+      kind: "Confirm",
+      constraint: reviewed,
+      facts: [{ ...addition, constraintId: "other" }],
+      expectedRevision: state.course.currentRevision,
+      now
+    })
+  ).toThrow("FACT_OWNERSHIP_MISMATCH");
+});
+
+it("edits operative force/conditions/exceptions without rewriting captured provenance", async () => {
+  const { operativeSemantics } = await import("./fact-semantics");
+  const original = fact({
+    field: "requirement",
+    semanticClause: {
+      clauseId: "c",
+      content: "Submit",
+      modality: "must",
+      conditions: ["if assigned"],
+      exceptions: ["unless waived"],
+      applicability: "CURRENT",
+      judgmentBasis: "native"
+    },
+    evidenceRefs: [{ sourceId: "s", evidenceId: "e", locator: "page:1" }]
+  });
+  const state = makeSnapshot({ facts: [original], assessments: [assessment()] });
+  const facets = { modality: "may", conditions: ["only after approval"], exceptions: [] };
+  const result = editFact(state, {
+    factId: original.factId,
+    value: original.value,
+    semantics: facets,
+    expectedRevision: state.course.currentRevision,
+    now
+  });
+  const edited = result.snapshot.facts[0];
+  if (!edited) throw Error("EDITED_FACT_MISSING");
+  expect(operativeSemantics(edited)).toEqual(facets);
+  expect(edited.semanticClause).toEqual(original.semanticClause);
+  expect(edited.evidenceRefs).toEqual(original.evidenceRefs);
+  expect(result.history[0]).toMatchObject({ toSemantics: facets });
+  expect(() =>
+    editFact(state, {
+      factId: original.factId,
+      value: original.value,
+      semantics: { ...facets, modality: " " },
+      expectedRevision: state.course.currentRevision,
+      now
+    })
+  ).toThrow("INVALID_HUMAN_SEMANTICS");
+});
+
+it("Keep Current retains Human facets; accepting an explicit new proposition replaces them", async () => {
+  const { operativeSemantics } = await import("./fact-semantics");
+  const original = fact({
+    humanSemantics: { modality: "may", conditions: ["after approval"], exceptions: [] },
+    userEdited: true
+  });
+  const captured = structuredClone(original);
+  delete captured.humanSemantics;
+  const proposedFact = {
+    ...captured,
+    semanticClause: {
+      clauseId: "c2",
+      content: "Submit",
+      modality: "must",
+      conditions: ["if assigned"],
+      exceptions: ["unless waived"],
+      applicability: "CURRENT" as const,
+      judgmentBasis: "native"
+    }
+  };
+  const proposal = change({ proposedFact });
+  const state = makeSnapshot({
+    facts: [original],
+    assessments: [assessment()],
+    changes: [proposal]
+  });
+  const args = { changeId: proposal.changeId, expectedRevision: state.course.currentRevision, now };
+  const kept = keepCurrent(state, args).snapshot.facts[0];
+  expect(operativeSemantics(kept)).toEqual(original.humanSemantics);
+  const accepted = acceptChange(state, args).snapshot.facts[0];
+  expect(accepted?.humanSemantics).toBeUndefined();
+  expect(operativeSemantics(accepted)).toMatchObject({
+    modality: "must",
+    exceptions: ["unless waived"]
   });
 });

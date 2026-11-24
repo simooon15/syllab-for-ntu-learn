@@ -109,10 +109,61 @@ export const CATALOG = {
   taskCouldNotComplete: "This task could not be completed.",
 
   // --- Initial Review (IRV-01 … IRV-06) ------------------------------------
+  productUnreviewedReference: "Saved source reference · not a confirmed student task.",
+  reviewReadingScope: "Source reading coverage",
+  productCourseRules: "Important course rules",
+  productRulesUnresolved: "This group contains unresolved requirements",
+  productAdditionalSummary: "Additional information for {name}",
+  productScrollHint: "Scroll for additional information",
+  productPresentationPlatform: "Presentation platform",
+  productDetailedSchedule: "Detailed schedule and source",
+  productCourseWeight: "Course weight",
+  productDateTime: "Date and time",
+  productPresentationDates: "Presentation dates",
+  productRequirements: "Requirements",
+  productVerifyFields: "Verify in details: {fields}",
+  productPrintSummary: "Print summary",
+  productPrintFull: "Print full details",
+  productPrintKeyRules: "Submission essentials and unresolved rules",
+  productPrintSummaryScope:
+    "Summary only. Read Full details for all requirements, penalties, exceptions, rubrics and source references. Unresolved assessment values are flagged on each card; this summary does not settle them.",
+  productOpenDetails: "View organized details",
+  productOriginalRequirement: "Full requirement and source",
+  productSubmission: "Submission and deadlines",
+  productArrangements: "Presentation or exam arrangements",
+  productActions: "Preparation and content checklist",
+  productOverview: "Assessment overview",
+  productScheme: "Assessment scheme and source relationships",
+  productIssues: "Important questions to verify",
+  productIdentityUnknown: "The current assessment relationship is not established by the sources.",
+  productReference: "Reference and supporting detail",
+  productChecklist: "Content and submission checklist",
+  productRubric: "Rubric and assessment detail",
+  productOr: "Alternative · OR",
+  reviewPrevious: "Previous",
+  reviewNext: "Next",
+  reviewDirectory: "Review directory",
+  reviewDeferredPrefix: "Later · ",
+  reviewStructureScope:
+    "This structural correction moves the associated requirements and evidence. Separate pending review scopes remain pending; it does not approve them.",
+  reviewExcludedItems: "Excluded items",
+  reviewRestoreItem: "Undo exclusion · {title}",
+  reviewPreviewScope:
+    "Assessment overview · preview only. Each assessment and independent issue has its own review decision.",
+  reviewScopeBasis: "Candidate applicability: {basis}",
+  reviewScopeNotice:
+    "Confirm accepts only the fields and actions shown in this scope. Other assessments, separate review items and reference material remain outside this decision. Unknown values remain unknown.",
   reviewProgress: "{index} of {total}",
   // A Review item with no Assessment and no field behind it still needs a title. The product
   // documents never name this case; the wording is unchanged from where it used to sit inline.
   reviewCourseChange: "Course change",
+  reviewModality: "Requirement force (required, prohibited, recommended, permitted or descriptive)",
+  reviewConditions: "Conditions · one per line",
+  reviewExceptions: "Exceptions · one per line",
+  reviewValueState: "Knowledge state · {label}",
+  reviewKnown: "Known",
+  reviewUncertain: "Uncertain",
+  reviewUnknown: "Explicitly unknown",
   reviewConfirm: "Confirm",
   reviewExclude: "Exclude",
   reviewLater: "Review later",
@@ -150,10 +201,15 @@ export const CATALOG = {
   identityDifferent: "Different assessment",
 
   // --- Rebuild (RBL-01 … RBL-04) -------------------------------------------
+  rebuildScopedReview:
+    "Using this rebuilt candidate preserves your saved values. Assessments and independent requirements still need scoped Review; replacing a saved user value requires a separate choice.",
   rebuildConfirmTitle: "Rebuild course",
   rebuildConfirmBody:
     "Rebuild scans this course again and organizes it from scratch. Nothing changes until you choose the new result.",
   rebuildConfirmAction: "Rebuild course",
+  rebuildProvisionalNotice:
+    "Verified Task A provisional information · Task B unresolved / cross-source organization incomplete",
+  rebuildTaskBPartialNotice: "Task B Partial · cross-source organization incomplete",
   rebuildPreviewLabel: "Rebuilt course preview",
   rebuildPartialTitle: "Partial rebuild preview",
   rebuildPartialBody:

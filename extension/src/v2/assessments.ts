@@ -42,8 +42,9 @@ const FIELD_LABELS: Record<string, string> = {
   group_size: "Group size",
   word_limit: "Word limit",
   page_limit: "Page limit",
-  presentation_duration: "Duration",
   format: "Format",
+  qa_duration: "Q&A duration",
+  presentation_duration: "Presentation duration",
   duration: "Duration",
   venue: "Venue",
   mode: "Mode"

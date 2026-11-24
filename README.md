@@ -1,5 +1,7 @@
 # Syllab for NTU Learn
 
+> v0.3.0 当前状态：RC1 Human Gate 5 验收失败；已批准阶段 B，RC2 整改与工程回归已推进，真实语义/增量验收受资源核销阻塞；尚未发布。见 [人工验收记录](docs/versions/v0.3.0/FINAL_ACCEPTANCE_v0.3.0.md)。
+
 <img src="assets/logo/syllab-logo-master.svg" alt="Syllab" width="72" height="72">
 
 [中文](#中文) · [English](#english)

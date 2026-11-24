@@ -9,7 +9,10 @@ function hex(bytes: Uint8Array): string {
 }
 
 function containsAscii(bytes: Uint8Array, text: string): boolean {
-  return new TextDecoder("latin1").decode(bytes).includes(text);
+  return (
+    new TextDecoder("latin1").decode(bytes).includes(text) ||
+    new TextDecoder("utf-16le").decode(bytes).includes(text)
+  );
 }
 
 export function detectDocumentFormat(bytes: Uint8Array): DocumentFormat {
@@ -18,11 +21,14 @@ export function detectDocumentFormat(bytes: Uint8Array): DocumentFormat {
   if (hex(bytes.slice(0, 8)) === OLE_SIGNATURE) {
     if (containsAscii(bytes, "PowerPoint Document")) return "legacy-ppt";
     if (containsAscii(bytes, "WordDocument")) return "legacy-doc";
+    if (containsAscii(bytes, "Workbook") || containsAscii(bytes, "Book")) return "legacy-xls";
     return "unsupported";
   }
   if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) return "unsupported";
   try {
-    const archive = unzipSync(bytes, { filter: (file) => file.name === "[Content_Types].xml" });
+    const archive = unzipSync(bytes, {
+      filter: (file) => file.name === "[Content_Types].xml"
+    });
     const types = archive["[Content_Types].xml"];
     if (!types) return "unsupported";
     const xml = strFromU8(types);

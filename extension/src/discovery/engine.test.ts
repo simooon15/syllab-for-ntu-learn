@@ -371,3 +371,40 @@ describe("discovery engine", () => {
     );
   });
 });
+
+it("exhausts pagination beyond 600 responses and container/attachment depths without losing locators", async () => {
+  const nested: Record<string, unknown> = {
+    attachments: { fileName: "deep.pdf", url: `${origin}/bbcswebdav/deep.pdf` }
+  };
+  let payload: Record<string, unknown> = nested;
+  for (let n = 0; n < 30; n++) payload = { nested: payload };
+  const api = {
+    get: async (endpoint: string) => {
+      await Promise.resolve();
+      const url = new URL(endpoint);
+      if (url.pathname.endsWith("/announcements")) return { items: [] };
+      const parent = url.pathname.match(/contents\/([^/]+)\/children$/)?.[1];
+      if (!parent) return { id: url.pathname.split("/").pop() };
+      if (parent === "ROOT") {
+        const page = Number(url.searchParams.get("page") ?? "0");
+        return page < 605
+          ? {
+              items: [],
+              paging: { next: `${base}/contents/ROOT/children?page=${String(page + 1)}` }
+            }
+          : { items: [{ id: "folder-0", isFolder: true }] };
+      }
+      const n = Number(parent.split("-")[1]);
+      return n < 25
+        ? { items: [{ id: `folder-${String(n + 1)}`, isFolder: true }] }
+        : { items: [{ id: "deep-leaf", ...payload }] };
+    }
+  };
+  const result = await runDiscovery({ scanId: "probe", courseId: "course_fixture", origin, api });
+  expect(result.status).toBe("Complete");
+  expect(result.checkpoint.pagesProcessed).toBeGreaterThan(600);
+  expect(result.checkpoint.sources.some((source) => source.kind === "attachment")).toBe(true);
+  expect(
+    result.checkpoint.sources.find((source) => source.nativeItemId === "deep-leaf")?.depth
+  ).toBeGreaterThan(20);
+});

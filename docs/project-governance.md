@@ -51,3 +51,24 @@ If two active long-term rules conflict, preserve both statements and raise the c
 Product decision rather than silently choosing one. Historical handoff or version-specific
 instructions remain evidence of their original context, but do not override the active long-term
 rule set unless explicitly promoted into it.
+
+## No Arbitrary / Unverified Capacity Limits
+
+Every limit that can affect product capacity, throughput, coverage or success rate must have a
+traceable source: an explicit Product decision, a verified constraint of the exact external API or
+runtime used, measured benchmark/stress/real-workload evidence, or a necessary safety guard against
+an infinite loop, leak or loss of control. “Usually enough”, guessed memory weights and speculative
+safe values are not evidence. Replacing an unverified number with a larger unverified number is not
+a repair.
+
+Safety guards must emit explicit typed errors and telemetry; they must never silently truncate,
+skip work or report success after losing coverage. They must not become normal-workload capacity
+ceilings. Unknown boundaries call for measured usage, dynamic scheduling, backpressure, adaptive
+concurrency, provider-aware throttling, graceful degradation or stall detection. Review interacting
+limits across the whole pipeline: render ownership must not extend through provider latency unless
+a real dependency requires it. Concurrency claims require observed in-flight intervals, not only
+configuration. Preserve source/page/text locator conservation and valid completed work on recovery.
+
+Record the source, interaction, validation and remaining uncertainty in the version's existing
+Technical Design and Engineering Report. Validate controlled probes before resuming large failed
+workloads; do not declare performance repaired until real-workload evidence supports it.

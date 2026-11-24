@@ -34,6 +34,12 @@ export function qaProviderStreamDelta(
   return;
 }
 
-export function qaProviderStreamEnd(_streamId: string): void {
+export function qaProviderStreamEnd(_streamId: string): Promise<void> {
+  return Promise.resolve();
+}
+
+export function installQaTelemetryReceiver(): void {
   return;
 }
+
+export function qaProviderStreamResult(_streamId: string, _fields: Record<string, unknown>): void {}

@@ -1,3 +1,12 @@
+import { DEFERRAL_SCHEMA, type TeachingInput, type TeachingResult } from "./teaching-deferral";
+import {
+  ROUTING_SCHEMA,
+  type RoutingInput,
+  type ExhaustiveRoutingResult
+} from "./exhaustive-routing";
+import { AUDIT_SCHEMA, type CoverageAuditInput } from "./coverage-audit";
+import { stableDigest } from "./chunking";
+import type { CourseContentIndex, NativeExpansion, PlannerResult } from "./retrieval-planner";
 import "fake-indexeddb/auto";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,6 +31,8 @@ import { ViewBuilder } from "./view";
 import { ViewHandler } from "./handler";
 import { V2_MESSAGE_CONTRACT } from "./contract";
 import { DeepSeekFailure } from "./deepseek";
+import type { FactRecord } from "./schema";
+import { SELECTIVE_COURSE_SCHEMA, type Clause } from "./selective-course";
 
 const NOW = new Date("2026-09-19T09:00:00.000Z");
 
@@ -134,9 +145,73 @@ interface TestCall {
  */
 class FakeAi {
   calls: Array<TestCall & { context: unknown }> = [];
+  requestVisualInFixtures = false;
   key: string | null = "test-key";
   privacy = true;
   usage = true;
+  plannerHandler: (call: TestCall) => PlannerResult = (call) => {
+    const { index, expanded } = JSON.parse(call.user) as {
+      index: CourseContentIndex;
+      expanded: NativeExpansion[];
+    };
+    const refs = [
+      ...index.units.map((u) => u[0]),
+      ...index.sources
+        .filter((row) => !row.unitCount && row.nativeCharacters > 0)
+        .map((row) => row.ref)
+    ];
+    const read = new Set(expanded.map((row) => row.ref));
+    const pending = refs.filter((ref) => !read.has(ref));
+    const visual = index.units.filter((unit) => unit[7].length && read.has(unit[0]));
+    return {
+      schema: call.schemaVersion as PlannerResult["schema"],
+      status: pending.length ? "CONTINUE" : "COMPLETE",
+      requestRefs: pending,
+      selectedEvidenceRefs: pending.length ? [] : refs,
+      removedSelectedRefs: [],
+      visualRequestRefs: pending.length ? [] : visual.map((u) => u[0]),
+      uncertainRefs: []
+    };
+  };
+  auditHandler = (call: TestCall) => {
+    const input = JSON.parse(call.user) as CoverageAuditInput;
+    return {
+      schema: AUDIT_SCHEMA,
+      status: "COVERAGE_COMPLETE",
+      requestRefs: [],
+      uncertainRefs: [],
+      coveredWithoutExpansion: input.unreadRefs.length
+        ? [
+            {
+              refs: input.unreadRefs,
+              reason: "Synthetic fixture has no additional product evidence"
+            }
+          ]
+        : []
+    };
+  };
+  routingHandler: (call: TestCall) => ExhaustiveRoutingResult = (call) => {
+    const { index, entryRefs } = JSON.parse(call.user) as RoutingInput;
+    return {
+      schema: ROUTING_SCHEMA,
+      decisions: entryRefs.map((ref) => [
+        ref,
+        index.units.some((u) => u[0] === ref) ||
+        index.sources.some((row) => row.ref === ref && row.nativeCharacters > 0)
+          ? "EXPAND"
+          : "SKIP"
+      ])
+    };
+  };
+  teachingHandler: (call: TestCall) => TeachingResult = (call) => ({
+    schema: DEFERRAL_SCHEMA,
+    sources: (JSON.parse(call.user) as TeachingInput).profiles.map((p) => ({
+      sourceId: p.sourceId,
+      classification: "PROCESS",
+      evidenceUsed: ["synthetic profile"],
+      rationale: "synthetic management fixture"
+    }))
+  });
   handler: (call: TestCall) => unknown = () => {
     throw new Error("NO_SCRIPTED_RESPONSE");
   };
@@ -151,7 +226,29 @@ class FakeAi {
     context: unknown
   ): Promise<{ call: TestCall; value: unknown }> {
     this.calls.push({ ...call, context });
-    return Promise.resolve({ call, value: structuredClone(this.handler(call)) });
+    return Promise.resolve({
+      call,
+      value: structuredClone(
+        this.requestVisualInFixtures &&
+          call.task.startsWith("task-a") &&
+          (context as { allowedVisualRequestRefs?: Set<string> }).allowedVisualRequestRefs?.size
+          ? {
+              ...(this.handler(call) as Record<string, unknown>),
+              visualRequestRefs: [
+                ...(context as { allowedVisualRequestRefs: Set<string> }).allowedVisualRequestRefs
+              ]
+            }
+          : call.task === "teaching-classification"
+            ? this.teachingHandler(call)
+            : call.task === "exhaustive-routing"
+              ? this.routingHandler(call)
+              : call.task === "retrieval-planner"
+                ? this.plannerHandler(call)
+                : call.task === "coverage-audit"
+                  ? this.auditHandler(call)
+                  : this.handler(call)
+      )
+    });
   }
 }
 
@@ -204,14 +301,29 @@ function memoryStorage(): {
 
 function engineFor(options: {
   store: LocalStore;
-  machine: FakeMachine;
+  machine: MachinePort;
   ai: FakeAi;
   clock: VirtualClock;
   staging: RebuildStagingStore;
+  newArchitecture?: boolean;
+  directCourse?: boolean;
+  selectiveCourse?: boolean;
+  projectedCourse?: boolean;
+  allowQaAcceptance?: boolean;
+  qaValidateRouting?: EngineOptions["qaValidateRouting"];
   onStage?: (workflow: WorkflowRecord) => void;
+  onTaskBInput?: (input: Parameters<EngineOptions["buildTaskBCalls"]>[0]) => void;
   taskCInputs?: Array<Parameters<EngineOptions["buildTaskCCalls"]>[0]>;
 }): WorkflowEngine {
   const engineOptions: EngineOptions = {
+    ...(options.newArchitecture ? { newArchitecture: true } : {}),
+    ...(options.directCourse ? { directCourse: true } : {}),
+    ...(options.selectiveCourse ? { selectiveCourse: true } : {}),
+    ...(options.projectedCourse ? { projectedCourse: true } : {}),
+    ...(options.qaValidateRouting ? { qaValidateRouting: options.qaValidateRouting } : {}),
+    ...(options.allowQaAcceptance !== undefined
+      ? { allowQaAcceptance: options.allowQaAcceptance }
+      : {}),
     store: options.store,
     machine: options.machine,
     ai: options.ai,
@@ -237,17 +349,20 @@ function engineFor(options: {
       system: "PROMPT_A",
       user: ""
     }),
-    buildTaskBCalls: () => [
-      {
-        task: "task-b",
-        schemaVersion: "syllab.ai.task-b/1",
-        promptVersion: "task-b/1",
-        idempotencyKey: "b",
-        maxTokens: 16000,
-        system: "PROMPT_B",
-        user: ""
-      }
-    ],
+    buildTaskBCalls: (input) => {
+      options.onTaskBInput?.(input);
+      return [
+        {
+          task: "task-b",
+          schemaVersion: "syllab.ai.task-b/1",
+          promptVersion: "task-b/1",
+          idempotencyKey: "b",
+          maxTokens: 16000,
+          system: "PROMPT_B",
+          user: ""
+        }
+      ];
+    },
     buildTaskBExpansionCall: ({ base }) => ({
       ...base,
       task: "task-b-expand",
@@ -263,7 +378,7 @@ function engineFor(options: {
           idempotencyKey: `c:${input.target.objectId}`,
           maxTokens: 8000,
           system: "PROMPT_C",
-          user: ""
+          user: options.newArchitecture ? JSON.stringify(input) : ""
         }
       ];
     },
@@ -427,6 +542,714 @@ describe("v0.2.0 core loop", () => {
     engine = engineFor({ store, machine, ai, clock, staging });
   });
 
+  it("retries only a permission-denied Source after restart without losing completed observations", async () => {
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    const fetch = machine.fetchAndParse.bind(machine);
+    let granted = false;
+    let blocked = false;
+    const reads: string[] = [];
+    machine.missingPermissionOrigins = () =>
+      Promise.resolve(blocked && !granted ? ["https://files.example.test"] : []);
+    machine.fetchAndParse = async (source) => {
+      reads.push(source.sourceId);
+      const result = await fetch(source);
+      if (source.sourceId === "src-quizzes" && !granted) {
+        blocked = true;
+        return {
+          ...result,
+          text: "",
+          structure: [],
+          fetchStatus: "permission-denied",
+          parseStatus: "not-attempted",
+          errorCode: "HOST_PERMISSION_REQUIRED"
+        };
+      }
+      return result;
+    };
+    const started = await engine.start(course, "initial");
+    await engine.run(started.workflowId);
+    const before = await store.readAllSourceStates(course.courseId);
+    const completed = before.observations.find((row) => row.sourceId === "src-guide");
+    expect(completed?.fetchStatus).toBe("ok");
+    expect(before.observations.find((row) => row.sourceId === "src-quizzes")?.fetchStatus).toBe(
+      "permission-denied"
+    );
+    expect(ai.calls).toHaveLength(0);
+    granted = true;
+    const saved = await store.readWorkflow(started.workflowId);
+    if (!saved) throw new Error("WORKFLOW_MISSING");
+    const { waitingReason: _waitingReason, ...carried } = saved;
+    await store.saveWorkflow({
+      ...carried,
+      state: "saved",
+      userRetryAuthorized: true
+    });
+    engine = engineFor({ store, machine, ai, clock, staging });
+    const resumed = await store.readWorkflow(started.workflowId);
+    if (!resumed) throw new Error("WORKFLOW_MISSING");
+    await engine.step(resumed);
+    const after = await store.readAllSourceStates(course.courseId);
+    expect(reads).toEqual(["src-guide", "src-quizzes", "src-quizzes"]);
+    expect(after.observations.find((row) => row.sourceId === "src-guide")).toEqual(completed);
+    expect(after.observations.find((row) => row.sourceId === "src-quizzes")?.fetchStatus).toBe(
+      "ok"
+    );
+    expect(after.observations).toHaveLength(2);
+    expect(ai.calls).toHaveLength(0);
+  });
+
+  it("keeps AI-excluded inventory and skips its rendering / Task A", async () => {
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    let bInput: Parameters<EngineOptions["buildTaskBCalls"]>[0] | undefined;
+    engine = engineFor({
+      store,
+      machine,
+      ai,
+      clock,
+      staging,
+      onTaskBInput: (input) => {
+        bInput = input;
+      }
+    });
+    ai.handler = fixtureFor([TASK_A_GUIDE, TASK_A_QUIZZES], TASK_B_MERGED);
+    const base = ai.teachingHandler;
+    ai.teachingHandler = (call) => {
+      const response = base(call);
+      response.sources = response.sources.map((row) =>
+        row.sourceId === "src-guide"
+          ? { ...row, classification: "TEACHING_MATERIAL_DEFERRED" }
+          : row
+      );
+      return response;
+    };
+    const fetchAndParse = machine.fetchAndParse.bind(machine);
+    machine.fetchAndParse = async (source) => {
+      const fetched = await fetchAndParse(source);
+      return source.sourceId === "src-guide"
+        ? {
+            ...fetched,
+            units: [
+              {
+                locator: "page:1",
+                text: fetched.text,
+                partial: true,
+                visualGaps: ["unrepresented-image-region"]
+              }
+            ]
+          }
+        : fetched;
+    };
+    const renderer = vi.fn();
+    (machine as MachinePort).visualParts = renderer;
+    const run = await engine.start(course, "initial");
+    await engine.run(run.workflowId);
+    expect(renderer).not.toHaveBeenCalled();
+    expect(bInput?.availableEvidenceRefs?.some((ref) => ref.sourceId === "src-guide")).toBe(false);
+    expect(ai.calls.filter((call) => call.task === "task-a")).toHaveLength(1);
+    expect(ai.calls.find((call) => call.task === "task-a")?.user).toContain("Six quizzes");
+    const { sources } = await store.readAllSourceStates(course.courseId);
+    expect(sources).toHaveLength(2);
+    expect(sources.every((source) => source.machine && source.parsed)).toBe(true);
+    expect(
+      sources.find((source) => source.sourceId === "src-guide")?.teaching?.result.classification
+    ).toBe("TEACHING_MATERIAL_DEFERRED");
+    expect(
+      sources.find((source) => source.sourceId === "src-guide")?.parsed?.units?.[0]?.partial
+    ).toBe(true);
+    expect(ai.calls.some((call) => call.task === "exhaustive-routing")).toBe(false);
+  });
+
+  it("replans unchanged Check after policy change and shares validated scope with Rebuild", async () => {
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    ai.handler = fixtureFor([TASK_A_GUIDE, TASK_A_QUIZZES], TASK_B_MERGED);
+    const initial = await engine.start(course, "initial");
+    await engine.run(initial.workflowId);
+    const { sources } = await store.readAllSourceStates(course.courseId);
+    const source = sources[0];
+    if (!source?.teaching) throw new Error("ROUTING_MISSING");
+    source.teaching.policyVersion = "old-policy";
+    await store.writeDraft({ sources: [source] });
+    ai.calls.length = 0;
+    const check = await engine.start({ ...course, established: true }, "check");
+    await engine.run(check.workflowId);
+    expect(ai.calls.filter((call) => call.task === "teaching-classification")).toHaveLength(1);
+    ai.calls.length = 0;
+    const rebuild = await engine.start(course, "rebuild");
+    await engine.run(rebuild.workflowId);
+    expect(ai.calls.filter((call) => call.task === "retrieval-planner")).toHaveLength(0);
+    expect(ai.calls.filter((call) => call.task === "task-a")).toHaveLength(2);
+  });
+
+  it("blocks a failed fresh Discovery from falling back to historical inventory and paid processing", async () => {
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    ai.handler = fixtureFor([TASK_A_GUIDE, TASK_A_QUIZZES], TASK_B_MERGED);
+    const initial = await engine.start(course, "initial");
+    await engine.run(initial.workflowId);
+    const before = await store.readAllSourceStates(course.courseId);
+    ai.calls.length = 0;
+    const guarded = engineFor({
+      store,
+      machine: {
+        discover: () =>
+          Promise.resolve({
+            sources: [],
+            coverage: {
+              status: "Failed" as const,
+              pagesProcessed: 0,
+              issueCodes: ["API_REQUEST_FAILED"]
+            }
+          }),
+        fetchAndParse: machine.fetchAndParse.bind(machine),
+        missingPermissionOrigins: machine.missingPermissionOrigins.bind(machine)
+      },
+      ai,
+      clock,
+      staging,
+      allowQaAcceptance: true
+    });
+    const fresh = await guarded.start(course, "rebuild", { qaSemanticClean: true });
+    const outcome = await guarded.run(fresh.workflowId);
+    expect(outcome).toMatchObject({
+      state: "failed",
+      phase: "discover",
+      errorCode: "DISCOVERY_INCOMPLETE"
+    });
+    expect(ai.calls).toHaveLength(0);
+    expect(await store.readAllSourceStates(course.courseId)).toEqual(before);
+    expect(await store.readMetadataValue(`discovery-coverage:${fresh.workflowId}`)).toMatchObject({
+      status: "Failed",
+      sourceCount: 0
+    });
+  });
+
+  it("permits isolated QA clean Initial only for new policy and an unestablished Course", async () => {
+    const course = { ...courseRecord(), established: false };
+    await store.upsertCourse(course);
+    const allowed = engineFor({
+      store,
+      machine,
+      ai,
+      clock,
+      staging,
+      allowQaAcceptance: true,
+      newArchitecture: true
+    });
+    const created = await allowed.start(course, "initial", { qaSemanticClean: true });
+    expect(created.qaSemanticClean).toBe(true);
+    expect(created.architecturePolicy).toBe("source_registry_group/1");
+    expect(ai.calls).toHaveLength(0);
+    await expect(
+      allowed.start({ ...course, established: true }, "initial", { qaSemanticClean: true })
+    ).rejects.toThrow("QA_ACCEPTANCE_UNAVAILABLE");
+    await expect(allowed.start(course, "check", { qaSemanticClean: true })).rejects.toThrow(
+      "QA_ACCEPTANCE_UNAVAILABLE"
+    );
+  });
+
+  it("isolates QA clean Rebuild from historical semantics and preserves trusted state and history", async () => {
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    ai.handler = fixtureFor([TASK_A_GUIDE, TASK_A_QUIZZES], TASK_B_MERGED);
+    const initial = await engine.start(course, "initial");
+    await engine.run(initial.workflowId);
+    const oldWorkflow = await store.readWorkflow(initial.workflowId);
+    const trusted = await store.readSnapshot(course.courseId);
+    await expect(engine.start(course, "rebuild", { qaSemanticClean: true })).rejects.toThrow(
+      "QA_ACCEPTANCE_UNAVAILABLE"
+    );
+    // An explicitly authorized clean identity preserves parked Review rather than reusing it.
+    const allowed = engineFor({ store, machine, ai, clock, staging, allowQaAcceptance: true });
+    if (!oldWorkflow) throw new Error("WORKFLOW_MISSING");
+    const historical = await store.readWorkflow(initial.workflowId);
+    await store.saveWorkflow({ ...oldWorkflow, state: "working" });
+    await expect(allowed.start(course, "rebuild", { qaSemanticClean: true })).rejects.toThrow(
+      "QA_ACCEPTANCE_ACTIVE_WORKFLOW"
+    );
+    await store.saveWorkflow(oldWorkflow);
+    ai.calls.length = 0;
+    const fresh = await allowed.start(course, "rebuild", { qaSemanticClean: true });
+    const result = await allowed.run(fresh.workflowId);
+    expect(result).toMatchObject({ state: "waiting", phase: "review", qaSemanticClean: true });
+    expect(fresh.workflowId).not.toBe(initial.workflowId);
+    expect(ai.calls.filter((c) => c.task === "teaching-classification")).toHaveLength(1);
+    expect(ai.calls.filter((c) => c.task === "task-a")).toHaveLength(2);
+    expect(ai.calls.filter((c) => c.task === "task-b")).toHaveLength(1);
+    expect(ai.calls.some((c) => c.task === "task-c")).toBe(false);
+    expect(await store.readWorkflow(initial.workflowId)).toEqual(historical);
+    expect(await store.readSnapshot(course.courseId)).toEqual(trusted);
+  });
+
+  it.each([false, true])(
+    "preserves historical coverage and respects fresh parser baseline in clean=%s",
+    async (clean) => {
+      ai.requestVisualInFixtures = true;
+      const course = courseRecord();
+      await store.upsertCourse(course);
+      const source: SourceRecord = {
+        sourceId: "src-guide",
+        nativeItemId: "src-guide",
+        courseId: course.courseId,
+        title: "Guide",
+        kind: "attachment",
+        updatedAt: "before",
+        parsed: {
+          text: "Historical",
+          structure: [],
+          contentHash: "same",
+          visualCoverageHash: "same"
+        }
+      };
+      await store.writeDraft({ sources: [source] });
+      const fetch = machine.fetchAndParse.bind(machine);
+      machine.fetchAndParse = async (row) =>
+        row.sourceId === source.sourceId
+          ? {
+              ...(await fetch(row)),
+              parseStatus: "partial",
+              contentHash: "same",
+              units: [
+                {
+                  locator: "page:1",
+                  text: INITIAL_SOURCES[0]?.text ?? "",
+                  partial: true,
+                  visualGaps: ["image"]
+                }
+              ]
+            }
+          : fetch(row);
+      const allowed = engineFor({ store, machine, ai, clock, staging, allowQaAcceptance: true });
+      const workflow = await allowed.start(
+        course,
+        "rebuild",
+        clean ? { qaSemanticClean: true } : {}
+      );
+      // Ingest only, so historical completion cannot be confused with current visual completion.
+      let current = workflow;
+      while (current.phase !== "task-a") {
+        const step = await allowed.step(current);
+        current = step.workflow;
+      }
+      const state = await store.readAllSourceStates(course.courseId);
+      const fresh = state.sources.find((row) => row.sourceId === source.sourceId);
+      const observation = state.observations.find(
+        (row) => row.workflowId === workflow.workflowId && row.sourceId === source.sourceId
+      );
+      expect(observation?.parseStatus).toBe(clean ? "partial" : "ok");
+      expect(fresh?.parsed?.visualCoverageHash).toBe(clean ? undefined : "same");
+      expect(fresh?.parsed?.units?.[0]?.partial).toBe(true);
+      if (clean)
+        expect(
+          (await store.readMetadata())[
+            `qa.coverage-history:${workflow.workflowId}:${stableDigest(source.sourceId)}`
+          ]
+        ).toMatchObject({ historicalParsed: source.parsed });
+      expect(
+        state.observations.find(
+          (row) => row.workflowId === workflow.workflowId && row.sourceId === "src-quizzes"
+        )?.parseStatus
+      ).toBe("ok");
+      if (clean) {
+        (machine as MachinePort).visualParts = () =>
+          Promise.resolve({
+            parts: [{ locator: "page:1", dataUrl: "data:image/png;base64,AAAA" }],
+            unresolved: []
+          });
+        ai.handler = fixtureFor([TASK_A_GUIDE, TASK_A_QUIZZES], TASK_B_MERGED);
+        await allowed.run(workflow.workflowId);
+        const completed = await store.readAllSourceStates(course.courseId);
+        expect(
+          completed.observations.find(
+            (row) => row.workflowId === workflow.workflowId && row.sourceId === source.sourceId
+          )?.parseStatus
+        ).toBe("ok");
+        expect(
+          completed.sources.find((row) => row.sourceId === source.sourceId)?.parsed
+            ?.visualCoverageHash
+        ).toBe("same");
+      }
+    }
+  );
+
+  it("stops invalid Source classification before Task A or visual dispatch", async () => {
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    ai.teachingHandler = () => ({ schema: DEFERRAL_SCHEMA, sources: [] });
+    const workflow = await engine.start(course, "initial");
+    const result = await engine.run(workflow.workflowId);
+    expect(result).toMatchObject({ state: "failed", errorCode: "AI_CONTRACT" });
+    expect(
+      ai.calls.filter((call) => call.task.startsWith("task-a") || call.task === "task-b")
+    ).toEqual([]);
+    expect(ai.calls.filter((call) => call.task === "teaching-classification")).toHaveLength(1);
+  });
+
+  it("reuses successful classification after checkpoint persistence interruption without another model call", async () => {
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    ai.handler = fixtureFor([TASK_A_GUIDE, TASK_A_QUIZZES], TASK_B_MERGED);
+    const write = store.writeDraft.bind(store);
+    let interrupted = false;
+    store.writeDraft = async (bundle) => {
+      if (
+        !interrupted &&
+        bundle.sources?.some((source) => source.sourceId === "src-guide" && source.teaching)
+      ) {
+        interrupted = true;
+        throw new Error("SYNTHETIC_CHECKPOINT_INTERRUPTION");
+      }
+      await write(bundle);
+    };
+    const workflow = await engine.start(course, "initial");
+    await engine.run(workflow.workflowId);
+    clock.advance(6 * 60_000);
+    const failed = await store.readWorkflow(workflow.workflowId);
+    if (!failed) throw new Error("fixture missing");
+    await store.saveWorkflow({ ...failed, state: "saved", userRetryAuthorized: true });
+    await engine.run(workflow.workflowId);
+    expect(ai.calls.filter((call) => call.task === "teaching-classification")).toHaveLength(1);
+    const { sources } = await store.readAllSourceStates(course.courseId);
+    expect(
+      sources.filter((source) => source.kind === "attachment").every((source) => source.teaching)
+    ).toBe(true);
+  });
+
+  it("passes file-level context and uncertainty from A to B without raw A conversation", async () => {
+    let bInput: Parameters<EngineOptions["buildTaskBCalls"]>[0] | undefined;
+    engine = engineFor({
+      store,
+      machine,
+      ai,
+      clock,
+      staging,
+      onTaskBInput: (input) => {
+        bInput = input;
+      }
+    });
+    const guide = {
+      ...TASK_A_GUIDE,
+      fileContext: "Assessment definitions in the course guide",
+      identityContext: "Written report and presentation are project components",
+      unresolvedIssues: ["Presentation date not specified"]
+    };
+    ai.handler = fixtureFor([guide, TASK_A_QUIZZES], TASK_B_MERGED);
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    const workflow = await engine.start(course, "initial");
+    await engine.run(workflow.workflowId);
+    expect(bInput?.sharedWorkingContexts).toContainEqual(
+      expect.objectContaining({
+        sourceId: "src-guide",
+        fileContext: guide.fileContext,
+        identityContext: guide.identityContext,
+        unresolvedIssues: guide.unresolvedIssues
+      })
+    );
+    expect(JSON.stringify(bInput?.sharedWorkingContexts)).not.toContain(INITIAL_SOURCES[0]?.text);
+  });
+
+  it("overlaps model calls for multi-page visual files with rendering released before provider completion", async () => {
+    machine.sources = machine.sources.map((source) => ({ ...source, kind: "attachment" }));
+    const fetch = machine.fetchAndParse.bind(machine);
+    let renders = 0,
+      renderPeak = 0,
+      calls = 0,
+      callPeak = 0;
+    let releaseRenders!: () => void;
+    let releaseCalls!: () => void;
+    const renderBarrier = new Promise<void>((resolve) => {
+      releaseRenders = resolve;
+    });
+    const callBarrier = new Promise<void>((resolve) => {
+      releaseCalls = resolve;
+    });
+    const expectedSources = machine.sources.length;
+    const visualMachine: MachinePort = {
+      discover: machine.discover.bind(machine),
+      missingPermissionOrigins: machine.missingPermissionOrigins,
+      fetchAndParse: async (source) => ({
+        ...(await fetch(source)),
+        parseStatus: "partial",
+        contentHash: "synthetic-hash",
+        units: [1, 2, 3].map((n) => ({
+          locator: `page:${String(n)}`,
+          text:
+            source.sourceId === "src-guide"
+              ? (INITIAL_SOURCES[0]?.text ?? "")
+              : (INITIAL_SOURCES[1]?.text ?? ""),
+          partial: true,
+          visualGaps: ["image"]
+        }))
+      }),
+      visualParts: async () => {
+        renderPeak = Math.max(renderPeak, ++renders);
+        if (renders === expectedSources) releaseRenders();
+        await renderBarrier;
+        renders--;
+        return {
+          parts: [1, 2, 3].map((n) => ({
+            locator: `page:${String(n)}`,
+            dataUrl: "data:image/png;base64,synthetic"
+          })),
+          unresolved: []
+        };
+      }
+    };
+    const execute = ai.execute.bind(ai);
+    ai.execute = async (call, key, context) => {
+      if (call.task !== "task-a") return execute(call, key, context);
+      callPeak = Math.max(callPeak, ++calls);
+      try {
+        if (calls === expectedSources) releaseCalls();
+        await callBarrier;
+        return await execute(call, key, context);
+      } finally {
+        calls--;
+      }
+    };
+    ai.handler = fixtureFor([TASK_A_GUIDE, TASK_A_QUIZZES], TASK_B_MERGED);
+    engine = engineFor({ store, machine: visualMachine, ai, clock, staging });
+    ai.requestVisualInFixtures = true;
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    const workflow = await engine.start(course, "initial");
+    await engine.run(workflow.workflowId);
+    expect(renderPeak).toBe(2);
+    expect(callPeak).toBe(2);
+    expect(calls).toBe(0);
+    expect(ai.calls.some((call) => call.task === "task-b")).toBe(true);
+  });
+
+  it("reconciles an abandoned paid session to user Retry without dispatch, regardless of expired TTL", async () => {
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    const workflow = await engine.start(course, "initial");
+    await store.saveWorkflow({
+      ...workflow,
+      state: "working",
+      phase: "task-a",
+      lease: { token: "old", sessionId: "ended", expiresAt: "2000-01-01T00:00:00Z" }
+    });
+    await engine.reconcileSession();
+    const reconciled = await store.readWorkflow(workflow.workflowId);
+    expect(reconciled).toMatchObject({
+      state: "failed",
+      paidRetryAvailable: true,
+      errorCode: "AI_INTERRUPTED"
+    });
+    await engine.run(workflow.workflowId);
+    expect(ai.calls).toHaveLength(0);
+  });
+  it("atomically admits only one concurrent owner and rejects a stale draft write", async () => {
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    const expected = await engine.start(course, "initial");
+    const claims = await Promise.all(
+      ["one", "two"].map((token) =>
+        store.replaceWorkflow(expected, {
+          ...expected,
+          state: "working",
+          lease: { token, sessionId: "session" }
+        })
+      )
+    );
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    await expect(
+      store.writeDraft({ sources: [] }, { ...expected, lease: { token: "stale" } })
+    ).rejects.toThrow("STALE_WORKFLOW_WRITE");
+    await expect(
+      store.saveWorkflow(
+        { ...expected, state: "failed" },
+        { ...expected, lease: { token: "stale" } }
+      )
+    ).rejects.toThrow("STALE_WORKFLOW_WRITE");
+  });
+  it("does not dispatch a legacy saved paid failure on startup", async () => {
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    const workflow = await engine.start(course, "initial");
+    await store.saveWorkflow({ ...workflow, state: "saved", phase: "task-a" });
+    await engine.reconcileSession();
+    expect(await store.readWorkflow(workflow.workflowId)).toMatchObject({
+      state: "failed",
+      paidRetryAvailable: true
+    });
+    expect(ai.calls).toHaveLength(0);
+  });
+
+  it("parks on a network outage without trying every remaining Source", async () => {
+    machine.sources = Array.from({ length: 30 }, (_, i) => ({
+      sourceId: `src-${String(i)}`,
+      title: `Synthetic ${String(i)}`,
+      kind: "attachment",
+      text: `Synthetic material ${String(i)}`
+    }));
+    ai.handler = () => {
+      throw new DeepSeekFailure("NETWORK_TRANSIENT", true, "DeepSeek could not be reached");
+    };
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    const workflow = await engine.start(course, "initial");
+    await engine.run(workflow.workflowId);
+    expect(ai.calls.filter((call) => call.task === "task-a").length).toBeLessThanOrEqual(10);
+    expect(ai.calls.length).toBeGreaterThan(0);
+    expect(await store.readWorkflow(workflow.workflowId)).toMatchObject({
+      state: "failed",
+      phase: "task-a",
+      attempt: 1,
+      errorCode: "NETWORK_TRANSIENT"
+    });
+  });
+
+  it.each([false, true])(
+    "reuses completed Task A results after network recovery (QA clean=%s)",
+    async (clean) => {
+      ai.requestVisualInFixtures = true;
+      machine.sources = machine.sources.map((source) => ({ ...source, kind: "attachment" }));
+      const renders = new Map<string, number>();
+      const fetch = machine.fetchAndParse.bind(machine);
+      const visualMachine: MachinePort = {
+        discover: machine.discover.bind(machine),
+        missingPermissionOrigins: machine.missingPermissionOrigins,
+        fetchAndParse: async (source) => ({
+          ...(await fetch(source)),
+          parseStatus: "partial",
+          units: [
+            {
+              locator: "page:1",
+              text:
+                source.sourceId === "src-guide"
+                  ? (INITIAL_SOURCES[0]?.text ?? "")
+                  : (INITIAL_SOURCES[1]?.text ?? ""),
+              partial: true,
+              visualGaps: ["image"]
+            }
+          ]
+        }),
+        visualParts: (source) => {
+          renders.set(source.sourceId, (renders.get(source.sourceId) ?? 0) + 1);
+          return Promise.resolve({
+            parts: [{ locator: "page:1", dataUrl: "data:image/png;base64,AAAA" }],
+            unresolved: []
+          });
+        }
+      };
+      engine = engineFor({
+        store,
+        machine: visualMachine,
+        ai,
+        clock,
+        staging,
+        allowQaAcceptance: clean
+      });
+      const response = fixtureFor([TASK_A_GUIDE, TASK_A_QUIZZES], TASK_B_MERGED);
+      let online = false;
+      ai.handler = (call) => {
+        if (call.task === "task-a" && call.user.includes("Six quizzes") && !online)
+          throw new DeepSeekFailure("NETWORK_TRANSIENT", true, "Synthetic network outage");
+        return response(call);
+      };
+      const course = courseRecord();
+      await store.upsertCourse(course);
+      const workflow = await engine.start(
+        course,
+        clean ? "rebuild" : "initial",
+        clean ? { qaSemanticClean: true } : {}
+      );
+      await engine.run(workflow.workflowId);
+      expect(await store.readWorkflow(workflow.workflowId)).toMatchObject({
+        state: "failed",
+        phase: "task-a"
+      });
+      online = true;
+      const failed = await store.readWorkflow(workflow.workflowId);
+      if (!failed) throw new Error("fixture missing");
+      await store.saveWorkflow({ ...failed, state: "saved", userRetryAuthorized: true });
+      clock.advance(5 * 60_000);
+      const recovered = await engine.run(workflow.workflowId);
+      expect({ state: recovered.state, detail: recovered.lastErrorDetail }).toEqual({
+        state: "waiting",
+        detail: undefined
+      });
+      expect(renders.get("src-guide")).toBe(1);
+      expect(renders.get("src-quizzes")).toBe(1);
+      expect(
+        ai.calls.filter(
+          (call) => call.task === "task-a" && call.user.includes("Individual Assignment 30%")
+        )
+      ).toHaveLength(2);
+      expect(
+        ai.calls.filter((call) => call.task === "task-a" && call.user.includes("Six quizzes"))
+      ).toHaveLength(3);
+    }
+  );
+
+  it("cannot certify Partial coverage from an empty renderer success", async () => {
+    const fetch = machine.fetchAndParse.bind(machine);
+    const visualMachine: MachinePort = {
+      discover: machine.discover.bind(machine),
+      missingPermissionOrigins: machine.missingPermissionOrigins,
+      fetchAndParse: async (source) => ({
+        ...(await fetch(source)),
+        parseStatus: "partial",
+        contentHash: "synthetic",
+        units: [
+          {
+            locator: "page:1",
+            text:
+              source.sourceId === "src-guide"
+                ? (INITIAL_SOURCES[0]?.text ?? "")
+                : (INITIAL_SOURCES[1]?.text ?? ""),
+            partial: true,
+            visualGaps: ["image"]
+          }
+        ]
+      }),
+      visualParts: () => Promise.resolve({ parts: [], unresolved: [] })
+    };
+    engine = engineFor({ store, machine: visualMachine, ai, clock, staging });
+    ai.handler = fixtureFor([TASK_A_GUIDE, TASK_A_QUIZZES], TASK_B_MERGED);
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    const workflow = await engine.start(course, "initial");
+    await engine.run(workflow.workflowId);
+    const { observations } = await store.readAllSourceStates(course.courseId);
+    expect(
+      observations
+        .filter((item) => item.workflowId === workflow.workflowId)
+        .every((item) => item.parseStatus === "partial" && item.understandingStatus === "partial")
+    ).toBe(true);
+  });
+
+  it("keeps unresolved visual input Partial even when Task A returns semantic success", async () => {
+    const fetch = machine.fetchAndParse.bind(machine);
+    machine.fetchAndParse = async (source) => {
+      const result = await fetch(source);
+      return source.sourceId === "src-guide"
+        ? {
+            ...result,
+            parseStatus: "partial",
+            contentHash: "original-hash",
+            units: [{ locator: "page:1", text: result.text, partial: true, visualGaps: ["image"] }]
+          }
+        : result;
+    };
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    ai.handler = fixtureFor([TASK_A_GUIDE, TASK_A_QUIZZES], TASK_B_MERGED);
+    const workflow = await engine.start(course, "initial");
+    await engine.run(workflow.workflowId);
+    const { observations } = await store.readAllSourceStates(course.courseId);
+    expect(
+      observations.find(
+        (item) => item.workflowId === workflow.workflowId && item.sourceId === "src-guide"
+      )
+    ).toMatchObject({ parseStatus: "partial", understandingStatus: "partial" });
+  });
+
   it("runs discovery through review in one start, without manual Continue", async () => {
     const course = courseRecord();
     await store.upsertCourse(course);
@@ -452,7 +1275,15 @@ describe("v0.2.0 core loop", () => {
     expect(tasks.filter((task) => task === "task-b")).toHaveLength(1);
     expect(tasks.indexOf("task-b")).toBeGreaterThan(tasks.lastIndexOf("task-a"));
     // Evidence written for the first Assessment traces back to the Source it came from.
-    const evidence = await store.readEvidence(["ev-ia-deadline"]);
+    const projected = await store.readSnapshot(course.courseId);
+    const evidence = await store.readEvidence(
+      (projected?.facts ?? []).flatMap((f) =>
+        f.evidenceRefs
+          .filter((r) => r.sourceId === "src-guide")
+          .map((r) => r.evidenceId)
+          .filter((id): id is string => typeof id === "string")
+      )
+    );
     expect(evidence[0]?.sourceId).toBe("src-guide");
   });
 
@@ -487,10 +1318,10 @@ describe("v0.2.0 core loop", () => {
     const result = await engine.run(rebuild.workflowId);
 
     expect(result).toMatchObject({ state: "waiting", waitingReason: "review" });
-    expect(ai.calls).toHaveLength(1);
-    expect(ai.calls[0]).toMatchObject({ task: "task-a" });
-    expect(ai.calls[0]?.user).toContain("resource/x-bb-blti-link");
-    expect(ai.calls[0]?.user).toContain("2026-10-21T23:59:00Z");
+    const extraction = ai.calls.filter((call) => call.task === "task-a");
+    expect(extraction).toHaveLength(1);
+    expect(extraction[0]?.user).toContain("resource/x-bb-blti-link");
+    expect(extraction[0]?.user).toContain("2026-10-21T23:59:00Z");
   });
 
   it("reports each user-facing stage while the run is still going", async () => {
@@ -978,9 +1809,7 @@ describe("v0.2.0 core loop", () => {
     expect(input?.currentEvidence).toMatchObject([
       { evidenceId: "ev-current", excerpt: "Due 10 Oct" }
     ]);
-    expect(input?.newEvidence).toMatchObject([
-      { evidenceId: "ev-latest", excerpt: "Group Project 40% due 12 November" }
-    ]);
+    expect(input?.newEvidence).toMatchObject([{ excerpt: "Group Project 40% due 12 November" }]);
     expect(input?.identity).toMatchObject({
       resolutions: [{ relationship: "SAME_ASSESSMENT" }],
       structuralRelationships: [{ child: "presentation" }]
@@ -1252,9 +2081,13 @@ describe("v0.2.0 core loop", () => {
     expect(trusted?.facts).toMatchObject([
       { assessmentId: "assessment_new-a", value: { value: "20 November" } }
     ]);
-    expect(await store.readEvidence(["ev-new-a"])).toMatchObject([
-      { excerpt: "New Essay due 20 November" }
-    ]);
+    expect(
+      await store.readEvidence(
+        (trusted?.facts ?? [])
+          .flatMap((f) => f.evidenceRefs.map((r) => r.evidenceId))
+          .filter((id): id is string => typeof id === "string")
+      )
+    ).toMatchObject([{ excerpt: "New Essay due 20 November" }]);
     expect(trusted?.changes).toHaveLength(0);
     expect(trusted?.reviewItems).toHaveLength(0);
     const decisions = await store.readDecisions(course.courseId);
@@ -1372,7 +2205,7 @@ describe("v0.2.0 core loop", () => {
     const rebuild = await engine.start(course, "rebuild", { tabId: 42 });
     const preview = await engine.run(rebuild.workflowId);
 
-    expect(preview).toMatchObject({ state: "waiting", waitingReason: "review" });
+    expect(preview).toMatchObject({ state: "failed", paidRetryAvailable: true });
     const staged = await staging.read(course.courseId, rebuild.workflowId);
     expect(staged?.taskACoverage).toEqual({
       succeededSourceIds: ["src-guide"],
@@ -1395,46 +2228,27 @@ describe("v0.2.0 core loop", () => {
     ).toMatchObject({ status: "failed", sourceId: "src-quizzes", errorCode: "AI_CONTRACT" });
   });
 
-  it("recovers terminal Task A units once after the normal source pass", async () => {
-    const course: CourseRecord = { ...courseRecord(), established: true, currentRevision: 7 };
+  it("does not run an extra paid Source recovery after the normal pass", async () => {
+    const course = { ...courseRecord(), established: true, currentRevision: 7 };
     await store.upsertCourse(course);
-    let quizInitialAttempts = 0;
     ai.handler = (call) => {
-      if (
-        call.task === "task-a" &&
-        call.user.includes("Six quizzes across the term") &&
-        !call.idempotencyKey.startsWith("task-a-recovery:")
-      ) {
-        quizInitialAttempts += 1;
-        throw new DeepSeekFailure("AI_CONTRACT", true, "schema mismatch");
-      }
-      if (call.task === "task-a") {
-        return call.user.includes("Six quizzes across the term") ? TASK_A_QUIZZES : TASK_A_GUIDE;
-      }
-      if (call.task === "task-b") return TASK_B_MERGED;
-      throw new Error(`UNEXPECTED_CALL:${call.task}`);
+      if (call.task === "task-a" && call.user.includes("Six quizzes"))
+        throw new DeepSeekFailure("AI_CONTRACT", true, "invalid contract");
+      return TASK_A_GUIDE;
     };
-
-    const rebuild = await engine.start(course, "rebuild", { tabId: 42 });
-    const preview = await engine.run(rebuild.workflowId);
-
-    expect(preview).toMatchObject({ state: "waiting", waitingReason: "review" });
-    expect(quizInitialAttempts).toBe(1);
+    const rebuild = await engine.start(course, "rebuild");
+    expect(await engine.run(rebuild.workflowId)).toMatchObject({
+      state: "failed",
+      paidRetryAvailable: true
+    });
+    expect(ai.calls.filter((c) => c.idempotencyKey.startsWith("task-a-recovery:"))).toHaveLength(0);
     expect(
-      ai.calls
-        .filter((call) => call.idempotencyKey.startsWith("task-a-recovery:"))
-        .map((call) => call.task)
-    ).toEqual(["task-a"]);
-    const staged = await staging.read(course.courseId, rebuild.workflowId);
-    expect(staged?.taskACoverage?.failedSources).toEqual([]);
-    expect(staged?.taskACoverage?.succeededSourceIds).toEqual(
-      expect.arrayContaining(["src-guide", "src-quizzes"])
-    );
-    expect(
-      await store.findAiRun(`task-a-terminal:${rebuild.workflowId}:src-quizzes`)
-    ).toMatchObject({ status: "failed", sourceId: "src-quizzes" });
+      ai.calls.filter((c) => c.task === "task-a" && c.user.includes("Six quizzes"))
+    ).toHaveLength(1);
+    const before = ai.calls.length;
+    await engine.run(rebuild.workflowId);
+    expect(ai.calls).toHaveLength(before);
   });
-
   it("keeps a Rebuild failed when every relevant Source terminally fails Task A", async () => {
     const course: CourseRecord = { ...courseRecord(), established: true, currentRevision: 7 };
     await store.upsertCourse(course);
@@ -1482,7 +2296,13 @@ describe("v0.2.0 core loop", () => {
       state: "waiting",
       waitingReason: "review"
     });
-    release?.({ call: ai.calls[0] as TestCall, value: TASK_A_GUIDE });
+    release?.({
+      call: ai.calls[0] as TestCall,
+      value:
+        ai.calls[0]?.task === "teaching-classification"
+          ? ai.teachingHandler(ai.calls[0])
+          : TASK_A_GUIDE
+    });
 
     const result = await running;
     expect(result.state).toBe("waiting");
@@ -1504,7 +2324,20 @@ describe("v0.2.0 core loop", () => {
           release = resolve;
         });
       }
-      return Promise.resolve({ call, value: structuredClone(ai.handler(call)) });
+      return Promise.resolve({
+        call,
+        value: structuredClone(
+          call.task === "teaching-classification"
+            ? ai.teachingHandler(call)
+            : call.task === "exhaustive-routing"
+              ? ai.routingHandler(call)
+              : call.task === "retrieval-planner"
+                ? ai.plannerHandler(call)
+                : call.task === "coverage-audit"
+                  ? ai.auditHandler(call)
+                  : ai.handler(call)
+        )
+      });
     };
 
     const rebuild = await engine.start(course, "rebuild", { tabId: 42 });
@@ -1513,7 +2346,13 @@ describe("v0.2.0 core loop", () => {
     // The recovery timestamp is not a deadline for work that still owns the same generation.
     clock.advance(11 * 60_000);
     delayFirst = false;
-    release?.({ call: ai.calls[0] as TestCall, value: TASK_A_GUIDE });
+    release?.({
+      call: ai.calls[0] as TestCall,
+      value:
+        ai.calls[0]?.task === "teaching-classification"
+          ? ai.teachingHandler(ai.calls[0])
+          : TASK_A_GUIDE
+    });
 
     const result = await running;
     expect(result.state).toBe("waiting");
@@ -1618,6 +2457,7 @@ describe("the retry schedule", () => {
     courseId: "course-1",
     kind: "initial",
     state: "saved",
+    userRetryAuthorized: true,
     phase: "task-a",
     phaseCursor: "start",
     attempt: 1,
@@ -1628,9 +2468,9 @@ describe("the retry schedule", () => {
   });
 
   it("names the moment a parked run becomes due", () => {
-    expect(retryDueAt(parked({ attempt: 1 }))).toBe(NOW.getTime() + 5 * 60_000);
-    expect(retryDueAt(parked({ attempt: 2 }))).toBe(NOW.getTime() + 30 * 60_000);
-    expect(retryDueAt(parked({ attempt: 3 }))).toBe(NOW.getTime() + 2 * 60 * 60_000);
+    expect(retryDueAt(parked({ attempt: 1 }))).toBe(0);
+    expect(retryDueAt(parked({ attempt: 2 }))).toBe(0);
+    expect(retryDueAt(parked({ attempt: 3 }))).toBe(0);
   });
 
   it("schedules an owned run at its recovery timestamp and an unclaimed run immediately", () => {
@@ -1641,8 +2481,8 @@ describe("the retry schedule", () => {
           lease: { token: "lease-1", expiresAt: new Date(NOW.getTime() + 10_000).toISOString() }
         })
       )
-    ).toBe(NOW.getTime() + 10_000);
-    expect(retryDueAt(parked({ state: "working" }))).toBe(0);
+    ).toBeNull();
+    expect(retryDueAt(parked({ state: "working" }))).toBeNull();
     expect(retryDueAt(parked({ state: "queued" }))).toBe(0);
   });
 
@@ -1653,7 +2493,1339 @@ describe("the retry schedule", () => {
 
   it("agrees with itself about whether that moment has arrived", () => {
     const record = parked({ attempt: 1 });
-    expect(retryDue(record, new Date(NOW.getTime() + 5 * 60_000 - 1))).toBe(false);
+    expect(retryDue(record, new Date(NOW.getTime() + 5 * 60_000 - 1))).toBe(true);
     expect(retryDue(record, new Date(NOW.getTime() + 5 * 60_000))).toBe(true);
   });
+});
+
+describe("source Registry Group policy integration", () => {
+  it.each([
+    "initial",
+    "rebuild",
+    "one-group-fails",
+    "check-change",
+    "coverage3",
+    "coverage3-check",
+    "coverage4",
+    "coverage4-check",
+    "coverage4-gaps",
+    "coverage4-gaps-check",
+    "coverage4-native-discovery",
+    "coverage4-native-discovery-check"
+  ])("runs isolated new policy (%s)", async (scenario) => {
+    const coveragePolicy = scenario.startsWith("coverage");
+    const facetPolicy = scenario.startsWith("coverage4");
+    const facetGaps = scenario.includes("gaps");
+    const checkScenario = scenario === "check-change" || scenario.endsWith("-check");
+    const version = facetPolicy ? "8" : coveragePolicy ? "7" : "6";
+    const cReceiptTargets: string[] = [];
+    const store = await freshStore();
+    const machine = new FakeMachine();
+    const ai = new FakeAi();
+    const staging = new RebuildStagingStore(memoryStorage());
+    const course = courseRecord();
+    await store.upsertCourse(course);
+    await store.writeDraft({
+      assessments: [
+        {
+          assessmentId: "trusted-user",
+          courseId: course.courseId,
+          role: "assessment",
+          kind: "other",
+          name: "User object",
+          aliases: [],
+          marks: ["Edited"],
+          createdBy: "user",
+          createdAt: NOW.toISOString(),
+          updatedAt: NOW.toISOString()
+        }
+      ]
+    });
+    const drafts = [TASK_A_GUIDE, TASK_A_QUIZZES].map(
+      (value) =>
+        JSON.parse(
+          JSON.stringify(value)
+            .replaceAll('"line 2"', '"native-text"')
+            .replaceAll('"line 3"', '"native-text"')
+            .replaceAll('"line 1"', '"native-text"')
+        ) as typeof TASK_A_GUIDE
+    );
+    ai.handler = (call) => {
+      expect(call.schemaVersion).toBe("syllab.ai/session/1");
+      const delivery = JSON.parse(call.user) as {
+        roundId: string;
+        segmentId: string;
+        delivery: string;
+      };
+      const input = JSON.parse(delivery.delivery) as Record<string, unknown>;
+      let output: unknown;
+      if (call.promptVersion === `a-session/${version}`) {
+        const index = input.index as { sourceId: string };
+        const draft = drafts.find((d) => d.sourceId === index.sourceId);
+        if (!draft) throw Error("SYNTHETIC_SOURCE_MISSING");
+        output = {
+          ...draft,
+          fileContext: "Synthetic current course instructions",
+          identityContext: "Synthetic standalone tasks and quiz series",
+          assessmentDrafts: draft.assessmentDrafts.map((d) => ({
+            ...d,
+            aliases: [],
+            fields: d.fields.map((f) => ({ ...f, competingValues: [] }))
+          }))
+        };
+      } else if (call.promptVersion === `b1-session/${version}`) {
+        const admitted = input.drafts as Array<{ id: string; payload: { role: string } }>;
+        output = {
+          operations: admitted.flatMap((d, i) => [
+            {
+              id: `group-op-${String(i)}`,
+              recordId: `g-${String(i)}`,
+              expectedRevision: 0,
+              kind: "put",
+              record: {
+                id: `g-${String(i)}`,
+                revision: 1,
+                kind: "group",
+                payload: {
+                  memberDraftIds: [d.id],
+                  role: d.payload.role,
+                  parentGroupId: null,
+                  trustedObjectId: null,
+                  relevance: {
+                    status: "UNCERTAIN",
+                    basis: "Synthetic incomplete assignment context",
+                    supportingEvidence: [],
+                    contradictoryEvidence: []
+                  }
+                }
+              }
+            },
+            {
+              id: `disposition-op-${String(i)}`,
+              recordId: `disposition-${String(i)}`,
+              expectedRevision: 0,
+              kind: "put",
+              record: {
+                id: `disposition-${String(i)}`,
+                revision: 1,
+                kind: "draft-disposition",
+                payload: { inputId: d.id, disposition: "standalone", targetId: `g-${String(i)}` }
+              }
+            }
+          ])
+        };
+      } else if (call.promptVersion === `c-session/${version}`) {
+        const target = input.target as { objectId: string };
+        expect(input.current).not.toHaveProperty("assessments");
+        expect(input.latest).not.toHaveProperty("assessments");
+        output = {
+          schema: "syllab.ai.task-c/1",
+          changeResults: [
+            {
+              targetObjectId: target.objectId,
+              changeType: target.objectId === "trusted-user" ? "NO_MEANINGFUL_CHANGE" : "NEW",
+              currentEvidence: [],
+              newEvidence: [],
+              judgmentBasis: "Synthetic declared comparison"
+            }
+          ],
+          unresolvedIssues: []
+        };
+      } else {
+        expect(call.promptVersion).toBe(`b2-session/${version}`);
+        const group = input.group as {
+          id: string;
+          revision: number;
+          payload: { memberDraftIds: string[] };
+        };
+        const members = input.members as Array<{ payload: Record<string, unknown> }>;
+        expect(members).toHaveLength(1);
+        output = {
+          ...TASK_B_MERGED,
+          upstream: {
+            groupId: group.id,
+            revision: group.revision,
+            memberDraftIds: group.payload.memberDraftIds
+          },
+          canonicalAssessmentProposals: [
+            {
+              ...(members[0] as { payload: Record<string, unknown> }).payload,
+              canonicalName:
+                scenario === "one-group-fails" && group.id === "g-1"
+                  ? ""
+                  : (members[0] as { payload: Record<string, unknown> }).payload.name,
+              consolidatedFields: (members[0] as { payload: Record<string, unknown> }).payload
+                .fields,
+              supportingEvidence: (
+                members[0] as { payload: { fields: Array<{ evidence: unknown[] }> } }
+              ).payload.fields.flatMap((f) => f.evidence),
+              proposalId: group.id
+            }
+          ]
+        };
+      }
+      if (coveragePolicy && call.promptVersion === `a-session/${version}`) {
+        const authored = output as typeof TASK_A_GUIDE;
+        const inventory = authored.assessmentDrafts.flatMap((d) =>
+          d.fields.map((f) => ({
+            unitId: `${d.draftId}:${f.fieldName}`,
+            sourceId: authored.sourceId,
+            kind: "fact",
+            content: `Synthetic ${f.fieldName}`,
+            evidence: f.evidence,
+            ownerDraftId: d.draftId,
+            nodeName: f.fieldName
+          }))
+        );
+        output = {
+          ...authored,
+          semanticInventory: inventory,
+          sourceCoverage: [
+            {
+              locator: "native-text",
+              status: "EXAMINED",
+              reason: "Synthetic bounded examination",
+              evidence: inventory[0]?.evidence
+            }
+          ],
+          assessmentDrafts: authored.assessmentDrafts.map((d) => ({
+            ...d,
+            fields: d.fields.map((f) => ({
+              ...f,
+              coverageUnitIds: [`${d.draftId}:${f.fieldName}`]
+            }))
+          }))
+        };
+      }
+      if (coveragePolicy && call.promptVersion === `b1-session/${version}`) {
+        const authored = output as { operations: unknown[] };
+        const admitted = input.drafts as Array<{ id: string; payload: { draftId: string } }>;
+        const units = input.semanticInventory as Array<{
+          unitId: string;
+          ownerDraftId: string;
+          evidence: unknown[];
+        }>;
+        authored.operations.push(
+          ...units.map((u, i) => ({
+            id: `coverage-op-${String(i)}`,
+            recordId: `coverage-${String(i)}`,
+            expectedRevision: 0,
+            kind: "put",
+            record: {
+              id: `coverage-${String(i)}`,
+              revision: 1,
+              kind: "issue",
+              payload: {
+                semanticDisposition: {
+                  unitId: u.unitId,
+                  disposition: "GROUP",
+                  targetIds: [
+                    `g-${String(admitted.findIndex((d) => d.payload.draftId === u.ownerDraftId))}`
+                  ],
+                  reason: "Synthetic declared owner",
+                  evidence: u.evidence
+                }
+              }
+            }
+          }))
+        );
+      }
+      if (facetPolicy && call.system.includes("B2 INVENTORY PHASE")) {
+        const native = input.nativeContent as Array<{
+          sourceId: string;
+          locator: string;
+          text: string;
+        }>;
+        expect(native.length).toBeGreaterThan(0);
+        expect(native.every((range) => range.text.length > 0)).toBe(true);
+        const units = input.semanticInventory as Array<{
+          unitId: string;
+          sourceId: string;
+          content: string;
+          evidence: unknown[];
+          nodeName: string;
+        }>;
+        output = {
+          schema: "syllab.ai.semantic-facets/2",
+          nativeAudit: (
+            input.sourceContexts as Array<{
+              sourceId: string;
+              index: { units: Array<{ locator: string }> };
+            }>
+          ).flatMap((source) =>
+            source.index.units.map((range) => ({
+              sourceId: source.sourceId,
+              locator: range.locator,
+              status: "EXAMINED",
+              facetIds: units
+                .filter((u) => u.sourceId === source.sourceId)
+                .map((u) => `${u.unitId}:facet`),
+              reason: "Synthetic native scope reviewed",
+              evidence: [
+                {
+                  evidenceId: `audit:${source.sourceId}:${range.locator}`,
+                  sourceId: source.sourceId,
+                  locator: range.locator,
+                  excerpt:
+                    machine.sources
+                      .find((s) => s.sourceId === source.sourceId)
+                      ?.text.split("\n")[0] ?? ""
+                }
+              ]
+            }))
+          ),
+          unitReviews: units.map((u) => ({
+            unitId: u.unitId,
+            facetIds: [`${u.unitId}:facet`],
+            reason: "Synthetic singular Fact"
+          })),
+          facets: units.map((u) => ({
+            ...u,
+            unitId: `${u.unitId}:facet`,
+            parentUnitId: u.unitId,
+            modality: "fact"
+          })),
+          unresolvedIssues: facetGaps
+            ? [{ description: "Synthetic unreviewed native clause remains unresolved" }]
+            : []
+        };
+      }
+      if (
+        facetPolicy &&
+        scenario.includes("native-discovery") &&
+        call.system.includes("B2 INVENTORY PHASE")
+      ) {
+        const inventory = output as {
+          facets: Array<Record<string, unknown>>;
+          nativeAudit: Array<{ facetIds: string[] }>;
+        };
+        const first = inventory.facets[0];
+        if (!first) throw Error("SYNTHETIC_FACET_REQUIRED");
+        const id = `${String(first.unitId)}:native-extra`;
+        inventory.facets.push({ ...first, unitId: id, parentUnitId: null });
+        inventory.nativeAudit[0]?.facetIds.push(id);
+      }
+      if (
+        coveragePolicy &&
+        !call.system.includes("B2 INVENTORY PHASE") &&
+        call.promptVersion === `b2-session/${version}`
+      ) {
+        const authored = output as { canonicalAssessmentProposals: Array<{ proposalId: string }> };
+        const units = input.semanticInventory as Array<{
+          unitId: string;
+          nodeName: string;
+          evidence: unknown[];
+        }>;
+        output = {
+          ...authored,
+          semanticInventory: [],
+          coverageDecisions: units.map((u) => ({
+            unitId: u.unitId,
+            disposition: "KEEP",
+            reason: "Synthetic declared target",
+            evidence: u.evidence,
+            targets: [
+              {
+                proposalId: authored.canonicalAssessmentProposals[0]?.proposalId,
+                kind: "field",
+                id: u.nodeName
+              }
+            ]
+          }))
+        };
+      }
+      if (coveragePolicy && call.promptVersion === `c-session/${version}`) {
+        const target = input.target as { objectId: string };
+        if (facetGaps)
+          expect((input.coverage as { partialCoverage: boolean }).partialCoverage).toBe(true);
+        const receipts = input.semanticCoverage as Array<{ targetObjectId: string }> | undefined;
+        expect((receipts ?? []).every((r) => r.targetObjectId === target.objectId)).toBe(true);
+        if (receipts?.length) cReceiptTargets.push(target.objectId);
+      }
+      return {
+        schema: "syllab.ai/session/1",
+        roundId: delivery.roundId,
+        segmentId: delivery.segmentId,
+        kind: "ROUND_COMPLETE_FINAL",
+        carry: {},
+        output
+      };
+    };
+    const primary = ai.handler;
+    ai.handler = (call) => {
+      const result = primary(call) as { output: { operations?: unknown[] } };
+      if (checkScenario && call.promptVersion === `b1-session/${version}`)
+        result.output.operations?.push({
+          id: "trusted-disposition",
+          recordId: "trusted-identity",
+          expectedRevision: 0,
+          kind: "put",
+          record: {
+            id: "trusted-identity",
+            revision: 1,
+            kind: "identity",
+            payload: {
+              trustedObjectId: "trusted-user",
+              relationship: "missing",
+              reason: "Synthetic fixture missing latest"
+            }
+          }
+        });
+      return result;
+    };
+    const engine = engineFor({
+      store,
+      machine,
+      ai,
+      staging,
+      clock: new VirtualClock(),
+      newArchitecture: true
+    });
+    const before = await store.readTrustedSnapshot(course.courseId);
+    const workflow = await engine.start(
+      course,
+      scenario === "rebuild" ? "rebuild" : checkScenario ? "check" : "initial"
+    );
+    // These captured synthetic responses exercise /2 compatibility; /3 has a separate coverage suite.
+    workflow.semanticPolicy = facetPolicy
+      ? "assessment-relevance/4"
+      : coveragePolicy
+        ? "assessment-relevance/3"
+        : "assessment-relevance/2";
+    await store.saveWorkflow(workflow);
+    await engine.run(workflow.workflowId);
+    const final = (await store.listWorkflows()).find(
+      (w) => w.workflowId === workflow.workflowId
+    ) as WorkflowRecord;
+    expect(final.state, final.lastErrorDetail).toBe("waiting");
+    expect(final.waitingReason).toBe("review");
+    expect(ai.calls.filter((c) => c.promptVersion === `a-session/${version}`)).toHaveLength(2);
+    expect(ai.calls.filter((c) => c.promptVersion === `b1-session/${version}`)).toHaveLength(1);
+    expect(ai.calls.filter((c) => c.promptVersion === `b2-session/${version}`)).toHaveLength(
+      facetPolicy ? 6 : 3
+    );
+    expect(
+      ai.calls.some((c) => c.task === "teaching-classification" || c.task === "exhaustive-routing")
+    ).toBe(false);
+    const result = await staging.read(course.courseId, workflow.workflowId);
+    if (coveragePolicy && !checkScenario) {
+      expect(result?.taskBResult?.semanticCoverage).toHaveLength(3);
+      expect(result?.taskBResult?.unresolvedIssues).toHaveLength(facetGaps ? 3 : 0);
+    }
+    if (!checkScenario)
+      expect(result?.assessments).toHaveLength(scenario === "one-group-fails" ? 2 : 3);
+    else expect(ai.calls.filter((c) => c.promptVersion === `c-session/${version}`)).toHaveLength(4);
+    expect((await store.readTrustedSnapshot(course.courseId))?.assessments).toEqual(
+      before?.assessments
+    );
+    expect(await store.readHistory(course.courseId)).toEqual([]);
+    if (coveragePolicy && checkScenario) expect(cReceiptTargets).toHaveLength(3);
+    const calls = ai.calls.length;
+    await engine.run(workflow.workflowId);
+    expect(ai.calls).toHaveLength(calls);
+    // Incomplete semantic coverage deliberately disables the unchanged-Check fast path.
+    if (scenario === "one-group-fails" || facetGaps) return;
+    const check = await engine.start(course, "check");
+    check.semanticPolicy = facetPolicy
+      ? "assessment-relevance/4"
+      : coveragePolicy
+        ? "assessment-relevance/3"
+        : "assessment-relevance/2";
+    await store.saveWorkflow(check);
+    await engine.run(check.workflowId);
+    expect(ai.calls).toHaveLength(calls);
+    expect(
+      (await store.listWorkflows()).find((w) => w.workflowId === check.workflowId)?.state
+    ).toBe("complete");
+  });
+});
+
+describe("native global production workflow integration", () => {
+  it.each([false, true])(
+    "delivers native sources, reviews Rules and resumes without repeat (contract repair=%s)",
+    async (repair) => {
+      const store = await freshStore(),
+        machine = new FakeMachine(),
+        ai = new FakeAi(),
+        clock = new VirtualClock(),
+        staging = new RebuildStagingStore(memoryStorage());
+      const course = courseRecord();
+      await store.upsertCourse(course);
+      ai.handler = (call) => {
+        const d = JSON.parse(call.user) as {
+          snapshot: string;
+          claimAudit?: Array<{ claimId: string; kind?: string }>;
+          sources: Array<{
+            index: { sourceRef: string };
+            nativeContent: Array<{ passages: Array<{ refId?: string }> }>;
+          }>;
+        };
+        const first = d.sources[0];
+        if (!first) throw Error("SOURCE_MISSING");
+        const evidence = [
+          {
+            refId: first.nativeContent
+              .flatMap((u: { passages: Array<{ refId?: string }> }) => u.passages)
+              .find((p: { refId?: string }) => p.refId)?.refId
+          }
+        ];
+        return {
+          ...(d.claimAudit
+            ? {
+                claimAuditEncoding: "inline/1",
+                contentEncoding: "upstream-claim/1",
+                unmappedClaims: []
+              }
+            : {}),
+          evidenceEncoding: "native-ref/1",
+          schema: call.schemaVersion,
+          snapshot: d.snapshot,
+          coverage: d.sources.map((x: { index: { sourceRef: string } }) => ({
+            sourceRef: x.index.sourceRef,
+            examinedNativeLocators: "ALL_AVAILABLE_NATIVE",
+            unresolvedNativeLocators: [],
+            limitations: []
+          })),
+          output: {
+            schema: "syllab.ai.task-b/1",
+            identityResolutions: [],
+            canonicalAssessmentProposals: [
+              {
+                proposalId: "essay",
+                canonicalName: "Synthetic assignment",
+                type: "assignment",
+                role: "assessment",
+                aliases: [],
+                consolidatedFields:
+                  repair && ai.calls.length === 1
+                    ? [
+                        {
+                          fieldName: "venue",
+                          state: "EXPLICITLY_UNKNOWN",
+                          value: "TBA",
+                          competingValues: [],
+                          evidence
+                        }
+                      ]
+                    : [],
+                requirements: [
+                  {
+                    requirementId: "req",
+                    ...(d.claimAudit
+                      ? {
+                          contentRef: d.claimAudit.find((c) => c.kind === "requirement")?.claimId,
+                          reconciledClaimIds: d.claimAudit
+                            .filter((c) => c.kind === "requirement")
+                            .map((c) => c.claimId)
+                        }
+                      : { content: "Submit PDF." }),
+                    evidence
+                  }
+                ],
+                supportingEvidence: evidence,
+                unresolvedIssues: [{ description: "Applicability needs checking", evidence }]
+              }
+            ],
+            courseWideConstraintProposals: [
+              {
+                proposalId: "rule",
+                ...(d.claimAudit
+                  ? {
+                      contentRef: d.claimAudit.find((c) => c.kind === "rule")?.claimId,
+                      reconciledClaimIds: d.claimAudit
+                        .filter((c) => c.kind === "rule")
+                        .map((c) => c.claimId)
+                    }
+                  : { normalizedRuleContent: "Keep a copy." }),
+                supportingEvidence: evidence,
+                unresolvedIssues: []
+              }
+            ],
+            fieldConsolidationResults: [],
+            structuralRelationships: [],
+            unresolvedIssues: [{ description: "Unresolved course issue", evidence }]
+          }
+        };
+      };
+      const engine = engineFor({ store, machine, ai, clock, staging, directCourse: true });
+      const w = await engine.start(course, "initial");
+      await engine.run(w.workflowId);
+      const after = await store.readWorkflow(w.workflowId);
+      expect(after?.state, JSON.stringify(after)).toBe("waiting");
+      expect(after?.waitingReason).toBe("review");
+      expect(ai.calls).toHaveLength(repair ? 3 : 2);
+      const firstCall = ai.calls[0];
+      if (!firstCall) throw Error("CALL_MISSING");
+      const delivered = JSON.parse(firstCall.user) as { sources: unknown[] };
+      expect(delivered.sources).toHaveLength(2);
+      const snapshot = await store.readSnapshot(course.courseId);
+      expect(snapshot?.reviewItems).toHaveLength(2);
+      expect((await store.readTrustedSnapshot(course.courseId))?.constraints).toEqual([]);
+      expect((await store.readTrustedSnapshot(course.courseId))?.assessments).toEqual([]);
+      const views = new ViewBuilder({
+        store,
+        staging,
+        productVersion: "0.3.0",
+        settings: () =>
+          Promise.resolve({
+            apiKey: { state: "valid" },
+            privacy: true,
+            apiUsage: true,
+            version: "0.3.0"
+          })
+      });
+      const view = await views.build({
+        surface: "full-page",
+        screen: "IRV-01",
+        courseId: course.courseId
+      });
+      expect(view.review?.unresolvedQuestions).toContain("Unresolved course issue");
+      const rule = snapshot?.reviewItems.find(
+        (item) => item.targetId === snapshot.constraints[0]?.constraintId
+      );
+      const constraint = snapshot?.constraints[0];
+      if (!rule || !snapshot || !constraint) throw Error("MISSING_RULE");
+      const { applyInitialReviewDecision } = await import("./course-state");
+      const result = applyInitialReviewDecision(snapshot, {
+        reviewItemId: rule.reviewItemId,
+        kind: "Confirm",
+        constraint,
+        expectedRevision: snapshot.course.currentRevision,
+        now: NOW.toISOString()
+      });
+      await store.commitReviewDecision(course.courseId, rule.reviewItemId, result);
+      expect((await store.readTrustedSnapshot(course.courseId))?.constraints).toHaveLength(1);
+      expect((await store.readTrustedSnapshot(course.courseId))?.assessments).toEqual([]);
+      await engine.run(w.workflowId);
+      expect(ai.calls).toHaveLength(repair ? 3 : 2);
+    }
+  );
+});
+
+describe("selective CourseDraft integrated workflow", () => {
+  it.each([false, true])(
+    "runs Initial → Human Confirm → edited Check → Human Accept → isolated Rebuild (typed product=%s)",
+    async (typedProduct) => {
+      const store = await freshStore(),
+        machine = new FakeMachine(),
+        ai = new FakeAi(),
+        clock = new VirtualClock(),
+        staging = new RebuildStagingStore(memoryStorage());
+      const course = courseRecord();
+      await store.upsertCourse(course);
+      machine.sources = [
+        {
+          sourceId: "src-guide",
+          title: "Reflection guide",
+          kind: "attachment",
+          text: "Reflection 40%. Submit PDF by Friday. You may include a diagram if useful, except when confidential."
+        },
+        {
+          sourceId: "src-teaching",
+          title: "Ordinary lecture",
+          kind: "attachment",
+          text: "Theory. Examples can explain concepts. End."
+        }
+      ];
+      let weight = "40%";
+      let withdrawn = false;
+      const submission = () =>
+        withdrawn
+          ? "The Friday PDF upload is withdrawn; no upload is required."
+          : "Submit PDF by Friday.";
+      ai.handler = (call) => {
+        const input = JSON.parse(call.user) as Record<string, unknown>,
+          schema = SELECTIVE_COURSE_SCHEMA;
+        if (call.promptVersion.endsWith(":inspect"))
+          return {
+            schema,
+            decisions: (input.sources as SourceRecord[]).map((s) => ({
+              sourceId: s.sourceId,
+              depth: s.sourceId === "src-guide" ? "DEEP" : "INSPECTED",
+              locators: s.sourceId === "src-guide" ? ["native-text"] : [],
+              reason:
+                s.sourceId === "src-guide"
+                  ? "Current assessment instructions need native reading"
+                  : "Preliminary teaching observation; omitted content remains a risk"
+            }))
+          };
+        if (call.promptVersion.endsWith(":read"))
+          return {
+            schema,
+            notes: [
+              {
+                sourceId: "src-guide",
+                clauses: [
+                  {
+                    kind: "identity",
+                    content: "Current Reflection",
+                    state: "KNOWN",
+                    competingValues: [],
+                    modality: "descriptive",
+                    conditions: [],
+                    exceptions: [],
+                    applicability: "CURRENT",
+                    context: "Current guide",
+                    evidence: [{ refId: "n1.1.1" }]
+                  },
+                  {
+                    kind: "field",
+                    field: "weight",
+                    content: `Reflection ${weight}`,
+                    state: "KNOWN",
+                    value: weight,
+                    competingValues: [],
+                    modality: "descriptive",
+                    conditions: [],
+                    exceptions: [],
+                    applicability: "CURRENT",
+                    context: "Current guide",
+                    evidence: [{ refId: "n1.1.1" }]
+                  },
+                  {
+                    kind: "requirement",
+                    content: submission(),
+                    state: "KNOWN",
+                    competingValues: [],
+                    modality: "must",
+                    conditions: [],
+                    exceptions: [],
+                    applicability: "CURRENT",
+                    context: "Reflection",
+                    evidence: [{ refId: "n1.1.1" }]
+                  },
+                  {
+                    kind: "requirement",
+                    content: "You may include a diagram.",
+                    state: "KNOWN",
+                    competingValues: [],
+                    modality: "may",
+                    conditions: ["if useful"],
+                    exceptions: ["except when confidential"],
+                    applicability: "CURRENT",
+                    context: "Reflection",
+                    evidence: [{ refId: "n1.1.1" }]
+                  }
+                ]
+              }
+            ],
+            reads: []
+          };
+        if (call.promptVersion.endsWith(":link") || call.promptVersion.endsWith(":link-update")) {
+          const clauses = input.clauses as Clause[],
+            previous = input.previous as { entities?: Array<{ ref: string }> } | undefined;
+          const ref = previous?.entities?.[0]?.ref ?? "reflection";
+          const linked = {
+            schema,
+            entities: [
+              {
+                ref,
+                name: "Reflection",
+                type: "assignment",
+                role: "assessment",
+                aliases: [],
+                clauseRefs: [clauses[0]?.clauseId]
+              }
+            ],
+            links: clauses.map((c) => ({
+              clauseRef: c.clauseId,
+              ownerRef: ref,
+              disposition: "CURRENT",
+              state: c.value.state,
+              competingClauseRefs: [],
+              resolutionClauseRefs: [],
+              basis: "Current guide"
+            })),
+            identities: [],
+            reads: []
+          };
+          return call.promptVersion.endsWith(":link-update")
+            ? {
+                schema,
+                patch: {
+                  entities: linked.entities,
+                  links: linked.links,
+                  identities: linked.identities
+                },
+                reads: []
+              }
+            : linked;
+        }
+        if (call.promptVersion.endsWith(":screen"))
+          return {
+            schema,
+            decisions: (input.sources as Array<{ sourceId: string }>).map((source) => ({
+              sourceId: source.sourceId,
+              depth: "INSPECTED",
+              locators: [],
+              reason: "Complete synthetic teaching text contains no task signal"
+            }))
+          };
+        if (call.promptVersion === "course-product/1:organize") {
+          const entities = input.entities as Array<{ ref: string }>;
+          const clauses = input.clauses as Array<{ clauseId: string; evidenceRefs: string[] }>;
+          const native = input.evidenceCatalog as Array<{ ref: string; excerpt: string }>;
+          return {
+            schema: "syllab.ai.course-product/1",
+            product: {
+              entities: entities.map((entity) => ({
+                ownerRef: entity.ref,
+                disposition: "CURRENT",
+                basis: "Synthetic authored reflection"
+              })),
+              propositions: clauses.map((clause, i) => ({
+                propositionRef: `reflection.${String(i)}`,
+                ownerRef: required(entities[0]).ref,
+                predicate: i === 0 ? "identity" : i === 1 ? "weight" : "requirement",
+                value: {
+                  state: "KNOWN",
+                  value:
+                    i === 0
+                      ? "Reflection"
+                      : i === 1
+                        ? weight
+                        : i === 2
+                          ? submission()
+                          : "You may include a diagram."
+                },
+                unit: i === 1 ? "percent_course" : "text",
+                disposition: "ACTION",
+                role: i < 2 ? "core" : "action",
+                title: i === 1 ? "Course weight" : "Reflection requirement",
+                group: "Reflection",
+                relation: "INDEPENDENT",
+                modality: i < 2 ? "descriptive" : i === 2 ? "must" : "may",
+                conditions: i === 3 ? ["if useful"] : [],
+                exceptions: i === 3 ? ["except when confidential"] : [],
+                clauseRefs: [clause.clauseId],
+                support: [
+                  {
+                    clauseRef: clause.clauseId,
+                    quote: required(native.find((e) => clause.evidenceRefs.includes(e.ref))).excerpt
+                  }
+                ],
+                basis: "Synthetic native evidence",
+                independentReview: false
+              })),
+              context: []
+            }
+          };
+        }
+        if (call.promptVersion === "bounded-product-audit/2:local-repair") {
+          const props = input.propositions as Array<Record<string, unknown>>;
+          const clauses = input.clauses as Array<{ clauseId: string; evidenceRefs: string[] }>;
+          const native = input.nativeEvidence as Array<{ ref: string; excerpt: string }>;
+          return {
+            schema: "syllab.ai.course-product/1",
+            propositions: props.map((prop, i) => {
+              const clause = required(clauses[i]);
+              return {
+                ...prop,
+                ...(prop.predicate === "weight"
+                  ? { value: { state: "KNOWN", value: weight } }
+                  : prop.propositionRef === "reflection.2"
+                    ? { value: { state: "KNOWN", value: submission() } }
+                    : {}),
+                clauseRefs: [clause.clauseId],
+                support: [
+                  {
+                    clauseRef: clause.clauseId,
+                    quote: required(native.find((e) => clause.evidenceRefs.includes(e.ref))).excerpt
+                  }
+                ]
+              };
+            }),
+            entities: input.entities,
+            context: []
+          };
+        }
+        if (call.promptVersion.startsWith("bounded-product-audit/2:"))
+          return {
+            schema: "syllab.ai.course-product/1",
+            taskRef: input.taskRef,
+            checkedRefs: input.checkedRefs,
+            complete: true,
+            valid: true,
+            issues: []
+          };
+        if (call.promptVersion.endsWith(":compare-delta")) {
+          const current = input.currentFacts as FactRecord[],
+            latest = input.latestFacts as FactRecord[];
+          if (withdrawn) {
+            const old = required(current.find((f) => f.field === "requirement")),
+              witness = required(latest.find((f) => f.semanticClause?.content === submission()));
+            return {
+              schema,
+              changes: [
+                ...current
+                  .filter((f) => f.factId !== old.factId)
+                  .map((f) => ({
+                    changeType: "NO_MEANINGFUL_CHANGE",
+                    currentFactRef: f.factId,
+                    latestFactRef: required(
+                      latest.find(
+                        (n) =>
+                          n.field === f.field &&
+                          n.semanticClause?.content === f.semanticClause?.content
+                      )
+                    ).factId,
+                    judgmentBasis: "Unchanged independent meaning in reread source"
+                  })),
+                {
+                  changeType: "POSSIBLY_REMOVED",
+                  currentFactRef: old.factId,
+                  witnessFactRefs: [witness.factId],
+                  judgmentBasis: "Explicit withdrawal in completely read current source"
+                },
+                {
+                  changeType: "CHANGED",
+                  latestFactRef: witness.factId,
+                  judgmentBasis: "Withdrawal remains a separate current instruction"
+                }
+              ]
+            };
+          }
+          return {
+            schema,
+            changes: current.map((old) => {
+              const next = latest.find(
+                (f) =>
+                  f.field === old.field &&
+                  (f.field !== "requirement" ||
+                    f.semanticClause?.content === old.semanticClause?.content)
+              );
+              if (!next) throw Error("MISSING_SCRIPTED_LATEST");
+              return {
+                changeType:
+                  JSON.stringify(old.value) === JSON.stringify(next.value)
+                    ? "NO_MEANINGFUL_CHANGE"
+                    : "CHANGED",
+                currentFactRef: old.factId,
+                latestFactRef: next.factId,
+                judgmentBasis: "Compare actual local value with latest source"
+              };
+            })
+          };
+        }
+        throw Error("UNEXPECTED_SELECTIVE_TASK");
+      };
+      const engine = engineFor({
+        store,
+        machine,
+        ai,
+        clock,
+        staging,
+        directCourse: true,
+        selectiveCourse: true,
+        projectedCourse: typedProduct
+      });
+      const initial = await engine.start(course, "initial");
+      await engine.run(initial.workflowId);
+      expect(await store.readWorkflow(initial.workflowId)).toMatchObject({
+        directCoursePolicy: typedProduct ? "selective-draft/3" : "selective-draft/1",
+        waitingReason: "review"
+      });
+      const snapshot = await store.readSnapshot(course.courseId);
+      expect(snapshot?.facts).toHaveLength(4);
+      expect(snapshot?.reviewItems).toHaveLength(1);
+      expect((await store.readTrustedSnapshot(course.courseId))?.facts).toEqual([]);
+      expect(ai.calls.filter((c) => c.promptVersion.endsWith(":read"))).toHaveLength(1);
+      expect(ai.calls.find((c) => c.promptVersion.endsWith(":read"))?.user).not.toContain(
+        "Examples can explain concepts"
+      );
+      const { applyInitialReviewDecision, editFact } = await import("./course-state");
+      if (!snapshot) throw Error("SNAPSHOT_MISSING");
+      const review = required(snapshot.reviewItems[0]),
+        assessment = required(snapshot.assessments[0]);
+      await store.commitReviewDecision(
+        course.courseId,
+        review.reviewItemId,
+        applyInitialReviewDecision(snapshot, {
+          reviewItemId: review.reviewItemId,
+          kind: "Confirm",
+          assessment,
+          facts: snapshot.facts,
+          expectedRevision: 0,
+          now: clock.now().toISOString()
+        })
+      );
+      await engine.run(initial.workflowId);
+      let trusted = required(await store.readTrustedSnapshot(course.courseId));
+      const edited = editFact(trusted, {
+        factId: required(trusted.facts.find((f) => f.field === "weight")).factId,
+        value: { state: "KNOWN", value: "41%" },
+        expectedRevision: trusted.course.currentRevision,
+        now: clock.now().toISOString()
+      });
+      await store.commitMutation(course.courseId, edited);
+      trusted = required(await store.readTrustedSnapshot(course.courseId));
+      const unchangedCalls = ai.calls.length;
+      const unchanged = await engine.start(trusted.course, "check");
+      await engine.run(unchanged.workflowId);
+      expect((await store.readWorkflow(unchanged.workflowId))?.state).toBe("complete");
+      expect(ai.calls.length).toBe(unchangedCalls);
+      expect((await store.readTrustedSnapshot(course.courseId))?.facts).toEqual(trusted.facts);
+      weight = "45%";
+      required(machine.sources[0]).text = required(machine.sources[0]).text.replace("40%", "45%");
+      const check = await engine.start(trusted.course, "check");
+      await engine.run(check.workflowId);
+      expect((await store.readWorkflow(check.workflowId))?.lastErrorDetail).toBeUndefined();
+      expect(await store.readWorkflow(check.workflowId)).toMatchObject({ state: "waiting" });
+      const checked = required(await store.readSnapshot(course.courseId));
+      expect(checked.changes).toHaveLength(1);
+      expect(checked.changes[0]?.currentValue?.value).toBe("41%");
+      expect(checked.changes[0]?.currentEvidenceIds).toEqual([]);
+      expect(
+        (await store.readTrustedSnapshot(course.courseId))?.facts.find((f) => f.field === "weight")
+          ?.value.value
+      ).toBe("41%");
+      const change = required(checked.changes[0]),
+        item = required(checked.reviewItems.find((i) => i.payload.changeId === change.changeId));
+      await store.commitReviewDecision(
+        course.courseId,
+        item.reviewItemId,
+        acceptChange(checked, {
+          changeId: change.changeId,
+          expectedRevision: checked.course.currentRevision,
+          now: clock.now().toISOString(),
+          evidenceRefs: required(change.proposedFact).evidenceRefs
+        })
+      );
+      await engine.run(check.workflowId);
+      trusted = required(await store.readTrustedSnapshot(course.courseId));
+      expect(trusted.facts.find((f) => f.field === "weight")?.semanticClause?.content).toBe(
+        typedProduct ? "45%" : "Reflection 45%"
+      );
+      const before = structuredClone(trusted),
+        paidBefore = ai.calls.length;
+      const rebuild = await engine.start(trusted.course, "rebuild");
+      await engine.run(rebuild.workflowId);
+      expect(await store.readTrustedSnapshot(course.courseId)).toEqual(before);
+      const preview = await staging.read(course.courseId, rebuild.workflowId);
+      expect(preview?.facts).toHaveLength(4);
+      const optionalDiagram = preview?.facts.find((f) => f.semanticClause?.modality === "may");
+      if (typedProduct)
+        expect(optionalDiagram?.product?.exceptions).toContain("except when confidential");
+      else expect(optionalDiagram?.value.value).toContain("except when confidential");
+      const views = new ViewBuilder({
+        store,
+        staging,
+        productVersion: "0.3.0",
+        settings: () =>
+          Promise.resolve({
+            apiKey: { state: "valid" },
+            privacy: true,
+            apiUsage: true,
+            version: "0.3.0"
+          })
+      });
+      const rebuilt = await views.build({
+        surface: "full-page",
+        screen: "RBL-03",
+        courseId: course.courseId
+      });
+      if (typedProduct) expect(rebuilt.rebuildPreview?.unresolvedQuestions).toEqual([]);
+      else
+        expect(rebuilt.rebuildPreview?.unresolvedQuestions?.join(" ")).toContain("Reading scope:");
+      expect(
+        rebuilt.rebuildPreview?.course.assessments[0]?.facts.some((f) => f.label.includes("may"))
+      ).toBe(true);
+      expect(ai.calls.slice(paidBefore).filter((c) => c.promptVersion.endsWith(":read"))).toEqual(
+        []
+      );
+      if (typedProduct) {
+        const saved = required(await store.readTrustedSnapshot(course.courseId));
+        const upload = required(
+          saved.facts.find((f) => f.semanticClause?.content === "Submit PDF by Friday.")
+        );
+        await store.commitMutation(
+          course.courseId,
+          editFact(saved, {
+            factId: upload.factId,
+            value: { state: "KNOWN", value: "My PDF upload reminder" },
+            expectedRevision: saved.course.currentRevision,
+            now: clock.now().toISOString()
+          })
+        );
+        const beforeWithdrawal = required(await store.readTrustedSnapshot(course.courseId));
+        withdrawn = true;
+        required(machine.sources[0]).text =
+          `Reflection 45%. ${submission()} You may include a diagram if useful, except when confidential.`;
+        const withdrawalCheck = await engine.start(beforeWithdrawal.course, "check");
+        await engine.run(withdrawalCheck.workflowId);
+        expect(
+          (await store.readWorkflow(withdrawalCheck.workflowId))?.lastErrorDetail
+        ).toBeUndefined();
+        const pending = required(await store.readSnapshot(course.courseId));
+        const removal = required(pending.changes.find((c) => c.changeType === "POSSIBLY_REMOVED"));
+        expect(removal.currentValue?.value).toBe("My PDF upload reminder");
+        expect(removal.latestValue).toBeUndefined();
+        expect(removal.newEvidenceIds.length).toBeGreaterThan(0);
+        expect((await store.readTrustedSnapshot(course.courseId))?.facts).toEqual(
+          beforeWithdrawal.facts
+        );
+        const removalItem = required(
+          pending.reviewItems.find((r) => r.payload.changeId === removal.changeId)
+        );
+        const { keepPossiblyRemoved } = await import("./course-state");
+        await store.commitReviewDecision(
+          course.courseId,
+          removalItem.reviewItemId,
+          keepPossiblyRemoved(pending, {
+            changeId: removal.changeId,
+            expectedRevision: pending.course.currentRevision,
+            now: clock.now().toISOString()
+          })
+        );
+        expect(
+          (await store.readTrustedSnapshot(course.courseId))?.facts.find(
+            (f) => f.factId === upload.factId
+          )
+        ).toEqual(required(beforeWithdrawal.facts.find((f) => f.factId === upload.factId)));
+        expect(
+          (await store.readSnapshot(course.courseId))?.changes.some(
+            (c) => c.changeType === "POSSIBLY_REMOVED"
+          )
+        ).toBe(false);
+        expect((await store.readSnapshot(course.courseId))?.reviewItems.length).toBeGreaterThan(0);
+      }
+    }
+  );
+});
+
+function required<T>(value: T | undefined | null): T {
+  if (value == null) throw Error("SYNTHETIC_EXPECTED_VALUE_MISSING");
+  return value;
+}
+
+it("recovers an undated hidden instruction through the production workflow into independent Initial Review without trusted promotion", async () => {
+  const store = await freshStore(),
+    machine = new FakeMachine(),
+    ai = new FakeAi(),
+    clock = new VirtualClock();
+  const course = courseRecord();
+  await store.upsertCourse(course);
+  const instruction = "Upload a memo before class if assigned, unless an extension is approved.";
+  machine.sources = [
+    {
+      sourceId: "ordinary",
+      title: "Methods lecture",
+      kind: "attachment",
+      text: `Theory and worked examples. ${instruction}`
+    }
+  ];
+  ai.handler = (call) => {
+    const input = JSON.parse(call.user) as Record<string, unknown>,
+      schema = SELECTIVE_COURSE_SCHEMA;
+    if (call.promptVersion.endsWith(":inspect") || call.promptVersion.endsWith(":screen"))
+      return {
+        schema,
+        decisions: [
+          {
+            sourceId: "ordinary",
+            depth: "INSPECTED",
+            locators: [],
+            reason:
+              "Simulated preliminary miss; full native risk audit must independently recover it."
+          }
+        ]
+      };
+    if (call.promptVersion.endsWith(":link"))
+      return { schema, entities: [], links: [], identities: [], reads: [] };
+    if (call.promptVersion === "course-product/1:organize")
+      return {
+        schema: "syllab.ai.course-product/1",
+        product: { entities: [], propositions: [], context: [] }
+      };
+    if (call.promptVersion.endsWith(":read")) {
+      expect(input.riskRecovery).toBeDefined();
+      return {
+        schema,
+        notes: [
+          {
+            sourceId: "ordinary",
+            clauses: [
+              {
+                kind: "requirement",
+                content: instruction,
+                state: "KNOWN",
+                competingValues: [],
+                modality: "must",
+                conditions: ["if assigned"],
+                exceptions: ["unless an extension is approved"],
+                applicability: "CURRENT",
+                context: "Authored instruction",
+                evidence: [{ refId: "n1.1.1" }]
+              }
+            ]
+          }
+        ],
+        reads: []
+      };
+    }
+    if (call.promptVersion.endsWith(":link-patch")) {
+      const ref = required((input.clauses as Clause[])[0]).clauseId;
+      return {
+        schema,
+        patch: {
+          entities: [
+            {
+              ref: "memo",
+              name: "Memo",
+              type: "assignment",
+              role: "assessment",
+              aliases: [],
+              clauseRefs: [ref]
+            }
+          ],
+          links: [
+            {
+              clauseRef: ref,
+              ownerRef: "memo",
+              disposition: "CURRENT",
+              state: "KNOWN",
+              competingClauseRefs: [],
+              resolutionClauseRefs: [],
+              basis: "Authored upload instruction"
+            }
+          ],
+          identities: []
+        },
+        reads: []
+      };
+    }
+    if (call.promptVersion === "bounded-product-audit/2:local-repair") {
+      const ref = required((input.clauses as Array<{ clauseId: string }>)[0]).clauseId;
+      return {
+        schema: "syllab.ai.course-product/1",
+        entities: [
+          { ownerRef: "memo", disposition: "CURRENT", basis: "Authored current instruction" }
+        ],
+        propositions: [
+          {
+            propositionRef: "memo.upload",
+            ownerRef: "memo",
+            predicate: "requirement",
+            value: { state: "KNOWN", value: instruction },
+            unit: "text",
+            disposition: "ACTION",
+            role: "action",
+            title: "Upload memo",
+            group: "Submission",
+            relation: "INDEPENDENT",
+            modality: "must",
+            conditions: ["if assigned"],
+            exceptions: ["unless an extension is approved"],
+            clauseRefs: [ref],
+            support: [{ clauseRef: ref, quote: instruction }],
+            basis: "Exact native instruction",
+            independentReview: true
+          }
+        ],
+        context: []
+      };
+    }
+    if (call.promptVersion.startsWith("bounded-product-audit/2:")) {
+      const evidence = input.evidence as Array<{ ref: string; excerpt: string }> | undefined;
+      const missing = call.promptVersion.endsWith(":source") && !(input.claims as unknown[]).length;
+      const passage = missing
+        ? required(evidence?.find((e) => e.excerpt.includes(instruction)))
+        : undefined;
+      return {
+        schema: "syllab.ai.course-product/1",
+        taskRef: input.taskRef,
+        checkedRefs: input.checkedRefs,
+        complete: true,
+        valid: !missing,
+        issues: passage
+          ? [
+              {
+                code: "MISSING_NATIVE_TASK",
+                description: "Upload obligation missing from Reader",
+                propositionRefs: [],
+                clauseRefs: [],
+                requiresRead: true,
+                nativeRefs: [passage.ref],
+                nativeQuote: instruction
+              }
+            ]
+          : []
+      };
+    }
+    throw Error("UNEXPECTED_HIDDEN_TASK_STAGE:" + call.promptVersion);
+  };
+  const engine = engineFor({
+    store,
+    machine,
+    ai,
+    clock,
+    staging: new RebuildStagingStore(memoryStorage()),
+    directCourse: true,
+    selectiveCourse: true,
+    projectedCourse: true
+  });
+  const workflow = await engine.start(course, "initial");
+  await engine.run(workflow.workflowId);
+  expect(await store.readWorkflow(workflow.workflowId)).toMatchObject({
+    directCoursePolicy: "selective-draft/3",
+    state: "waiting",
+    waitingReason: "review"
+  });
+  const snapshot = required(await store.readSnapshot(course.courseId));
+  expect(snapshot.assessments.map((a) => a.name)).toEqual(["Memo"]);
+  expect(snapshot.facts).toHaveLength(1);
+  expect(required(snapshot.facts[0]).semanticClause).toMatchObject({
+    modality: "must",
+    conditions: ["if assigned"],
+    exceptions: ["unless an extension is approved"]
+  });
+  expect(snapshot.reviewItems).toHaveLength(2);
+  expect(snapshot.reviewItems.map((i) => i.payload.scopeFactIds)).toEqual([
+    [],
+    [required(snapshot.facts[0]).factId]
+  ]);
+  expect((await store.readTrustedSnapshot(course.courseId))?.facts).toEqual([]);
+  expect(ai.calls.filter((c) => c.promptVersion.endsWith(":read"))).toHaveLength(1);
+  expect(ai.calls.filter((c) => c.promptVersion.endsWith(":inspect"))).toHaveLength(1);
+  expect(ai.calls.filter((c) => c.promptVersion === "course-product/1:organize")).toHaveLength(1);
+  const { applyInitialReviewDecision } = await import("./course-state");
+  const identity = required(snapshot.reviewItems.find((i) => i.payload.ownerScope === true));
+  await store.commitReviewDecision(
+    course.courseId,
+    identity.reviewItemId,
+    applyInitialReviewDecision(snapshot, {
+      reviewItemId: identity.reviewItemId,
+      kind: "Confirm",
+      assessment: required(snapshot.assessments[0]),
+      facts: [],
+      expectedRevision: snapshot.course.currentRevision,
+      now: clock.now().toISOString()
+    })
+  );
+  expect((await store.readTrustedSnapshot(course.courseId))?.facts).toEqual([]);
+  const pending = required(await store.readSnapshot(course.courseId));
+  expect(pending.reviewItems).toHaveLength(1);
+  const action = required(pending.reviewItems[0]);
+  await store.commitReviewDecision(
+    course.courseId,
+    action.reviewItemId,
+    applyInitialReviewDecision(pending, {
+      reviewItemId: action.reviewItemId,
+      kind: "Confirm",
+      assessment: required(pending.assessments[0]),
+      facts: pending.facts,
+      expectedRevision: pending.course.currentRevision,
+      now: clock.now().toISOString()
+    })
+  );
+  const accepted = required(await store.readTrustedSnapshot(course.courseId));
+  expect(accepted.facts).toHaveLength(1);
+  expect(required(accepted.facts[0]).semanticClause).toMatchObject({
+    conditions: ["if assigned"],
+    exceptions: ["unless an extension is approved"]
+  });
+  const native = await store.readEvidence(
+    required(accepted.facts[0]).evidenceRefs.map((e) => required(e.evidenceId))
+  );
+  expect(native.some((e) => e.excerpt.includes(instruction))).toBe(true);
 });

@@ -80,13 +80,17 @@ export interface TaskCFixture extends FixtureBase {
 
 export type AiFixture = TaskAFixture | TaskBFixture | TaskCFixture;
 
+// Legacy split/consolidation cases intentionally simulate a small provider context budget.
 export function chunksFor(source: FixtureSource): Chunk[] {
-  return planChunks({
-    sourceId: source.sourceId,
-    locator: source.title,
-    text: source.text,
-    structure: source.structure
-  });
+  return planChunks(
+    {
+      sourceId: source.sourceId,
+      locator: source.title,
+      text: source.text,
+      structure: source.structure
+    },
+    { targetChars: 10_000, hardLimitChars: 14_000 }
+  );
 }
 
 /** A deterministic filler block; long Sources in these fixtures are built only from this. */

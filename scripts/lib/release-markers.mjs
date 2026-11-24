@@ -25,6 +25,7 @@ export const RELEASE_FORBIDDEN = [
   "isE2eMessage",
   "e2e-fixtures",
   "syllab.qa.trace",
+  "syllab.qa.private-streams",
   "qaTrace",
   "qaBuild",
   "qa.date-resolution",

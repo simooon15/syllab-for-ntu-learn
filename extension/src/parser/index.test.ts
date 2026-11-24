@@ -76,7 +76,7 @@ describe("document parser", () => {
   it("extracts PDF text in page order with locators", async () => {
     const result = await parseDocument(makePdf(["First page", "Second page"]));
     expect(result).toMatchObject({ format: "pdf", status: "parsed" });
-    expect(result.units).toEqual([
+    expect(result.units).toMatchObject([
       { locator: "page:1", text: "First page", partial: false },
       { locator: "page:2", text: "Second page", partial: false }
     ]);
@@ -94,7 +94,7 @@ describe("document parser", () => {
       format: "docx",
       units: [
         { locator: "paragraph:1", text: "First paragraph" },
-        { locator: "paragraph:2", text: "Cell text" }
+        { locator: "table:1", text: "Cell text" }
       ]
     });
   });
@@ -124,10 +124,122 @@ describe("document parser", () => {
     ).resolves.toMatchObject({ status: "failed", diagnosticsCode: "SIZE_LIMIT" });
   });
 
+  it("uses presentation relationships instead of slide filenames and keeps visual gaps partial", async () => {
+    const result = await parseDocument(
+      zipSync({
+        "[Content_Types].xml": strToU8("<Types>presentationml</Types>"),
+        "ppt/presentation.xml": strToU8(
+          '<p:presentation><p:sldIdLst><p:sldId r:id="second"/><p:sldId r:id="first"/></p:sldIdLst></p:presentation>'
+        ),
+        "ppt/_rels/presentation.xml.rels": strToU8(
+          '<Relationships><Relationship Id="first" Target="slides/slide1.xml"/><Relationship Id="second" Target="slides/slide2.xml"/></Relationships>'
+        ),
+        "ppt/slides/slide1.xml": strToU8("<p:sld><a:t>First file</a:t></p:sld>"),
+        "ppt/slides/slide2.xml": strToU8("<p:sld><a:t>Second file</a:t><p:pic/></p:sld>")
+      })
+    );
+    expect(result.status).toBe("partial");
+    expect(result.units[0]).toMatchObject({
+      locator: "slide:1",
+      text: "Second file",
+      partial: true
+    });
+    expect(result.units[1]?.text).toBe("First file");
+  });
+
+  it("retains DOCX image relationships at the original paragraph locator", async () => {
+    const result = await parseDocument(
+      zipSync({
+        "[Content_Types].xml": strToU8("<Types>wordprocessingml</Types>"),
+        "word/document.xml": strToU8(
+          '<w:document><w:body><w:p><w:drawing><a:blip r:embed="image1"/></w:drawing></w:p></w:body></w:document>'
+        ),
+        "word/_rels/document.xml.rels": strToU8(
+          '<Relationships><Relationship Id="image1" Target="media/image1.png"/><Relationship Id="remote" Target="https://invalid.example/image" TargetMode="External"/></Relationships>'
+        )
+      })
+    );
+    expect(result).toMatchObject({
+      status: "partial",
+      units: [
+        { locator: "paragraph:1", partial: true, embeddedImagePaths: ["word/media/image1.png"] }
+      ]
+    });
+  });
+
+  it("does not repeat a spreadsheet drawing for each native row", async () => {
+    const result = await parseDocument(
+      zipSync({
+        "[Content_Types].xml": strToU8("<Types>spreadsheetml</Types>"),
+        "xl/worksheets/sheet1.xml": strToU8(
+          '<worksheet><sheetData><row r="1"><c r="A1"><v>10</v></c></row><row r="2"><c r="A2"><v>20</v></c></row></sheetData><drawing r:id="drawing1"/></worksheet>'
+        )
+      })
+    );
+    expect(result.status).toBe("partial");
+    expect(result.units.filter((unit) => unit.partial)).toMatchObject([
+      { locator: "sheet:1:visual" }
+    ]);
+    expect(result.units.slice(0, 2).every((unit) => !unit.partial)).toBe(true);
+  });
+
+  it("retains native table cell boundaries and marks uncached formulas unresolved", async () => {
+    const doc = await parseDocument(makeDocx());
+    expect(doc.units[1]?.cells).toEqual([{ reference: "row:1:cell:1", value: "Cell text" }]);
+    const sheet = await parseDocument(
+      zipSync({
+        "[Content_Types].xml": strToU8("<Types>spreadsheetml</Types>"),
+        "xl/worksheets/sheet1.xml": strToU8(
+          '<worksheet><sheetData><row r="1"><c r="A1"><f>SUM(B1:B2)</f></c></row></sheetData></worksheet>'
+        )
+      })
+    );
+    expect(sheet.status).toBe("partial");
+    expect(sheet.units).toContainEqual(
+      expect.objectContaining({
+        locator: "sheet:1:visual",
+        partial: true,
+        visualGaps: ["formula-without-cached-value"]
+      })
+    );
+    expect(sheet.units[0]?.cells?.[0]).toMatchObject({ reference: "A1", formula: "SUM(B1:B2)" });
+  });
+
+  it("does not certify image-only header coverage as native complete", async () => {
+    const result = await parseDocument(
+      zipSync({
+        "[Content_Types].xml": strToU8("<Types>wordprocessingml</Types>"),
+        "word/document.xml": strToU8(
+          "<w:document><w:body><w:p><w:r><w:t>Body</w:t></w:r></w:p></w:body></w:document>"
+        ),
+        "word/header1.xml": strToU8("<w:hdr><w:p><w:drawing/></w:p></w:hdr>")
+      })
+    );
+    expect(result.status).toBe("partial");
+    expect(result.units[1]).toMatchObject({ locator: "section:header1", partial: true });
+  });
+
   it("isolates a damaged ZIP as one parsing failure", async () => {
     await expect(parseDocument(new Uint8Array([0x50, 0x4b, 0x03, 0x04]))).resolves.toMatchObject({
       status: "unsupported",
       diagnosticsCode: "UNSUPPORTED_FORMAT"
     });
   });
+});
+
+it("conserves all paragraphs and text beyond the old unit and text caps", async () => {
+  const paragraphs = Array.from(
+    { length: 601 },
+    (_, n) => `paragraph-${String(n)} ${"x".repeat(3500)}`
+  );
+  const bytes = zipSync({
+    "[Content_Types].xml": strToU8("<Types>wordprocessingml</Types>"),
+    "word/document.xml": strToU8(
+      `<w:document><w:body>${paragraphs.map((text) => `<w:p><w:r><w:t>${text}</w:t></w:r></w:p>`).join("")}</w:body></w:document>`
+    )
+  });
+  const result = await parseDocument(bytes);
+  expect(result.status).toBe("parsed");
+  expect(result.units.map((unit) => unit.text)).toEqual(paragraphs);
+  expect(new Set(result.units.map((unit) => unit.locator)).size).toBe(paragraphs.length);
 });

@@ -1,3 +1,5 @@
+import { operativeSemantics } from "./fact-semantics";
+import { requirePresent } from "./errors";
 import {
   fieldLabel,
   groupAssessments,
@@ -27,7 +29,9 @@ import type {
   TaskStatusView
 } from "./contract";
 import { t } from "./copy";
-import type { CourseSnapshot } from "./course-state";
+import { isRecord } from "@syllab/contracts";
+import type { CourseDraft } from "./selective-course";
+import { factsForReview, constraintForReview, type CourseSnapshot } from "./course-state";
 import type {
   AssessmentRecord,
   ChangeRecord,
@@ -38,7 +42,8 @@ import type {
   ReviewItemRecord,
   SemesterRecord,
   SourceRecord,
-  WorkflowRecord
+  WorkflowRecord,
+  ReviewDecisionRecord
 } from "./domain";
 import { needsFreshnessAttention, type CheckSchedule } from "./opportunity";
 import { qaTrace } from "./qa-telemetry";
@@ -47,7 +52,27 @@ import type { RebuildStagingStore } from "./staging";
 import { REVIEW_SCREENS, semesterIsEmpty } from "./screens/render";
 import type { LocalStore } from "./store";
 
+function excludedReviews(decisions: ReviewDecisionRecord[]) {
+  return decisions
+    .filter(
+      (d) =>
+        d.kind === "Exclude" &&
+        isRecord(d.details?.excludedReviewItem) &&
+        !decisions.some(
+          (x) =>
+            x.kind === "UndoExclude" &&
+            x.reviewItemId === d.reviewItemId &&
+            x.decidedAt >= d.decidedAt
+        )
+    )
+    .map((d) => ({
+      reviewItemId: d.reviewItemId,
+      title: typeof d.details?.scopeTitle === "string" ? d.details.scopeTitle : (d.targetId ?? "")
+    }));
+}
+
 export interface Route {
+  reviewItemId?: string;
   surface: Surface;
   screen?: ScreenId;
   courseId?: string;
@@ -140,15 +165,41 @@ function evidenceViews(
   }));
 }
 
+function productValue(fact: FactRecord): string {
+  const text = renderFactValue(fact.value);
+  if (!fact.product || fact.value.state !== "KNOWN" || !/^\d+(\.\d+)?$/.test(text)) return text;
+  const unit = fact.product.unit;
+  if (unit === "percent_course" || unit === "percent_rubric") return `${text}%`;
+  if (unit === "minutes" || unit === "hours") return `${text} ${unit}`;
+  return text;
+}
+
 function factView(fact: FactRecord, evidence: EvidenceView[]): FactView {
   const competing = competingValues(fact.value);
+  const semantics = operativeSemantics(fact);
+  const qualifiers =
+    semantics &&
+    (fact.humanSemantics ||
+      fact.product ||
+      !["requirement", "content", "identity"].includes(fact.field))
+      ? [...semantics.conditions, ...semantics.exceptions]
+      : [];
   return {
+    ...(semantics ? { semantics } : {}),
+    ...(fact.product ? { product: fact.product } : {}),
     factId: fact.factId,
     field: fact.field,
-    label: fieldLabel(fact.field),
-    display: renderFactValue(fact.value),
+    label: `${(!fact.userEdited ? fact.product?.title : undefined) ?? fieldLabel(fact.field)}${semantics && semantics.modality !== "descriptive" ? ` · ${semantics.modality}` : ""}`,
+    rawDisplay: renderFactValue(fact.value),
+    display: [
+      productValue(fact),
+      ...qualifiers,
+      ...(fact.product ? [] : [fact.semanticClause?.context])
+    ]
+      .filter((value, i, values) => value && values.indexOf(value) === i)
+      .join("\n"),
     ...(fact.marks.length > 0 ? { mark: fact.marks[fact.marks.length - 1] } : {}),
-    ...(competing.length > 1 ? { competingValues: competing } : {}),
+    ...(competing.length > 0 ? { competingValues: competing } : {}),
     knowledge: fact.value.state,
     evidence,
     editable: true
@@ -157,7 +208,7 @@ function factView(fact: FactRecord, evidence: EvidenceView[]): FactView {
 
 function unresolvedQuestion(fact: FactRecord): string | null {
   if (fact.value.state !== "UNCERTAIN") return null;
-  return `${fieldLabel(fact.field)} is unclear`;
+  return fact.product ? null : `${fieldLabel(fact.field)} is unclear`;
 }
 
 function assessmentCard(
@@ -184,7 +235,10 @@ function assessmentCard(
       )
     );
   return {
+    ...(assessment.productDisposition ? { productDisposition: assessment.productDisposition } : {}),
+    ...(assessment.dispositionBasis ? { dispositionBasis: assessment.dispositionBasis } : {}),
     assessmentId: assessment.assessmentId,
+    role: assessment.role,
     name: presentation.name,
     kind: presentation.kind,
     kindGroup: presentation.group,
@@ -260,14 +314,19 @@ export class ViewBuilder {
     const awaitingReview = workflow?.state === "waiting" && workflow.waitingReason === "review";
 
     if (!course.established && !workflow) {
+      base.course = await this.buildCourse(course, workflow);
+      if (route.screen && REVIEW_SCREENS.includes(route.screen)) {
+        const review = await this.buildReview(courseId, route.reviewItemId);
+        if (review) base.review = review;
+      }
       base.screen = route.screen ?? "SEM-07";
       return this.finish(base, route);
     }
-    if (!course.established && workflow) {
+    if (!course.established && workflow && workflow.kind !== "rebuild") {
       base.screen = route.screen ?? "ISC-02";
       base.course = await this.buildCourse(course, workflow);
       if (awaitingReview) {
-        const review = await this.buildReview(courseId);
+        const review = await this.buildReview(courseId, route.reviewItemId);
         if (review) base.review = review;
       }
       return this.finish(base, route);
@@ -300,18 +359,83 @@ export class ViewBuilder {
           history: []
         };
         const failedSourceCount = failedSources.length;
+        const sourceStates = staged.courseDraft
+          ? await this.dependencies.store.readAllSourceStates(courseId)
+          : undefined;
+        const issueRecords = staged.courseDraft
+          ? staged.reviewItems.flatMap((item) =>
+              Array.isArray(item.payload.evidence)
+                ? item.payload.evidence.filter(isEvidenceRecord)
+                : []
+            )
+          : [];
         base.rebuildPreview = {
+          ...(staged.courseDraft?.product ? { requiresScopedReview: true } : {}),
           course: await this.buildCourse(course, rebuildWorkflow, projection, staged.evidence),
-          partial: failedSourceCount > 0,
+          partial:
+            failedSourceCount > 0 ||
+            !!staged.taskBRecovery?.error ||
+            staged.taskBCheckpoint?.status === "partial" ||
+            (!!staged.taskBRecovery &&
+              !(
+                staged.taskBCheckpoint?.result.canonicalAssessmentProposals.length ||
+                staged.taskBCheckpoint?.result.courseWideConstraintProposals.length
+              )),
           failedSourceCount,
-          canAdopt: failedSourceCount === 0
+          ...(staged.courseDraft
+            ? {
+                unresolvedQuestions: [
+                  ...new Set(
+                    staged.reviewItems.flatMap((item) =>
+                      Array.isArray(item.payload.unresolvedQuestions)
+                        ? item.payload.unresolvedQuestions.filter(
+                            (x): x is string => typeof x === "string"
+                          )
+                        : []
+                    )
+                  )
+                ],
+                issueEvidence: evidenceViews(
+                  [...new Map(issueRecords.map((e) => [e.evidenceId, e])).values()],
+                  new Map(sourceStates?.sources.map((s) => [s.sourceId, s]))
+                )
+              }
+            : {}),
+          ...(staged.semanticCoverage ? { semanticCoverage: staged.semanticCoverage } : {}),
+          ...(staged.taskBRecovery
+            ? {
+                taskBCoverage: {
+                  status: staged.taskBRecovery.error
+                    ? "partial"
+                    : (staged.taskBCheckpoint?.status ?? "partial"),
+                  verifiedItems:
+                    staged.taskBCheckpoint?.items.filter((i) => i.status === "verified").length ??
+                    0,
+                  unresolvedItems:
+                    staged.taskBCheckpoint?.items.filter((i) => i.status !== "verified").length ??
+                    0,
+                  provisional: !(
+                    staged.taskBCheckpoint?.result.canonicalAssessmentProposals.length ||
+                    staged.taskBCheckpoint?.result.courseWideConstraintProposals.length
+                  ),
+                  crossSourceOrganizationIncomplete:
+                    !!staged.taskBRecovery.error || staged.taskBCheckpoint?.status !== "verified"
+                }
+              }
+            : {}),
+          canAdopt:
+            failedSourceCount === 0 &&
+            (!staged.taskBRecovery ||
+              (!staged.taskBRecovery.error &&
+                staged.taskBCheckpoint?.status === "verified" &&
+                !!staged.taskBCheckpoint.result.canonicalAssessmentProposals.length))
         };
       }
     }
     if (route.screen === "SEM-07" || route.screen === "ISC-01") base.screen = "SEM-07";
     else if (!route.screen) base.screen = route.surface === "side-panel" ? "CRS-02" : "CRS-01";
     if ((route.screen && REVIEW_SCREENS.includes(route.screen)) || awaitingReview) {
-      const review = await this.buildReview(courseId);
+      const review = await this.buildReview(courseId, route.reviewItemId);
       if (review) base.review = review;
     }
     // Built only for the screen that shows it, so every other view stays as cheap as it was.
@@ -490,10 +614,57 @@ export class ViewBuilder {
     const visible = snapshot;
     const { sources } = await store.readAllSourceStates(course.courseId);
     const sourceIndex = new Map(sources.map((source) => [source.sourceId, source]));
+    const checkpoint = await store.readMetadataValue(`direct-course-checkpoint:${course.courseId}`);
+    const ledger =
+      isRecord(checkpoint) && isRecord(checkpoint.ledger) ? checkpoint.ledger : undefined;
+    const draft =
+      ledger &&
+      isRecord(ledger.draft) &&
+      Array.isArray(ledger.draft.clauses) &&
+      Array.isArray(ledger.draft.links)
+        ? (ledger.draft as unknown as CourseDraft)
+        : (await store.readCourseDraftArchive(course.courseId))?.draft;
+    const unresolved =
+      draft?.links.filter((link) => !link.ownerRef && link.disposition !== "HISTORICAL") ?? [];
+    const contextClauses = draft?.product
+      ? [...draft.clauses, ...(draft.retiredClauses ?? [])]
+      : unresolved.flatMap(
+          (link) => draft?.clauses.filter((clause) => clause.clauseId === link.clauseRef) ?? []
+        );
+    const sourceContext = {
+      readingScope: Array.isArray(ledger?.readingSummary)
+        ? ledger.readingSummary.filter((s): s is string => typeof s === "string")
+        : [],
+      questions: (draft?.product ? [] : unresolved).map((link) => {
+        const clause = contextClauses.find((c) => c.clauseId === link.clauseRef);
+        return [
+          ...(clause
+            ? [clause.content, ...clause.conditions, ...clause.exceptions, clause.context]
+            : []),
+          `${link.state}: ${link.basis}`
+        ]
+          .filter(Boolean)
+          .join("\n");
+      }),
+      evidence: [
+        ...new Map(contextClauses.flatMap((c) => c.evidence).map((e) => [e.evidenceId, e])).values()
+      ].map((e) => ({
+        evidenceId: e.evidenceId,
+        sourceTitle: sourceIndex.get(e.sourceId)?.title ?? t("evidenceCourseSource"),
+        locator: e.locator,
+        excerpt: e.excerpt
+      }))
+    };
+    const referenceFacts =
+      (projection ?? (await store.readSnapshot(course.courseId)))?.facts.filter(
+        (f) => f.product && ["REFERENCE", "BACKGROUND"].includes(f.product.disposition)
+      ) ?? [];
     const factsByAssessment = groupFacts(visible.facts);
     const evidenceIds = new Set(
       [
-        ...visible.facts.flatMap((fact) => fact.evidenceRefs.map((ref) => ref.evidenceId ?? "")),
+        ...[...visible.facts, ...referenceFacts].flatMap((fact) =>
+          fact.evidenceRefs.map((ref) => ref.evidenceId ?? "")
+        ),
         ...snapshot.constraints.flatMap((constraint) =>
           constraint.evidenceRefs.map((ref) => ref.evidenceId ?? "")
         ),
@@ -521,10 +692,18 @@ export class ViewBuilder {
     }
 
     const topLevel = visible.assessments.filter(
-      (item) => item.role === "assessment" || item.role === "series"
+      (item) =>
+        item.productDisposition !== "REFERENCE" &&
+        (item.role === "assessment" ||
+          item.role === "series" ||
+          (item.productDisposition &&
+            !visible.assessments.some((parent) => parent.assessmentId === item.parentAssessmentId)))
     );
     const childrenOf = (assessmentId: string) =>
-      visible.assessments.filter((item) => item.parentAssessmentId === assessmentId);
+      visible.assessments.filter(
+        (item) =>
+          item.productDisposition !== "REFERENCE" && item.parentAssessmentId === assessmentId
+      );
     const cards: AssessmentCardView[] = [];
     for (const group of groupAssessments(topLevel)) {
       for (const assessment of group.items) {
@@ -540,15 +719,41 @@ export class ViewBuilder {
       }
     }
     const constraints: ConstraintViewLike[] = visible.constraints
+      .filter((c) => c.productDisposition !== "REFERENCE")
       .slice()
       .sort((left, right) => left.content.localeCompare(right.content))
       .map((constraint) => ({
+        ...(visible.facts.some((f) => f.constraintId === constraint.constraintId && f.product)
+          ? {
+              facts: visible.facts
+                .filter((f) => f.constraintId === constraint.constraintId)
+                .map((f) =>
+                  factView(f, evidenceViewsFor(f.evidenceRefs.map((ref) => ref.evidenceId ?? "")))
+                )
+            }
+          : {}),
         constraintId: constraint.constraintId,
         content: constraint.content,
         marks: constraint.marks,
         evidence: evidenceViewsFor(constraint.evidenceRefs.map((ref) => ref.evidenceId ?? ""))
       }));
 
+    // Restore saved product order; IndexedDB IDs/alphabetic fields are not action sequence.
+    const productOrder = new Map(
+      draft?.product?.propositions.map((p, index) => [p.propositionRef, index]) ?? []
+    );
+    const orderFacts = (facts: FactView[]) =>
+      facts.sort(
+        (a, b) =>
+          (productOrder.get(a.product?.propositionRef ?? "") ?? Infinity) -
+          (productOrder.get(b.product?.propositionRef ?? "") ?? Infinity)
+      );
+    const orderCard = (card: AssessmentCardView) => {
+      orderFacts(card.facts);
+      card.components.forEach(orderCard);
+    };
+    cards.forEach(orderCard);
+    for (const constraint of constraints) if (constraint.facts) orderFacts(constraint.facts);
     return {
       courseId: course.courseId,
       courseCode: course.courseCode,
@@ -566,8 +771,21 @@ export class ViewBuilder {
       ...(course.lastSuccessfulCheckAt
         ? { freshness: `Checked ${relativeTime(course.lastSuccessfulCheckAt, now)}` }
         : {}),
+      excludedReviews: excludedReviews(await store.readDecisions(course.courseId)),
       assessments: cards,
       constraints,
+      ...(sourceContext.questions.length ||
+      sourceContext.readingScope.length ||
+      referenceFacts.length
+        ? {
+            sourceContext: {
+              ...sourceContext,
+              referenceFacts: referenceFacts.map((f) =>
+                factView(f, evidenceViewsFor(f.evidenceRefs.map((r) => r.evidenceId ?? "")))
+              )
+            }
+          }
+        : {}),
       noAssessments: cards.length === 0,
       more: {
         addAssessment: true,
@@ -583,14 +801,21 @@ export class ViewBuilder {
    * Initial Review and a single changed field for Change Review, and the id the surface sends back
    * is the review item's own.
    */
-  private async buildReview(courseId: string): Promise<ReviewItemView | null> {
+  private async buildReview(courseId: string, cursor?: string): Promise<ReviewItemView | null> {
     const snapshot = await this.dependencies.store.readSnapshot(courseId);
     if (!snapshot) return null;
-    const pending = [
+    const pending: ReviewItemRecord[] = [
       ...snapshot.reviewItems,
       ...snapshot.changes
         .filter(
-          (change) => !snapshot.reviewItems.some((item) => item.reviewItemId === change.changeId)
+          (change) =>
+            !snapshot.reviewItems.some(
+              (item) =>
+                item.reviewItemId === change.changeId ||
+                (change.changeType === "NEW" &&
+                  item.changeType === "NEW" &&
+                  item.targetId === change.targetId)
+            )
         )
         .map((change) => ({
           reviewItemId: change.changeId,
@@ -608,13 +833,25 @@ export class ViewBuilder {
         }))
     ];
     if (pending.length === 0) return null;
-    const item = pending[0] as (typeof pending)[number];
-    const payload = item.payload as Record<string, unknown>;
+    const ordered = [...pending].sort(
+      (a, b) =>
+        Number(!!a.payload.deferredAt) - Number(!!b.payload.deferredAt) ||
+        (typeof a.payload.deferredAt === "string" ? a.payload.deferredAt : "").localeCompare(
+          typeof b.payload.deferredAt === "string" ? b.payload.deferredAt : ""
+        )
+    );
+    const item =
+      ordered.find((entry) => entry.reviewItemId === cursor) ?? requirePresent(ordered[0]);
+    const payload = item.payload;
+    const scopeIds = Array.isArray(payload.scopeFactIds)
+      ? new Set(payload.scopeFactIds as string[])
+      : undefined;
     const payloadEvidence = Array.isArray(payload.evidence)
       ? payload.evidence.filter(isEvidenceRecord)
       : [];
     const evidenceIds = [
       ...snapshot.facts.flatMap((fact) => fact.evidenceRefs.map((ref) => ref.evidenceId ?? "")),
+      ...snapshot.constraints.flatMap((c) => c.evidenceRefs.map((ref) => ref.evidenceId ?? "")),
       ...snapshot.changes.flatMap((change) => [
         ...change.currentEvidenceIds,
         ...change.newEvidenceIds
@@ -634,9 +871,44 @@ export class ViewBuilder {
         sourceIndex
       );
     const view = reviewItemView(item, snapshot, evidenceFor, {
-      index: 1,
+      index: ordered.indexOf(item) + 1,
       total: pending.length
     });
+    view.mergeCandidates = snapshot.assessments
+      .filter(
+        (a) =>
+          a.assessmentId !== item.targetId &&
+          !a.supersededBy &&
+          a.productDisposition !== "REFERENCE"
+      )
+      .map((a) => ({ assessmentId: a.assessmentId, name: a.name }));
+    view.directory = ordered.map((entry) => ({
+      reviewItemId: entry.reviewItemId,
+      title:
+        typeof entry.payload.scopeTitle === "string"
+          ? entry.payload.scopeTitle
+          : (snapshot.assessments.find((a) => a.assessmentId === entry.targetId)?.name ??
+            snapshot.constraints.find((c) => c.constraintId === entry.targetId)?.content ??
+            entry.targetId),
+      deferred: !!entry.payload.deferredAt
+    }));
+    const decisions = await this.dependencies.store.readDecisions(courseId);
+    view.excluded = excludedReviews(decisions);
+    if (payload.productScope) {
+      view.ownerScope = payload.ownerScope === true;
+      if (!view.ownerScope)
+        view.actions = view.actions.filter(
+          (action) => action !== "SameAssessmentAs" && action !== "Split"
+        );
+      if (typeof payload.scopeTitle === "string") view.title = payload.scopeTitle;
+      view.scopeNotice = t("reviewScopeNotice");
+      if (typeof payload.scopeBasis === "string") view.scopeBasis = payload.scopeBasis;
+      if (view.constraint) view.actions = ["Confirm", "Edit", "Exclude", "ReviewLater"];
+      if (view.constraint)
+        view.constraint.facts = snapshot.facts
+          .filter((f) => f.constraintId === item.targetId && scopeIds?.has(f.factId))
+          .map((f) => factView(f, evidenceFor(f.evidenceRefs.map((ref) => ref.evidenceId ?? ""))));
+    }
     const payloadAssessmentId: unknown = payload.assessmentId;
     const payloadAssessment = isAssessmentRecord(payload.assessment)
       ? payload.assessment
@@ -648,17 +920,61 @@ export class ViewBuilder {
         ? snapshot.assessments.find((entry) => entry.assessmentId === payloadAssessmentId)
         : undefined);
     if (assessment) {
-      view.title = assessment.name;
+      view.targetAssessmentId = assessment.assessmentId;
+      if (!payload.productScope) view.title = assessment.name;
       const payloadFacts = Array.isArray(payload.facts) ? payload.facts.filter(isFactRecord) : [];
       const storedFacts = snapshot.facts.filter(
         (fact) => fact.assessmentId === assessment.assessmentId
       );
-      const facts = storedFacts.length > 0 ? storedFacts : payloadFacts;
-      view.unresolvedQuestions = facts
-        .map((fact) =>
-          fact.value.state === "UNCERTAIN" ? `${fieldLabel(fact.field)} is unclear` : null
-        )
-        .filter((question): question is string => question !== null);
+      const facts = factsForReview(storedFacts, payloadFacts, item.changeType).filter(
+        (f) => !scopeIds || scopeIds.has(f.factId)
+      );
+      const reviewFacts = [
+        ...snapshot.facts.filter((fact) => fact.assessmentId !== assessment.assessmentId),
+        ...facts
+      ];
+      const byFact = new Map(
+        reviewFacts.map((fact) => [
+          fact.factId,
+          records.filter((record) =>
+            fact.evidenceRefs.some((ref) => ref.evidenceId === record.evidenceId)
+          )
+        ])
+      );
+      view.assessment = assessmentCard(
+        assessment,
+        groupFacts(reviewFacts),
+        byFact,
+        evidenceFor,
+        (id) =>
+          payload.productScope
+            ? []
+            : snapshot.assessments.filter((child) => child.parentAssessmentId === id)
+      );
+      if (payload.productScope && assessment.role === "series") {
+        const previewFacts = snapshot.facts.filter((f) => f.product?.role === "core");
+        view.previewAssessments = snapshot.assessments
+          .filter(
+            (child) =>
+              child.parentAssessmentId === assessment.assessmentId &&
+              child.productDisposition !== "REFERENCE"
+          )
+          .map((child) =>
+            assessmentCard(child, groupFacts(previewFacts), byFact, evidenceFor, () => [])
+          );
+      }
+      view.unresolvedQuestions = [
+        ...new Set([
+          ...view.unresolvedQuestions,
+          ...facts
+            .map((fact) =>
+              fact.value.state === "UNCERTAIN" && !fact.product
+                ? `${fieldLabel(fact.field)} is unclear`
+                : null
+            )
+            .filter((question): question is string => question !== null)
+        ])
+      ];
       if (view.subtitle === undefined) view.subtitle = kindLabel(assessment.kind, assessment.role);
     }
     return view;
@@ -850,22 +1166,88 @@ export function reviewItemView(
   evidence: (ids: string[]) => EvidenceView[],
   position: { index: number; total: number }
 ): ReviewItemView {
-  const change = snapshot.changes.find((entry) => entry.targetId === item.targetId);
+  const changeId = typeof item.payload.changeId === "string" ? item.payload.changeId : undefined;
+  const change = changeId
+    ? snapshot.changes.find((entry) => entry.changeId === changeId)
+    : (snapshot.changes.find((entry) => entry.changeId === item.reviewItemId) ??
+      snapshot.changes.find((entry) => entry.targetId === item.targetId));
   const assessment = snapshot.assessments.find((entry) => entry.assessmentId === item.targetId);
   const fact = snapshot.facts.find(
-    (entry) => entry.assessmentId === item.targetId && entry.field === change?.field
+    (entry) =>
+      (entry.assessmentId === item.targetId || entry.constraintId === item.targetId) &&
+      (entry.field === change?.field || entry.factId === change?.field)
   );
-  const title = assessment?.name ?? change?.field ?? t("reviewCourseChange");
+  const title =
+    assessment?.name ??
+    (snapshot.constraints.some((c) => c.constraintId === item.targetId)
+      ? t("constraintsHeading")
+      : undefined) ??
+    change?.field ??
+    t("reviewCourseChange");
   const base: ReviewItemView = {
     reviewItemId: item.reviewItemId,
     kind: item.kind === "initial" ? "initial" : item.kind === "identity" ? "identity" : "change",
     ...(change?.changeType ? { changeType: change.changeType } : {}),
     title,
     position,
-    unresolvedQuestions: [],
-    actions: []
+    unresolvedQuestions: [
+      ...new Set([
+        ...(Array.isArray(item.payload.unresolvedQuestions)
+          ? item.payload.unresolvedQuestions.filter((q): q is string => typeof q === "string")
+          : []),
+        ...(operativeSemantics(fact)?.conditions ?? []),
+        ...(operativeSemantics(fact)?.exceptions ?? []),
+        ...(operativeSemantics(change?.proposedFact)?.conditions ?? []),
+        ...(operativeSemantics(change?.proposedFact)?.exceptions ?? [])
+      ])
+    ],
+    actions: [],
+    ...(Array.isArray(item.payload.issueEvidenceIds)
+      ? {
+          issueEvidence: evidence(
+            item.payload.issueEvidenceIds.filter((id): id is string => typeof id === "string")
+          )
+        }
+      : {})
   };
-  if (item.kind === "initial") {
+  if (change)
+    base.issueEvidence = evidence([
+      ...new Set([
+        ...(Array.isArray(item.payload.issueEvidenceIds)
+          ? item.payload.issueEvidenceIds.filter((id): id is string => typeof id === "string")
+          : []),
+        ...change.newEvidenceIds
+      ])
+    ]);
+  if (
+    item.kind === "initial" ||
+    (item.changeType === "NEW" &&
+      typeof item.payload.constraint === "object" &&
+      item.payload.constraint !== null)
+  ) {
+    const currentConstraint = snapshot.constraints.find((c) => c.constraintId === item.targetId);
+    const proposedConstraint =
+      currentConstraint ?? (item.payload.constraint as ConstraintRecord | undefined);
+    const constraint = proposedConstraint
+      ? constraintForReview(
+          currentConstraint,
+          proposedConstraint,
+          snapshot.facts.filter((f) => f.constraintId === item.targetId),
+          Array.isArray(item.payload.facts) ? item.payload.facts.filter(isFactRecord) : [],
+          item.changeType
+        )
+      : undefined;
+    if (constraint) {
+      base.title = t("constraintsHeading");
+      base.constraint = {
+        constraintId: constraint.constraintId,
+        content: constraint.content,
+        marks: constraint.marks,
+        evidence: evidence(constraint.evidenceRefs.map((ref) => ref.evidenceId ?? ""))
+      };
+      base.actions = ["Confirm", "Exclude", "ReviewLater"];
+      return base;
+    }
     const draft = item.payload.assessment as AssessmentRecord | undefined;
     base.title = draft?.name ?? title;
     const subtitle = draft ? kindLabel(draft.kind, draft.role) : "";
@@ -877,19 +1259,23 @@ export function reviewItemView(
     const currentValue = change.currentValue ?? fact?.value;
     base.current = {
       label: "Current",
+      ...(currentValue ? { value: currentValue } : {}),
       values: [
         {
           display: currentValue ? renderFactValue(currentValue) : "—",
           evidence: evidence(
             change.currentEvidenceIds.length > 0
               ? change.currentEvidenceIds
-              : (fact?.evidenceRefs.map((ref) => ref.evidenceId ?? "") ?? [])
+              : fact?.userEdited
+                ? []
+                : (fact?.evidenceRefs.map((ref) => ref.evidenceId ?? "") ?? [])
           )
         }
       ]
     };
     base.latest = {
       label: "Other values",
+      ...(change.latestValue ? { value: change.latestValue } : {}),
       values: competingValues(change.latestValue ?? { state: "KNOWN" }).map((value) => ({
         display: value,
         evidence: evidence(change.newEvidenceIds)
@@ -904,28 +1290,61 @@ export function reviewItemView(
   }
   if (change?.changeType === "IDENTITY_UNCERTAIN" || item.kind === "identity") {
     base.kind = "identity";
+    base.issueEvidence = evidence([
+      ...new Set([...(change?.currentEvidenceIds ?? []), ...(change?.newEvidenceIds ?? [])])
+    ]);
+    base.current = {
+      label: "Current",
+      ...(change?.currentValue ? { value: change.currentValue } : {}),
+      values: [
+        {
+          display: change?.currentValue ? renderFactValue(change.currentValue) : base.title,
+          evidence: evidence(change?.currentEvidenceIds ?? [])
+        }
+      ]
+    };
+    base.latest = {
+      label: "Latest",
+      ...(change?.latestValue ? { value: change.latestValue } : {}),
+      values: [
+        {
+          display: change?.latestValue ? renderFactValue(change.latestValue) : "—",
+          evidence: evidence(change?.newEvidenceIds ?? [])
+        }
+      ]
+    };
     base.actions = ["SameAssessment", "DifferentAssessment"];
     return base;
   }
   // A pending change always reads as Current → Latest, and the Current side is the value the
   // change was raised against — not whatever the field happens to hold now.
   const current = change?.currentValue ?? fact?.value;
+  const currentSemantics = operativeSemantics(fact);
   base.current = {
-    label: "Current",
+    label: `Current${currentSemantics && currentSemantics.modality !== "descriptive" ? ` · ${currentSemantics.modality}` : ""}`,
     values: [
       {
-        display: current ? renderFactValue(current) : "—",
+        display: [
+          current ? renderFactValue(current) : "—",
+          ...(currentSemantics?.conditions ?? []),
+          ...(currentSemantics?.exceptions ?? [])
+        ].join("\n"),
         evidence: evidence(
           change?.currentEvidenceIds ?? fact?.evidenceRefs.map((ref) => ref.evidenceId ?? "") ?? []
         )
       }
     ]
   };
+  const latestSemantics = operativeSemantics(change?.proposedFact);
   base.latest = {
-    label: "Latest",
+    label: `Latest${latestSemantics && latestSemantics.modality !== "descriptive" ? ` · ${latestSemantics.modality}` : ""}`,
     values: [
       {
-        display: change?.latestValue ? renderFactValue(change.latestValue) : "—",
+        display: [
+          change?.latestValue ? renderFactValue(change.latestValue) : "—",
+          ...(latestSemantics?.conditions ?? []),
+          ...(latestSemantics?.exceptions ?? [])
+        ].join("\n"),
         evidence: evidence(change?.newEvidenceIds ?? [])
       }
     ]

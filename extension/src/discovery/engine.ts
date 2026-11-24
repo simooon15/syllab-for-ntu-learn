@@ -156,26 +156,27 @@ function flattenCapturedFields(
   path: string,
   output: Array<[string, string]>
 ): void {
-  if (value === null) {
-    output.push([path, "null"]);
-    return;
-  }
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    output.push([path, String(value)]);
-    return;
-  }
-  if (Array.isArray(value)) {
-    if (value.length === 0) output.push([path, "[]"]);
-    value.forEach((entry, index) =>
-      flattenCapturedFields(entry, `${path}[${String(index)}]`, output)
-    );
-    return;
-  }
-  if (!isRecord(value)) return;
-  const entries = Object.entries(value).sort(([left], [right]) => left.localeCompare(right));
-  if (entries.length === 0) output.push([path, "{}"]);
-  for (const [key, entry] of entries) {
-    flattenCapturedFields(entry, path ? `${path}.${key}` : key, output);
+  const pending = [{ value, path }];
+  const seen = new WeakSet<object>();
+  while (pending.length) {
+    const item = pending.pop();
+    if (!item) continue;
+    const current = item.value;
+    if (current === null || ["string", "number", "boolean"].includes(typeof current)) {
+      output.push([item.path, String(current)]);
+      continue;
+    }
+    if (typeof current !== "object") continue;
+    if (seen.has(current)) throw new Error("DISCOVERY_CAPTURE_CYCLE");
+    seen.add(current);
+    const entries = Array.isArray(current)
+      ? current.map((entry, index) => [`${item.path}[${String(index)}]`, entry] as const)
+      : Object.entries(current)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([key, entry]) => [item.path ? `${item.path}.${key}` : key, entry] as const);
+    if (!entries.length) output.push([item.path, Array.isArray(current) ? "[]" : "{}"]);
+    for (const [entryPath, entry] of entries.reverse())
+      pending.push({ value: entry, path: entryPath });
   }
 }
 
@@ -207,13 +208,19 @@ function attachmentCandidates(item: Record<string, unknown>): Record<string, unk
   const visited = new WeakSet<object>();
   const sensitiveKey = /token|cookie|auth|session|password|user|grade|submission|attempt/i;
 
-  const walk = (value: unknown, depth: number, attachmentContext: boolean): void => {
-    if (depth > 8 || value === null || typeof value !== "object") return;
-    if (visited.has(value)) return;
+  const pending: Array<{ value: unknown; attachmentContext: boolean }> = [
+    { value: item, attachmentContext: false }
+  ];
+  while (pending.length) {
+    const work = pending.pop();
+    if (!work) break;
+    const { value, attachmentContext } = work;
+    if (value === null || typeof value !== "object") continue;
+    if (visited.has(value)) continue;
     visited.add(value);
     if (Array.isArray(value)) {
-      for (const entry of value) walk(entry, depth + 1, attachmentContext);
-      return;
+      for (const entry of value) pending.push({ value: entry, attachmentContext });
+      continue;
     }
     const record = value as Record<string, unknown>;
     const rawUrl = readString(record, [
@@ -240,10 +247,12 @@ function attachmentCandidates(item: Record<string, unknown>): Record<string, unk
         }
         continue;
       }
-      walk(entry, depth + 1, attachmentContext || /attachments?|files?/i.test(key));
+      pending.push({
+        value: entry,
+        attachmentContext: attachmentContext || /attachments?|files?/i.test(key)
+      });
     }
-  };
-  walk(item, 0, false);
+  }
   return candidates;
 }
 
@@ -338,7 +347,7 @@ async function discoverContent(
 ): Promise<void> {
   const visitedContainers = new Set(state.visitedContainerIds);
   const visitedItems = new Set(state.visitedItemIds);
-  const maxDepth = options.maxDepth ?? 20;
+  const maxDepth = options.maxDepth;
 
   const finishParent = (nativeItemId: string): void => {
     state.queue.shift();
@@ -346,7 +355,10 @@ async function discoverContent(
     state.visitedContainerIds = [...visitedContainers];
   };
 
-  while (state.queue.length > 0 && state.pagesProcessed < (options.maxPages ?? 600)) {
+  while (
+    state.queue.length > 0 &&
+    (options.maxPages === undefined || state.pagesProcessed < options.maxPages)
+  ) {
     const parent = state.queue[0];
     if (!parent) break;
     if (visitedContainers.has(parent.nativeItemId)) {
@@ -429,7 +441,15 @@ async function discoverContent(
       addAttachments(state, rawItem, source, options.origin);
       state.detailQueue.push({ nativeItemId, sourceId });
 
-      if (shouldProbeChildren(rawItem) && parent.depth < maxDepth) {
+      if (shouldProbeChildren(rawItem) && maxDepth !== undefined && parent.depth >= maxDepth) {
+        state.issues.push({
+          sourceId,
+          code: "DEPTH_LIMIT_REACHED",
+          retryable: false,
+          detail: "Explicit discovery depth policy prevented completion"
+        });
+      }
+      if (shouldProbeChildren(rawItem) && (maxDepth === undefined || parent.depth < maxDepth)) {
         state.queue.push({
           nativeItemId,
           parentSourceId: sourceId,
@@ -465,7 +485,7 @@ async function discoverContent(
     state.issues.push({
       code: "PAGE_LIMIT_REACHED",
       retryable: false,
-      detail: `Discovery stopped after ${String(options.maxPages ?? 600)} API responses`
+      detail: `Discovery stopped after ${String(options.maxPages)} API responses`
     });
     state.queue = [];
     await checkpoint(options, state);
@@ -478,9 +498,12 @@ async function discoverContentDetails(
 ): Promise<void> {
   const visitedDetails = new Set(state.visitedDetailItemIds);
   const visitedContainers = new Set(state.visitedContainerIds);
-  const maxDepth = options.maxDepth ?? 20;
+  const maxDepth = options.maxDepth;
 
-  while (state.detailQueue.length > 0 && state.pagesProcessed < (options.maxPages ?? 600)) {
+  while (
+    state.detailQueue.length > 0 &&
+    (options.maxPages === undefined || state.pagesProcessed < options.maxPages)
+  ) {
     const work = state.detailQueue.shift();
     if (!work || visitedDetails.has(work.nativeItemId)) continue;
     const endpoint = contentDetailEndpoint(options.origin, options.courseId, work.nativeItemId);
@@ -526,9 +549,16 @@ async function discoverContentDetails(
           record
         );
         addAttachments(state, record, source, options.origin);
+        if (explicitlyHasChildren(record) && maxDepth !== undefined && source.depth >= maxDepth)
+          state.issues.push({
+            sourceId: source.sourceId,
+            code: "DEPTH_LIMIT_REACHED",
+            retryable: false,
+            detail: "Explicit discovery depth policy prevented completion"
+          });
         if (
           explicitlyHasChildren(record) &&
-          source.depth < maxDepth &&
+          (maxDepth === undefined || source.depth < maxDepth) &&
           !visitedContainers.has(work.nativeItemId) &&
           !state.queue.some((item) => item.nativeItemId === work.nativeItemId)
         ) {
@@ -550,7 +580,7 @@ async function discoverContentDetails(
     state.issues.push({
       code: "PAGE_LIMIT_REACHED",
       retryable: false,
-      detail: `Discovery stopped after ${String(options.maxPages ?? 600)} API responses`
+      detail: `Discovery stopped after ${String(options.maxPages)} API responses`
     });
     state.detailQueue = [];
     await checkpoint(options, state);
@@ -564,7 +594,10 @@ async function discoverAnnouncements(
   if (state.announcementsComplete) return;
   const firstEndpoint = `${options.origin}/learn/api/v1/courses/${encodeURIComponent(options.courseId)}/announcements`;
 
-  while (!state.announcementsComplete && state.pagesProcessed < (options.maxPages ?? 600)) {
+  while (
+    !state.announcementsComplete &&
+    (options.maxPages === undefined || state.pagesProcessed < options.maxPages)
+  ) {
     const endpoint = state.announcementsNextPageUrl ?? firstEndpoint;
     if (state.visitedPageUrls.includes(endpoint)) {
       state.issues.push({ code: "PAGINATION_LOOP", retryable: false, detail: firstEndpoint });
@@ -634,7 +667,7 @@ async function discoverAnnouncements(
     state.issues.push({
       code: "PAGE_LIMIT_REACHED",
       retryable: false,
-      detail: `Discovery stopped after ${String(options.maxPages ?? 600)} API responses`
+      detail: `Discovery stopped after ${String(options.maxPages)} API responses`
     });
     state.announcementsComplete = true;
   }

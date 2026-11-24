@@ -36,6 +36,9 @@ export interface RuntimeState {
 
 /** Local screen state. It survives a re-render and is reset when the route changes. */
 export interface UiState {
+  cardScroll?: Record<string, number>;
+  courseReturnId?: string;
+  courseReturnScroll?: number;
   detailAssessmentId: string | undefined;
   editingAssessmentId: string | undefined;
   editingReviewId: string | undefined;
@@ -83,7 +86,10 @@ export interface Actions {
   /** Read-only runtime data. The runtime mutates this object before every render. */
   readonly runtime: RuntimeState;
   onMutation(mutation: Mutation): void;
-  onOpenScreen(screen: ScreenId, context?: { courseId?: string; semesterId?: string }): void;
+  onOpenScreen(
+    screen: ScreenId,
+    context?: { courseId?: string; semesterId?: string; reviewItemId?: string }
+  ): void;
   onOpenSettings(focus?: "ai" | "authorization" | "data" | "about"): void;
   onOpenFullPage(): void;
   onExportCalendar(courseId: string): void;
@@ -107,7 +113,10 @@ export interface ScreenContext {
   ui: UiState;
   actions: Actions;
   repaint(): void;
-  open(screen: ScreenId, context?: { courseId?: string; semesterId?: string }): void;
+  open(
+    screen: ScreenId,
+    context?: { courseId?: string; semesterId?: string; reviewItemId?: string }
+  ): void;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-import { data, el } from "../../app/dom";
+import { control, data, el } from "../../app/dom";
 import { t } from "../copy";
 import type { ScreenId } from "../contract";
 import { briefBody } from "./course";
@@ -8,6 +8,8 @@ import {
   linkAction,
   primaryAction,
   screenNode,
+  evidenceBlock,
+  toggleEvidence,
   type ScreenContext
 } from "./patterns";
 
@@ -59,6 +61,7 @@ export function renderRebuild(ctx: ScreenContext, screen: ScreenId): HTMLElement
 
   const preview = ctx.view.rebuildPreview;
   const previewCourse = preview?.course ?? course;
+  if (preview?.requiresScopedReview) root.append(el("p", "review-note", t("rebuildScopedReview")));
   root.append(
     el("h2", "task-heading", preview?.partial ? t("rebuildPartialTitle") : t("rebuildPreviewLabel"))
   );
@@ -72,7 +75,28 @@ export function renderRebuild(ctx: ScreenContext, screen: ScreenId): HTMLElement
     data(notice, { failedSourceCount: preview.failedSourceCount });
     root.append(notice);
   }
+  if (preview?.taskBCoverage?.provisional)
+    root.append(el("p", "review-note", t("rebuildProvisionalNotice")));
+  else if (preview?.taskBCoverage?.crossSourceOrganizationIncomplete)
+    root.append(el("p", "review-note", t("rebuildTaskBPartialNotice")));
   if (previewCourse) root.append(briefBody(ctx, previewCourse, { showMore: false }));
+  for (const question of preview?.unresolvedQuestions ?? [])
+    root.append(el("p", "fact-question", question));
+  if (preview?.issueEvidence?.length) {
+    const key = "rebuild:issues";
+    root.append(
+      ctx.ui.evidence.includes(key)
+        ? evidenceBlock(ctx, key, preview.issueEvidence)
+        : control(
+            t("showEvidence", { label: t("evidenceCourseSource") }),
+            "fact-value is-swappable is-fact",
+            () => {
+              toggleEvidence(ctx, key);
+              ctx.repaint();
+            }
+          )
+    );
+  }
   const keep = linkAction(t("keepCurrentCourse"), () => {
     ctx.actions.onMutation({ kind: "KeepCurrentCourse" });
   });

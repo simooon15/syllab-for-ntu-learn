@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { build } from "esbuild";
+import { copyOfficeAssets } from "./office-assets.mjs";
 
 const extensionRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /**
@@ -101,7 +102,8 @@ for (const [entry, outfile, format] of entries) {
     metafile: true,
     define: {
       __SYLLAB_BACKEND_URL__: JSON.stringify(backendBaseUrl),
-      __SYLLAB_E2E_FIXTURES__: JSON.stringify(e2eFixtures)
+      __SYLLAB_E2E_FIXTURES__: JSON.stringify(e2eFixtures),
+      __SYLLAB_QA_RECOVERY_HOLD__: JSON.stringify(qa && process.env.SYLLAB_QA_RECOVERY_HOLD === "1")
     }
   });
   inputs[outfile] = Object.keys(result.metafile.inputs)
@@ -131,3 +133,5 @@ await cp(
   resolve(extensionRoot, "../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"),
   resolve(outputDirectory, "pdf.worker.mjs")
 );
+
+await copyOfficeAssets(extensionRoot, outputDirectory);

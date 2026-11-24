@@ -398,8 +398,8 @@ describe("accepted prompt baseline", () => {
   ];
 
   for (const entry of baselines) {
-    it(`Task ${entry.name} keeps the locked baseline verbatim and appends only the envelope`, () => {
-      expect(entry.system).toBe(`${entry.baseline}\n\n${entry.block}`);
+    it(`Task ${entry.name} preserves the historical baseline and appends the versioned policy`, () => {
+      expect(entry.system.startsWith(`${entry.baseline}\n\n${entry.block}`)).toBe(true);
       expect(entry.system.startsWith(entry.baseline)).toBe(true);
       expect(entry.baseline).toContain("ROLE");
       expect(entry.baseline).toContain("PROHIBITED BEHAVIORS");
@@ -409,7 +409,7 @@ describe("accepted prompt baseline", () => {
   }
 
   it("locks the prompt versions", () => {
-    expect(PROMPT_VERSIONS).toEqual({ a: "task-a/1", b: "task-b/1", c: "task-c/1" });
+    expect(PROMPT_VERSIONS).toEqual({ a: "task-a/5", b: "task-b/3", c: "task-c/1" });
   });
 });
 

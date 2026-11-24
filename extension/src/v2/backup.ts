@@ -15,7 +15,7 @@ export type DurableTable = (typeof DURABLE_TABLES)[number];
  * it is excluded from a backup and never written back by a restore.
  */
 const VOLATILE_FIELDS: Partial<Record<DurableTable, readonly string[]>> = {
-  sources: ["parsed"]
+  sources: ["parsed", "retrieval"]
 };
 
 /** A row as it travels in a backup: durable fields only, never the cached bytes. */

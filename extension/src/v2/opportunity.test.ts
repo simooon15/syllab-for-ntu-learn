@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { CourseRecord } from "./domain";
+import type { CourseRecord, WorkflowRecord } from "./domain";
 import {
+  automaticCheckPermitted,
   afterTransientFailure,
   needsFreshnessAttention,
   nextOpportunityAt,
@@ -93,5 +94,51 @@ describe("Opportunity Checking throttle", () => {
     );
     expect(result).toBe(workflow);
     expect(contexts).toEqual([{ tabId: 42 }]);
+  });
+});
+
+const paidWorkflow = (
+  state: WorkflowRecord["state"],
+  at: string,
+  courseId = "course"
+): WorkflowRecord => ({
+  workflowId: at,
+  courseId,
+  kind: "check",
+  state,
+  phase: "task-a",
+  phaseCursor: "start",
+  attempt: 1,
+  baseCourseRevision: 1,
+  createdAt: at,
+  updatedAt: at
+});
+describe("DA-004 maintenance cannot become a paid retry", () => {
+  it("blocks the latest failed paid item without any time-based release", () => {
+    expect(
+      automaticCheckPermitted([paidWorkflow("failed", "2000-01-01T00:00:00Z")], "course")
+    ).toBe(false);
+  });
+  it("does not let an unrelated course bypass its failure", () => {
+    expect(
+      automaticCheckPermitted(
+        [
+          paidWorkflow("failed", "2026-10-05T00:00:00Z"),
+          paidWorkflow("complete", "2026-10-06T00:00:00Z", "other")
+        ],
+        "course"
+      )
+    ).toBe(false);
+  });
+  it("permits normal maintenance after a later successful explicit workflow resolves the failure", () => {
+    expect(
+      automaticCheckPermitted(
+        [
+          paidWorkflow("failed", "2026-10-05T00:00:00Z"),
+          paidWorkflow("complete", "2026-10-06T00:00:00Z")
+        ],
+        "course"
+      )
+    ).toBe(true);
   });
 });

@@ -8,3 +8,9 @@ export class CodedError extends Error {
     this.name = "CodedError";
   }
 }
+
+/** Checked access after contract validation; fail rather than silently losing a required scope. */
+export function requirePresent<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) throw new CodedError("REQUIRED_VALUE_MISSING");
+  return value;
+}

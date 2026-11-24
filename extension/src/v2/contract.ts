@@ -1,4 +1,6 @@
-import type { CurrentMark, FactValue, TaskCChangeType } from "./schema";
+import type { ProductProposition } from "./course-product";
+import type { TaskASemanticCoverage } from "./semantic-coverage";
+import type { CurrentMark, FactValue, FactSemantics, TaskCChangeType } from "./schema";
 
 export const V2_MESSAGE_CONTRACT = 2 as const;
 
@@ -71,6 +73,10 @@ export type TaskPhaseCopy =
   | "Organizing assessments…";
 
 export interface AssessmentCardView {
+  /** Structural role only; never inferred from names or missing dates. */
+  role?: "assessment" | "component" | "series" | "series_instance";
+  productDisposition?: "CURRENT" | "ISSUE" | "REFERENCE";
+  dispositionBasis?: string;
   assessmentId: string;
   name: string;
   kind: AssessmentKindView;
@@ -88,10 +94,17 @@ export interface AssessmentCardView {
 export type AssessmentKindView = "assignment" | "project" | "quiz_test" | "exam" | "other";
 
 export interface FactView {
+  semantics?: FactSemantics;
+  product?: Pick<
+    ProductProposition,
+    "propositionRef" | "parentRef" | "title" | "role" | "group" | "relation" | "disposition"
+  > &
+    Partial<Pick<ProductProposition, "unit">>;
   factId: string;
   field: string;
   label: string;
   display: string;
+  rawDisplay?: string;
   mark?: CurrentMark;
   /** Competing values stay visible; the product never silently picks one. */
   competingValues?: string[];
@@ -108,6 +121,7 @@ export interface EvidenceView {
 }
 
 export interface ConstraintView {
+  facts?: FactView[];
   constraintId: string;
   content: string;
   marks: CurrentMark[];
@@ -115,6 +129,7 @@ export interface ConstraintView {
 }
 
 export interface CourseView {
+  excludedReviews?: Array<{ reviewItemId: string; title: string }>;
   courseId: string;
   courseCode: string;
   courseName: string;
@@ -124,6 +139,13 @@ export interface CourseView {
   freshness?: string;
   assessments: AssessmentCardView[];
   constraints: ConstraintView[];
+  /** Saved source interpretation remains untrusted and visible after object Review. */
+  sourceContext?: {
+    readingScope: string[];
+    questions: string[];
+    evidence: EvidenceView[];
+    referenceFacts?: FactView[];
+  };
   noAssessments: boolean;
   more: { addAssessment: true; checkForUpdates: true; exportCalendar: true; rebuildCourse: true };
 }
@@ -153,14 +175,33 @@ export interface SemesterView {
 }
 
 export interface ReviewItemView {
+  previewAssessments?: AssessmentCardView[];
+  scopeBasis?: string;
+  mergeCandidates?: Array<{ assessmentId: string; name: string }>;
+  scopeNotice?: string;
+  ownerScope?: boolean;
+  excluded?: Array<{ reviewItemId: string; title: string }>;
+  directory?: Array<{ reviewItemId: string; title: string; deferred: boolean }>;
   reviewItemId: string;
+  targetAssessmentId?: string;
+  assessment?: AssessmentCardView;
+  constraint?: ConstraintView;
+  issueEvidence?: EvidenceView[];
   kind: "initial" | "change" | "identity";
   changeType?: TaskCChangeType;
   title: string;
   subtitle?: string;
   position: { index: number; total: number };
-  current?: { label: string; values: Array<{ display: string; evidence: EvidenceView[] }> };
-  latest?: { label: string; values: Array<{ display: string; evidence: EvidenceView[] }> };
+  current?: {
+    value?: FactValue;
+    label: string;
+    values: Array<{ display: string; evidence: EvidenceView[] }>;
+  };
+  latest?: {
+    value?: FactValue;
+    label: string;
+    values: Array<{ display: string; evidence: EvidenceView[] }>;
+  };
   unresolvedQuestions: string[];
   actions: Array<
     | "Confirm"
@@ -228,10 +269,21 @@ export interface AppView {
   semester?: SemesterView;
   course?: CourseView;
   rebuildPreview?: {
+    requiresScopedReview?: boolean;
     course: CourseView;
     partial: boolean;
     failedSourceCount: number;
     canAdopt: boolean;
+    unresolvedQuestions?: string[];
+    issueEvidence?: EvidenceView[];
+    semanticCoverage?: TaskASemanticCoverage;
+    taskBCoverage?: {
+      status: "verified" | "partial";
+      verifiedItems: number;
+      unresolvedItems: number;
+      provisional: boolean;
+      crossSourceOrganizationIncomplete: boolean;
+    };
   };
   review?: ReviewItemView;
   task?: TaskStatusView;
@@ -255,6 +307,7 @@ export type ViewMessage =
       screen: ScreenId;
       courseId?: string;
       semesterId?: string;
+      reviewItemId?: string;
     }
   | {
       contract: typeof V2_MESSAGE_CONTRACT;
@@ -298,7 +351,10 @@ export type Mutation =
   | {
       kind: "ConfirmReviewItem";
       reviewItemId: string;
-      edited?: { name?: string; facts?: Array<{ factId: string; value: FactValue }> };
+      edited?: {
+        name?: string;
+        facts?: Array<{ factId: string; value: FactValue; semantics?: FactSemantics }>;
+      };
     }
   | { kind: "ExcludeReviewItem"; reviewItemId: string }
   | { kind: "UndeleteExclusion"; reviewItemId: string }
@@ -319,7 +375,7 @@ export type Mutation =
       changeId: string;
       relationship: "SAME_ASSESSMENT" | "DIFFERENT_ASSESSMENT";
     }
-  | { kind: "EditFact"; factId: string; value: FactValue }
+  | { kind: "EditFact"; factId: string; value: FactValue; semantics?: FactSemantics }
   | { kind: "RenameAssessment"; assessmentId: string; name: string }
   | {
       kind: "AddAssessment";

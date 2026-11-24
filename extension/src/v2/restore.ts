@@ -1,3 +1,4 @@
+import { isCourseDraftArchive } from "./course-draft-archive";
 import { isRecord } from "@syllab/contracts";
 
 import {
@@ -48,17 +49,13 @@ export class RestoreError extends Error {
 }
 
 export interface RestoreLimits {
-  maxBytes: number;
+  maxBytes?: number;
   /** Nesting depth of the JSON document: a backup is a table set, never a deep tree. */
-  maxDepth: number;
-  maxRecords: number;
+  maxDepth?: number;
+  maxRecords?: number;
 }
 
-export const RESTORE_LIMITS: RestoreLimits = {
-  maxBytes: 64 * 1024 * 1024,
-  maxDepth: 32,
-  maxRecords: 250_000
-};
+export const RESTORE_LIMITS: RestoreLimits = {};
 
 export interface RestoreSummary {
   /** Semester labels, Current first, as the Restore File Summary lists them. */
@@ -107,11 +104,12 @@ function textDepth(text: string): number {
 /** Reads backup text under the size and depth limits. Parsing is the only step that sees bytes. */
 export function parseBackup(text: string, limits: RestoreLimits = RESTORE_LIMITS): unknown {
   const bytes = new TextEncoder().encode(text).length;
-  if (bytes > limits.maxBytes) {
+  if (limits.maxBytes !== undefined && bytes > limits.maxBytes) {
     throw new RestoreError("BACKUP_INVALID", `bytes:${String(bytes)}`);
   }
   const depth = textDepth(text);
-  if (depth > limits.maxDepth) throw new RestoreError("BACKUP_INVALID", `depth:${String(depth)}`);
+  if (limits.maxDepth !== undefined && depth > limits.maxDepth)
+    throw new RestoreError("BACKUP_INVALID", `depth:${String(depth)}`);
   try {
     const parsed: unknown = JSON.parse(text);
     return parsed;
@@ -171,6 +169,7 @@ const REVIEW_DECISION_KINDS: readonly ReviewDecisionKind[] = [
   "DifferentIdentity",
   "UseRebuilt",
   "KeepCurrentCourse",
+  "UndoExclude",
   "ManualAdd"
 ];
 const HISTORY_EVENTS: readonly HistoryRecord["event"][] = [
@@ -178,6 +177,9 @@ const HISTORY_EVENTS: readonly HistoryRecord["event"][] = [
   "CHANGE_ACCEPTED",
   "CHANGE_KEPT_CURRENT",
   "FIELD_EDITED",
+  "CONSTRAINT_CONFIRMED",
+  "CONSTRAINT_EXCLUDED",
+  "CONSTRAINT_REMOVED",
   "ASSESSMENT_CONFIRMED",
   "ASSESSMENT_EXCLUDED",
   "ASSESSMENT_MERGED",
@@ -332,6 +334,8 @@ const VALIDATORS: Record<DurableTable, RowValidator> = {
     text(row, "updatedAt");
   },
   courseStates: (row) => {
+    if (row.sourceInterpretation !== undefined && !isCourseDraftArchive(row.sourceInterpretation))
+      throw invalid("courseStates.sourceInterpretation");
     text(row, "courseId");
     number(row, "revision");
     text(row, "updatedAt");
@@ -371,6 +375,14 @@ const VALIDATORS: Record<DurableTable, RowValidator> = {
     evidenceReferences(row, "evidenceRefs");
     enumerationList(row, "marks", MARKS);
     optionalBoolean(row, "userEdited");
+    if (row["humanSemantics"] !== undefined) {
+      const facets = row["humanSemantics"];
+      if (!isRecord(facets)) throw invalid("humanSemantics");
+      text(facets, "modality");
+      if (!(facets["modality"] as string).trim()) throw invalid("humanSemantics.modality");
+      textList(facets, "conditions");
+      textList(facets, "exceptions");
+    }
     optionalBoolean(row, "superseded");
     text(row, "updatedAt");
   },
@@ -422,6 +434,18 @@ const VALIDATORS: Record<DurableTable, RowValidator> = {
     text(row, "createdAt");
   },
   changes: (row) => {
+    if (row.reviewSourceDependencies !== undefined) {
+      if (!Array.isArray(row.reviewSourceDependencies)) throw new RestoreError("BACKUP_INVALID");
+      for (const dep of row.reviewSourceDependencies) {
+        if (
+          !isRecord(dep) ||
+          typeof dep.sourceId !== "string" ||
+          typeof dep.present !== "boolean" ||
+          (dep.contentHash !== null && typeof dep.contentHash !== "string")
+        )
+          throw new RestoreError("BACKUP_INVALID");
+      }
+    }
     text(row, "changeId");
     text(row, "courseId");
     text(row, "workflowId");
@@ -630,7 +654,7 @@ export async function prepareRestore(
   }
   const tables = normalizeTables(envelope.payload);
   const total = DURABLE_TABLES.reduce((sum, table) => sum + tables[table].length, 0);
-  if (total > limits.maxRecords)
+  if (limits.maxRecords !== undefined && total > limits.maxRecords)
     throw new RestoreError("BACKUP_INVALID", `records:${String(total)}`);
   validateRows(tables);
   return { summary: summarize(tables), tables };

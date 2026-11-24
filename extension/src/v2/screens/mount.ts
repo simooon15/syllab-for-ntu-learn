@@ -1,4 +1,5 @@
 import { t } from "../copy";
+import { missingRecordedPermissionPatterns } from "../permission-recovery";
 import {
   V2_MESSAGE_CONTRACT,
   type AppView,
@@ -46,6 +47,7 @@ export function mount(options: MountOptions): MountHandle {
     restoreStage: undefined
   };
   let view: AppView | undefined;
+  let permissionPatterns: string[] = [];
   let revision = 0;
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -57,6 +59,61 @@ export function mount(options: MountOptions): MountHandle {
   let queue: Promise<void> = Promise.resolve();
   let disposed = false;
   const disposeQaMonitor = mountQaMonitor();
+  let activity: { workflowId: string; snippets: string[]; task: string } | undefined;
+  let activityPort: chrome.runtime.Port | undefined;
+  let activityReconnect: ReturnType<typeof setTimeout> | undefined;
+  function receiveActivity(message: unknown): void {
+    if (typeof message !== "object" || message === null) return;
+    const data = message as Record<string, unknown>;
+    if (
+      data.contract !== "syllab.activity/1" ||
+      data.courseId !== view?.course?.courseId ||
+      typeof data.workflowId !== "string" ||
+      typeof data.task !== "string" ||
+      !Array.isArray(data.snippets)
+    )
+      return;
+    activity = {
+      workflowId: data.workflowId,
+      task: data.task,
+      snippets: data.snippets.filter((text): text is string => typeof text === "string").slice(-3)
+    };
+    paintActivity();
+  }
+  function connectActivity(): void {
+    if (disposed || typeof chrome.runtime.connect !== "function") return;
+    activityPort = chrome.runtime.connect({ name: "syllab.activity/1" });
+    activityPort.onMessage.addListener(receiveActivity);
+    activityPort.onDisconnect.addListener(() => {
+      activity = undefined;
+      paintActivity();
+      if (!disposed) activityReconnect = setTimeout(connectActivity, 1000);
+    });
+  }
+  connectActivity();
+  function paintActivity(): void {
+    const task = root.querySelector<HTMLElement>(".task-block[data-state='working']");
+    let region = root.querySelector<HTMLElement>("[data-region='ai-activity']");
+    if (!task || !activity?.snippets.length || task.dataset.workflowId !== activity.workflowId) {
+      region?.remove();
+      return;
+    }
+    if (!region) {
+      region = document.createElement("section");
+      region.dataset.region = "ai-activity";
+      region.className = "ai-activity";
+      region.setAttribute("aria-label", "AI Activity");
+      task.append(region);
+    }
+    // Streaming updates touch only this region, preserving focus, editor drafts and scroll.
+    region.replaceChildren(
+      ...activity.snippets.map((text) => {
+        const line = document.createElement("p");
+        line.textContent = text;
+        return line;
+      })
+    );
+  }
 
   const actions: Actions = {
     runtime,
@@ -70,7 +127,8 @@ export function mount(options: MountOptions): MountHandle {
         surface,
         screen,
         ...(context?.courseId === undefined ? {} : { courseId: context.courseId }),
-        ...(context?.semesterId === undefined ? {} : { semesterId: context.semesterId })
+        ...(context?.semesterId === undefined ? {} : { semesterId: context.semesterId }),
+        ...(context?.reviewItemId === undefined ? {} : { reviewItemId: context.reviewItemId })
       });
     },
     onOpenSettings: () => {
@@ -145,14 +203,19 @@ export function mount(options: MountOptions): MountHandle {
     },
     onGrantPermission: (workflowId) => {
       void (async () => {
-        // The prompt has to be asked for here, in the click that meant it: Chrome shows it only
-        // during a user gesture, and a message hop into the Service Worker is not one. What is
-        // asked for is what the manifest declares as optional for reading a Course's files —
-        // asking for anything broader would be asking for something the product does not use.
-        const manifest = chrome.runtime.getManifest() as { optional_host_permissions?: string[] };
-        const origins = manifest.optional_host_permissions ?? [];
-        if (origins.length > 0) {
-          await chrome.permissions.request({ origins }).catch(() => false);
+        // Resolve exact missing redirect origins before rendering, so request itself remains
+        // in this real click's user gesture. Never substitute the manifest wildcards.
+        if (permissionPatterns.length === 0) {
+          // The user may have granted it in Chrome while this task was parked.
+          sendMutation({ kind: "RetryTask", workflowId });
+          return;
+        }
+        const granted = await chrome.permissions
+          .request({ origins: permissionPatterns })
+          .catch(() => false);
+        if (!granted) {
+          void requestView();
+          return;
         }
         // The run kept its place, so resuming it is all that is left. (Gate 3 finding F28.)
         sendMutation({ kind: "RetryTask", workflowId });
@@ -205,6 +268,7 @@ export function mount(options: MountOptions): MountHandle {
       paintedSignature = "";
       paint();
     });
+    paintActivity();
   }
 
   function setNotice(notice: RuntimeNotice): void {
@@ -267,6 +331,7 @@ export function mount(options: MountOptions): MountHandle {
       ...(tabId === undefined ? {} : { tabId })
     });
     const ok = absorb(response);
+    permissionPatterns = await missingRecordedPermissionPatterns().catch(() => []);
     paint();
     if (!ok) scheduleRetry();
   }
@@ -403,6 +468,9 @@ export function mount(options: MountOptions): MountHandle {
       clearTimeout(noticeTimer);
       clearInterval(restoreTimer);
       chrome.storage.onChanged.removeListener(onStorageChanged);
+      clearTimeout(activityReconnect);
+      activityPort?.disconnect();
+      activity = undefined;
       disposeQaMonitor();
     }
   };

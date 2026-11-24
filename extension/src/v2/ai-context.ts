@@ -1,3 +1,7 @@
+import { evidenceRegistry, GROUNDED_B_SCHEMA } from "./task-b-grounding";
+import type { TaskASemanticCoverage } from "./semantic-coverage";
+import type { ParsedTextUnit } from "../parser/domain";
+import type { EvidenceCatalogEntry } from "./evidence-retrieval";
 /**
  * Minimum-sufficient-context builders (PRODUCT_HANDOFF §6, Technical Design §8).
  *
@@ -12,7 +16,7 @@ import { isRecord } from "@syllab/contracts";
 
 import { type Chunk, stableDigest } from "./chunking";
 import { stableStringify } from "./crypto";
-import { computeOutputSafetyCeiling } from "./invocation-policy";
+import { computeOutputSafetyCeiling, DEEPSEEK_FLASH_CAPABILITIES } from "./invocation-policy";
 import { PROMPT_A_SYSTEM, PROMPT_B_SYSTEM, PROMPT_C_SYSTEM, PROMPT_VERSIONS } from "./prompts";
 
 /**
@@ -20,9 +24,9 @@ import { PROMPT_A_SYSTEM, PROMPT_B_SYSTEM, PROMPT_C_SYSTEM, PROMPT_VERSIONS } fr
  * approved provisional runaway guards; every actual call uses `computeOutputSafetyCeiling` with its
  * serialized request, so these are not fixed product capability limits.
  */
-export const TASK_A_MAX_TOKENS = 96_000;
-export const TASK_B_MAX_TOKENS = 192_000;
-export const TASK_C_MAX_TOKENS = 96_000;
+export const TASK_A_MAX_TOKENS = DEEPSEEK_FLASH_CAPABILITIES.providerMaxOutput;
+export const TASK_B_MAX_TOKENS = DEEPSEEK_FLASH_CAPABILITIES.providerMaxOutput;
+export const TASK_C_MAX_TOKENS = DEEPSEEK_FLASH_CAPABILITIES.providerMaxOutput;
 
 /** A rasterized Source page. The data URL is request payload only; it is never stored or logged. */
 export interface AiVisualPart {
@@ -46,6 +50,9 @@ export interface AiSourceInput extends AiSourceIdentity {
   text: string;
   /** Page images; each one is attached to the call whose chunk spans its locator. */
   pageImages?: AiVisualPart[];
+  nativeUnits?: Array<ParsedTextUnit & { ref?: string }>;
+  priorTaskAResult?: unknown;
+  unresolvedVisualLocators?: string[];
 }
 
 export interface AiCourseInput {
@@ -58,6 +65,11 @@ export interface AiCourseInput {
 
 /** Original Evidence: a locator plus the verbatim excerpt it points at. */
 export interface AiEvidence {
+  origin?: "native" | "visual" | "unverified";
+  representationHash?: string;
+  capturedAt?: string;
+  page?: number;
+  region?: { x: number; y: number; width: number; height: number };
   evidenceId: string;
   sourceId: string;
   locator: string;
@@ -149,6 +161,34 @@ export function buildTaskAContext(input: {
       sourceType: source.sourceType,
       title: source.title,
       structure: source.structure,
+      ...(source.unresolvedVisualLocators
+        ? { unresolvedVisualLocators: source.unresolvedVisualLocators }
+        : {}),
+      ...(source.priorTaskAResult === undefined
+        ? {}
+        : { priorTaskAResult: source.priorTaskAResult }),
+      ...(source.nativeUnits
+        ? {
+            nativeStructure: source.nativeUnits
+              .filter((unit) => chunk === undefined || chunk.locators.includes(unit.locator))
+              .map((unit) => ({
+                ref: unit.ref,
+                partial: unit.partial,
+                locator: unit.locator,
+                kind: unit.kind,
+                section: unit.section,
+                sheetName: unit.sheetName,
+                cells: unit.cells?.map((cell) => ({
+                  reference: cell.reference,
+                  value: cell.value,
+                  ...(cell.formula ? { formula: cell.formula } : {})
+                })),
+                mergedRanges: unit.mergedRanges,
+                textRanges: unit.textRanges,
+                visualGaps: unit.visualGaps
+              }))
+          }
+        : {}),
       ...(attached.length === 0 ? {} : { pageImages: attached.map((image) => image.locator) })
     },
     ...(chunk === undefined
@@ -219,9 +259,16 @@ export function buildTaskBContext(input: {
   courseIndex: AiCourseIndexEntry[];
   evidence: AiEvidence[];
   course?: AiCourseInput;
+  availableEvidenceRefs?: EvidenceCatalogEntry[];
+  sharedWorkingContexts?: unknown[];
+  unresolvedCoverage?: TaskASemanticCoverage;
+  groundedItems?: boolean;
 }): AiCallContext {
   const payload = {
     ...(input.course === undefined ? {} : { course: coursePayload(input.course) }),
+    ...(input.availableEvidenceRefs ? { availableEvidenceRefs: input.availableEvidenceRefs } : {}),
+    ...(input.sharedWorkingContexts ? { sharedWorkingContexts: input.sharedWorkingContexts } : {}),
+    ...(input.unresolvedCoverage ? { unresolvedCoverage: input.unresolvedCoverage } : {}),
     drafts: input.drafts,
     constraintCandidates: input.constraintCandidates,
     existingObjects: input.courseIndex.map((entry) => ({
@@ -235,12 +282,43 @@ export function buildTaskBContext(input: {
       fields: entry.fields.map((field) => ({ fieldName: field.fieldName, display: field.display })),
       flags: entry.flags
     })),
-    evidence: evidencePayload(input.evidence)
+    suppliedEvidenceRegistry: [...evidenceRegistry(input.evidence)].map(([ref, item]) => ({
+      ref,
+      ...item
+    })),
+    ...(input.groundedItems ? {} : { evidence: evidencePayload(input.evidence) })
   };
   const user = stableStringify(payload);
   const scope = input.courseIndex.map((entry) => entry.objectId);
   return {
-    system: PROMPT_B_SYSTEM,
+    system: input.groundedItems
+      ? (PROMPT_B_SYSTEM.split("OUTPUT ENVELOPE (implementation addendum)")[0] ?? "") +
+        `
+GROUNDED ITEM ENVELOPE / P2E-028 reliability contract
+Return {"schema":"${GROUNDED_B_SCHEMA}","items":[],"requestedEvidenceRefs":[]}.
+Each item: {"itemId":stable unique logical id,"category":one of identityResolutions/canonicalAssessmentProposals/courseWideConstraintProposals/fieldConsolidationResults/structuralRelationships/unresolvedIssues,"inputRefs":[exact input draftId/objectId/constraintId/sourceId],"dependencies":[itemIds required for this item],"payload":the corresponding semantic object}.
+Explicitly list dependencies whenever you cite a proposal created in another item. Independent items have []. Identity decisions retain involvedObjectIds,relationship,judgmentBasis,supportingEvidence,contradictoryEvidence. Canonical proposals retain proposalId,canonicalName,type,role,aliases,consolidatedFields,requirements,supportingEvidence,unresolvedIssues. Constraints retain proposalId,normalizedRuleContent,scope,supportingEvidence. Fields retain fieldName,state,value,competingValues,evidence. fieldConsolidationResults payload: {targetObjectId,fields:[field objects]}. structuralRelationships payload: {fromObjectId,toObjectId,relationship,supportingEvidence}. unresolvedIssues payload: {issueId,issueType,affectedObjectOrField,description,relevantEvidence}. Every object reference must be supplied input or a proposal in an explicitly declared dependency item.
+Required field types and uncertainty:
+- type: assignment|project|quiz_test|exam|other. role: assessment|component|series|series_instance. These are enums, not arbitrary prose.
+- Every field MUST include fieldName (nonempty string), state (KNOWN|EXPLICITLY_UNKNOWN|UNCERTAIN), evidence (ref array), competingValues (array, [] when absent). value is the evidence-supported JSON value, omitted when not known. CONFLICT is a Task C change enum, NOT a Task B field state. Preserve conflicting values and their Evidence in competingValues with state UNCERTAIN; do not choose a winner. Missing information is omitted; never invent state/value to fill a shape.
+- Example known field: {"fieldName":"format","state":"KNOWN","value":"evidence-supported text","competingValues":[],"evidence":["exact supplied ref"]}.
+- Example uncertain field: {"fieldName":"due","state":"UNCERTAIN","competingValues":[{"value":"first supplied value","evidence":["exact supplied ref"]},{"value":"second supplied value","evidence":["exact supplied ref"]}],"evidence":["exact supplied refs"]}.
+- All mandatory arrays are arrays even when empty. Omit optional parent/component/series field when absent; do not write empty identifiers or speculative parents. Requirement: {requirementId,content,evidence:[exact refs]}. Unknown optional fields and noncritical field uncertainty do not make a supported identity or assessment invalid.
+Dependency direction and independent closure:
+- dependencies encode prerequisite RESULTS only, never related/mentioned items. Each identity judgment grounded directly in supplied input/Evidence normally has dependencies:[]; a canonical may depend on its identity decision, NOT on an issue merely documenting uncertainty.
+- An issue/field/relationship that references a new proposal depends on the owning canonical item. The owning canonical must NOT depend back on that issue/field/relationship. Do not create self/mutual dependencies, or a course-wide all-or-nothing group.
+- Use proposalId for payload object references and itemId for dependencies. A proposal and its owning item are different identifier domains. Independent singleton canonical proposals may be grounded directly in a supplied draft with no fabricated pairwise identity decision.
+- For each resolved ref, list every independently supported selected item for that ref, including its identity decision. A sibling canonical with a field uncertainty must not hide a valid identity decision. Independently supported Uncertain decisions remain identity results; do not manufacture Same/Different to fill gaps.
+- Keep inputRefs exact and relevant to this item's judgment. Do not attach the entire course registry to every item. Every final item must have every declared prerequisite validated; no Local semantic guessing or automatic dependency deletion.
+In ALL payload Evidence arrays (evidence/supportingEvidence/contradictoryEvidence/relevantEvidence/evidenceRefs), output ONLY exact compact ref strings from suppliedEvidenceRegistry. Never generate evidenceId, source/locator metadata or excerpt. Local resolves each ref to the exact supplied record; never invent a ref or cite provisional prose as original evidence. Supplied registry is the only allowed Evidence set.
+For missing evidence request requestedEvidenceRefs:[{refId:exact availableEvidenceRefs ref,start:0}] and leave unsupported judgments unresolved. Expansion is the same logical attempt with new registry entries, not a fresh retry. No semantic Local repair.
+Return full-registry closure ONLY after all technical input fragments delivered and cross-source dependencies considered. closure:{scopeRefs:completeInputRegistry,dispositions:[{ref:exact pending ref,status:"resolved"|"unresolved",itemIds:[contract-valid item ids supporting this input],reason:explicit judgment}]}. Every resolved draft/constraint ref requires a supported item referencing that ref. A Source requiring no additional B output can explicitly return resolved/noOutputNeeded:true/itemIds:[]/reason; never use this for drafts/constraints, infer absence/removal, or manufacture an assessment. Unresolved Task A refs are already accounted and must not be regenerated. Previously closed refs/items cannot be regenerated. Provisional candidates may be revised by the model during global reconciliation, but Local never revises semantics.
+Preserve Task A unresolvedCoverage. Missing semantic knowledge never proves absence/removal/identity or dates. Use only successful Task A context. Do not reread unresolved Sources. Do not perform Task C or issue apply instructions.
+`
+      : input.unresolvedCoverage
+        ? PROMPT_B_SYSTEM +
+          "\nDA-006: Never infer absence, removal, dates, rules or Assessment identity from unresolved Sources. Use only verified successful Task A context and supplied successful Evidence. Preserve incomplete coverage in Preview."
+        : PROMPT_B_SYSTEM,
     user,
     maxTokens: computeOutputSafetyCeiling("task-b", PROMPT_B_SYSTEM, user),
     idempotencyKey: idempotencyKey(

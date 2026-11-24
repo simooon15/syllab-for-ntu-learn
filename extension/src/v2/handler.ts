@@ -1,3 +1,6 @@
+import { withHumanSemantics } from "./fact-semantics";
+import { prepareProductRebuild } from "./product-rebuild";
+import { archiveCourseDraft } from "./course-draft-archive";
 import { createBackup, type DurableTable } from "./backup";
 import { exportCalendar } from "./calendar-export";
 import { calendarExportInput } from "./calendar-plan";
@@ -6,6 +9,7 @@ import { CodedError } from "./errors";
 import type {
   AssessmentRecord,
   CourseRecord,
+  ConstraintRecord,
   EvidenceRecord,
   FactRecord,
   ReviewItemRecord
@@ -20,7 +24,12 @@ import type { LocalStore } from "./store";
 import type { LocalDatabase } from "./storage";
 import type { RebuildStagingStore } from "./staging";
 import type { Route, ViewBuilder } from "./view";
-import type { CourseSnapshot } from "./course-state";
+import {
+  factsForReview,
+  constraintForReview,
+  type CourseSnapshot,
+  type MutationResult
+} from "./course-state";
 import type { WorkflowEngine } from "./workflow";
 
 export interface RouteState {
@@ -85,6 +94,10 @@ function errorCode(error: unknown): string {
 }
 
 const ERROR_COPY: Record<string, string> = {
+  INVALID_HUMAN_SEMANTICS: "Enter the requirement force before saving this interpretation.",
+  REVIEW_SCOPE_CHANGED: "This review scope changed. Reopen the item before deciding.",
+  EDIT_OUTSIDE_REVIEW_SCOPE: "That edit is outside the displayed review scope.",
+  UNDO_EXCLUSION_UNAVAILABLE: "This older exclusion cannot be restored from this review entry.",
   COURSE_REVISION_CONFLICT:
     "This course changed while you were reading it. Your view has been refreshed.",
   COURSE_NOT_FOUND: "This course is no longer available.",
@@ -164,6 +177,7 @@ export class ViewHandler {
           const route: Route = {
             surface: message.surface,
             screen: message.screen,
+            ...(message.reviewItemId ? { reviewItemId: message.reviewItemId } : {}),
             ...(message.courseId ? { courseId: message.courseId } : {})
           };
           await this.rememberRoute(routeKey(message), route);
@@ -317,9 +331,16 @@ export class ViewHandler {
     }
 
     const route = this.route(message);
+    if (mutation.kind === "DeferReviewItem") {
+      const { reviewItemId: _cursor, ...nextRoute } = route;
+      await this.rememberRoute(routeKey(message), nextRoute);
+    }
     return {
       ok: true,
-      view: await this.dependencies.views.build({ ...route, ...(courseId ? { courseId } : {}) })
+      view: await this.dependencies.views.build({
+        ...this.route(message),
+        ...(courseId ? { courseId } : {})
+      })
     };
   }
 
@@ -375,7 +396,7 @@ export class ViewHandler {
             (item.state === "failed" ||
               (item.state === "waiting" && item.waitingReason === "host-permission"))
         );
-        if (workflow) {
+        if (workflow && workflow.paidRetryAvailable !== false) {
           const {
             waitingReason: _waitingReason,
             errorCode: _errorCode,
@@ -388,6 +409,7 @@ export class ViewHandler {
           await store.saveWorkflow({
             ...carried,
             state: "saved",
+            userRetryAuthorized: true,
             ...(workflow.state === "failed" ? { attempt: 0 } : {}),
             updatedAt: now
           });
@@ -424,6 +446,7 @@ export class ViewHandler {
         await this.confirmRebuild(course, snapshot, mutation.kind, expectedRevision, now);
         return;
       case "UndeleteExclusion":
+        await store.undoExclusion(courseId, mutation.reviewItemId, now);
         return;
       default:
         return;
@@ -441,9 +464,54 @@ export class ViewHandler {
     const item = snapshot.reviewItems.find((entry) => entry.reviewItemId === mutation.reviewItemId);
     if (!item) throw new CodedError("REVIEW_ITEM_NOT_FOUND");
 
+    const scopeIds = Array.isArray(item.payload.scopeFactIds)
+      ? new Set(item.payload.scopeFactIds as string[])
+      : undefined;
+    const scoped = (facts: FactRecord[]) =>
+      scopeIds ? facts.filter((f) => scopeIds.has(f.factId)) : facts;
+    if (scopeIds && mutation.kind !== "DeferReviewItem") {
+      const versions = item.payload.scopeVersions as
+        Array<{ factId: string; updatedAt: string }> | undefined;
+      if (
+        !versions ||
+        versions.some(
+          (v) => snapshot.facts.find((f) => f.factId === v.factId)?.updatedAt !== v.updatedAt
+        )
+      )
+        throw new CodedError("REVIEW_SCOPE_CHANGED");
+    }
+    const bindScope = (result: MutationResult) => {
+      for (const decision of result.decisions)
+        decision.details = {
+          ...decision.details,
+          ...(item.payload.productScope
+            ? {
+                productScope: true,
+                courseRevision: expectedRevision,
+                ownerScope: item.payload.ownerScope,
+                scopeFactIds: item.payload.scopeFactIds,
+                scopeVersions: item.payload.scopeVersions,
+                reviewedFacts: structuredClone(
+                  snapshot.facts.filter((f) => scopeIds?.has(f.factId))
+                ),
+                acceptedFacts: structuredClone(
+                  result.snapshot.facts.filter((f) => scopeIds?.has(f.factId))
+                )
+              }
+            : {})
+        };
+      return result;
+    };
     if (mutation.kind === "DeferReviewItem") {
       await store.commitMutation(course.courseId, {
-        snapshot,
+        snapshot: {
+          ...snapshot,
+          reviewItems: snapshot.reviewItems.map((entry) =>
+            entry.reviewItemId === item.reviewItemId
+              ? { ...entry, payload: { ...entry.payload, deferredAt: now }, updatedAt: now }
+              : entry
+          )
+        },
         decisions: [
           {
             decisionId: randomId("dec"),
@@ -459,16 +527,33 @@ export class ViewHandler {
       return;
     }
 
+    const newChangeIds =
+      item.changeType === "NEW"
+        ? snapshot.changes
+            .filter((c) => c.changeType === "NEW" && c.targetId === item.targetId)
+            .map((c) => c.changeId)
+        : [];
     if (mutation.kind === "ExcludeReviewItem") {
       const memory = await this.exclusionKeyFor(course.courseId, item);
-      if (memory) await store.recordExclusion(memory);
+
       const { applyInitialReviewDecision } = await import("./course-state");
-      const decided = applyInitialReviewDecision(snapshot, {
-        reviewItemId: item.reviewItemId,
-        kind: "Exclude",
-        expectedRevision,
-        now
-      });
+      const decided = bindScope(
+        applyInitialReviewDecision(snapshot, {
+          reviewItemId: item.reviewItemId,
+          kind: "Exclude",
+          ...(isConstraintRecord(item.payload.constraint)
+            ? { constraint: item.payload.constraint }
+            : {}),
+          expectedRevision,
+          now
+        })
+      );
+      for (const decision of decided.decisions)
+        decision.details = {
+          ...decision.details,
+          excludedReviewItem: item,
+          ...(memory ? { exclusionKey: memory } : {})
+        };
       const result =
         item.changeType === "NEW"
           ? {
@@ -476,22 +561,75 @@ export class ViewHandler {
               snapshot: {
                 ...decided.snapshot,
                 changes: decided.snapshot.changes.filter(
-                  (change) => change.changeId !== item.payload.changeId
+                  (change) => !newChangeIds.includes(change.changeId)
                 )
               }
             }
           : decided;
       await store.commitReviewDecision(course.courseId, item.reviewItemId, result, {
-        changeIdsToDelete:
-          item.changeType === "NEW" && typeof item.payload.changeId === "string"
-            ? [item.payload.changeId]
-            : []
+        changeIdsToDelete: newChangeIds,
+        ...(memory ? { exclusionMemory: memory } : {})
       });
       return;
     }
 
     if (mutation.kind === "ConfirmReviewItem") {
       const { applyInitialReviewDecision } = await import("./course-state");
+      const constraint =
+        snapshot.constraints.find((c) => c.constraintId === item.targetId) ??
+        (isConstraintRecord(item.payload.constraint) ? item.payload.constraint : undefined);
+      if (constraint) {
+        if (mutation.edited && !item.payload.productScope)
+          throw new CodedError("CONSTRAINT_EDIT_NOT_SUPPORTED");
+        const storedFacts = snapshot.facts.filter((f) => f.constraintId === item.targetId);
+        const payloadFacts = Array.isArray(item.payload.facts)
+          ? item.payload.facts.filter(isFactRecord)
+          : [];
+        const scopeFacts = scoped(factsForReview(storedFacts, payloadFacts, item.changeType));
+        if (mutation.edited?.facts?.some((u) => !scopeFacts.some((f) => f.factId === u.factId)))
+          throw new CodedError("EDIT_OUTSIDE_REVIEW_SCOPE");
+        const facts = scopeFacts.map((f) => {
+          const update = mutation.edited?.facts?.find((u) => u.factId === f.factId);
+          return update
+            ? {
+                ...withHumanSemantics(f, update.semantics),
+                value: update.value,
+                userEdited: true,
+                marks: [...new Set([...f.marks, "Edited" as const])]
+              }
+            : f;
+        });
+        const reviewedConstraint = constraintForReview(
+          snapshot.constraints.find((c) => c.constraintId === item.targetId),
+          constraint,
+          storedFacts,
+          payloadFacts,
+          item.changeType
+        );
+        const result = bindScope(
+          applyInitialReviewDecision(snapshot, {
+            reviewItemId: item.reviewItemId,
+            kind: "Confirm",
+            constraint: reviewedConstraint,
+            facts,
+            expectedRevision,
+            now
+          })
+        );
+        if (mutation.edited) for (const decision of result.decisions) decision.kind = "Edit";
+        if (item.changeType === "NEW") {
+          result.snapshot.changes = result.snapshot.changes.filter(
+            (change) => !newChangeIds.includes(change.changeId)
+          );
+        }
+        await store.commitReviewDecision(course.courseId, item.reviewItemId, result, {
+          changeIdsToDelete: newChangeIds,
+          evidence: Array.isArray(item.payload.evidence)
+            ? item.payload.evidence.filter(isEvidenceRecord)
+            : []
+        });
+        return;
+      }
       const payloadAssessment = isAssessmentRecord(item.payload.assessment)
         ? item.payload.assessment
         : undefined;
@@ -502,30 +640,40 @@ export class ViewHandler {
         ? item.payload.evidence.filter(isEvidenceRecord)
         : [];
       const storedFacts = snapshot.facts.filter((fact) => fact.assessmentId === item.targetId);
-      const facts = storedFacts.length > 0 ? storedFacts : payloadFacts;
+      const facts = scoped(factsForReview(storedFacts, payloadFacts, item.changeType));
       const assessment =
         snapshot.assessments.find((entry) => entry.assessmentId === item.targetId) ??
         payloadAssessment;
       if (!assessment) throw new CodedError("ASSESSMENT_EXISTS");
       const edited = mutation.edited;
+      if (edited?.facts?.some((update) => !facts.some((f) => f.factId === update.factId)))
+        throw new CodedError("EDIT_OUTSIDE_REVIEW_SCOPE");
       const editedFacts: FactRecord[] = edited?.facts
         ? facts.map((fact) => {
             const update = edited.facts?.find((entry) => entry.factId === fact.factId);
-            return update ? { ...fact, value: update.value } : fact;
+            return update
+              ? {
+                  ...withHumanSemantics(fact, update.semantics),
+                  value: update.value,
+                  userEdited: true
+                }
+              : fact;
           })
         : facts;
-      const decided = applyInitialReviewDecision(snapshot, {
-        reviewItemId: item.reviewItemId,
-        kind: edited ? "Edit" : "Confirm",
-        expectedRevision,
-        now,
-        assessment: {
-          ...assessment,
-          name: edited?.name ?? assessment.name,
-          established: true
-        } as AssessmentRecord & { established?: boolean },
-        facts: editedFacts
-      });
+      const decided = bindScope(
+        applyInitialReviewDecision(snapshot, {
+          reviewItemId: item.reviewItemId,
+          kind: edited ? "Edit" : "Confirm",
+          expectedRevision,
+          now,
+          assessment: {
+            ...assessment,
+            name: edited?.name ?? assessment.name,
+            established: true
+          } as AssessmentRecord & { established?: boolean },
+          facts: editedFacts
+        })
+      );
       const result =
         item.changeType === "NEW"
           ? {
@@ -533,47 +681,93 @@ export class ViewHandler {
               snapshot: {
                 ...decided.snapshot,
                 changes: decided.snapshot.changes.filter(
-                  (change) => change.changeId !== item.payload.changeId
+                  (change) => !newChangeIds.includes(change.changeId)
                 )
               }
             }
           : decided;
       await store.commitReviewDecision(course.courseId, item.reviewItemId, result, {
         evidence: payloadEvidence,
-        changeIdsToDelete:
-          item.changeType === "NEW" && typeof item.payload.changeId === "string"
-            ? [item.payload.changeId]
-            : []
+        changeIdsToDelete: newChangeIds
       });
       return;
     }
 
+    const rebindPendingScopes = (result: MutationResult) => {
+      const remainingScopes = [
+        ...result.snapshot.reviewItems,
+        ...(item.payload.productScope && scopeIds?.size
+          ? [{ ...item, reviewItemId: `structural_${item.reviewItemId}_${now}` }]
+          : [])
+      ];
+      result.snapshot.reviewItems = remainingScopes.flatMap((review) => {
+        if (review.targetId !== item.targetId || !Array.isArray(review.payload.scopeFactIds))
+          return [review];
+        const byOwner = new Map<string, FactRecord[]>();
+        for (const id of review.payload.scopeFactIds as string[]) {
+          const f = result.snapshot.facts.find((f) => f.factId === id);
+          if (f?.assessmentId)
+            byOwner.set(f.assessmentId, [...(byOwner.get(f.assessmentId) ?? []), f]);
+        }
+        return [...byOwner].map(([owner, facts]) => ({
+          ...review,
+          reviewItemId:
+            byOwner.size === 1 ? review.reviewItemId : `${review.reviewItemId}:${owner}`,
+          targetId: owner,
+          updatedAt: now,
+          payload: {
+            ...review.payload,
+            scopeFactIds: facts.map((f) => f.factId),
+            scopeVersions: facts.map((f) => ({
+              factId: f.factId,
+              updatedAt: f.updatedAt,
+              sourceVersions: f.product?.sourceVersions
+            })),
+            scopeTitle: `${result.snapshot.assessments.find((a) => a.assessmentId === owner)?.name ?? owner} · ${typeof review.payload.scopeGroup === "string" ? review.payload.scopeGroup : "Requirements"}`
+          }
+        }));
+      });
+      return bindScope(result);
+    };
     if (mutation.kind === "SameAssessmentAs") {
       const { mergeAssessment } = await import("./course-state");
-      const result = mergeAssessment(snapshot, {
-        reviewItemId: item.reviewItemId,
-        sourceAssessmentId: item.targetId,
-        targetAssessmentId: mutation.targetAssessmentId,
-        expectedRevision,
-        now
-      });
+      const result = rebindPendingScopes(
+        mergeAssessment(snapshot, {
+          reviewItemId: item.reviewItemId,
+          sourceAssessmentId: item.targetId,
+          targetAssessmentId: mutation.targetAssessmentId,
+          expectedRevision,
+          now
+        })
+      );
       await store.commitReviewDecision(course.courseId, item.reviewItemId, result);
       return;
     }
 
     if (mutation.kind !== "SplitAssessment") throw new CodedError("UNSUPPORTED");
     const { splitAssessment } = await import("./course-state");
-    const result = splitAssessment(snapshot, {
-      reviewItemId: item.reviewItemId,
-      sourceAssessmentId: item.targetId,
-      parts: mutation.parts.map((part) => ({
-        assessmentId: `assessment_${randomId("split")}`,
-        name: part.name,
-        factIds: part.factIds
-      })),
-      expectedRevision,
-      now
-    });
+    if (scopeIds) {
+      const assigned = mutation.parts.flatMap((p) => p.factIds);
+      if (
+        new Set(assigned).size !== assigned.length ||
+        assigned.some((id) => !scopeIds.has(id)) ||
+        [...scopeIds].some((id) => !assigned.includes(id))
+      )
+        throw new CodedError("SPLIT_SCOPE_INCOMPLETE");
+    }
+    const result = rebindPendingScopes(
+      splitAssessment(snapshot, {
+        reviewItemId: item.reviewItemId,
+        sourceAssessmentId: item.targetId,
+        parts: mutation.parts.map((part) => ({
+          assessmentId: `assessment_${randomId("split")}`,
+          name: part.name,
+          factIds: part.factIds
+        })),
+        expectedRevision,
+        now
+      })
+    );
     await store.commitReviewDecision(course.courseId, item.reviewItemId, result);
   }
 
@@ -615,26 +809,61 @@ export class ViewHandler {
       rebuildWorkflow.workflowId
     );
     if (!staged) throw new CodedError("REBUILD_STAGING_MISSING");
-    const { observations } = await this.dependencies.store.readAllSourceStates(course.courseId);
+    const { observations, sources } = await this.dependencies.store.readAllSourceStates(
+      course.courseId
+    );
     const failedSources = rebuildFailureSources(
       staged.taskACoverage?.failedSources ?? [],
       observations.filter((item) => item.workflowId === rebuildWorkflow.workflowId)
     );
-    if (failedSources.length > 0) {
+    if (
+      failedSources.length > 0 ||
+      (staged.taskBRecovery &&
+        (!!staged.taskBRecovery.error ||
+          staged.taskBCheckpoint?.status !== "verified" ||
+          !staged.taskBCheckpoint.result.canonicalAssessmentProposals.length))
+    ) {
       throw new CodedError("PARTIAL_REBUILD_NOT_ADOPTABLE");
     }
     // Adoption is one transaction: the rebuilt objects replace Current State together, or not
     // at all. Staging is cleared only after the swap commits.
+    const productRebuild = staged.courseDraft?.product
+      ? prepareProductRebuild(snapshot, staged, now)
+      : undefined;
     const result = state.replaceCourseState(snapshot, {
-      assessments: staged.assessments,
-      constraints: staged.constraints,
-      facts: staged.facts,
+      assessments: productRebuild?.assessments ?? staged.assessments,
+      constraints: productRebuild?.constraints ?? staged.constraints,
+      facts: productRebuild?.facts ?? staged.facts,
       expectedRevision,
       now,
       note: "rebuild"
     });
+    if (productRebuild) {
+      result.snapshot.reviewItems = productRebuild.reviewItems;
+      result.snapshot.changes = productRebuild.changes;
+      for (const change of result.snapshot.changes) {
+        const involvedFacts = [
+          ...snapshot.facts.filter((f) => f.factId === change.field),
+          ...(change.proposedFact ? [change.proposedFact] : [])
+        ];
+        change.reviewSourceDependencies = [
+          ...new Set(involvedFacts.flatMap((f) => f.evidenceRefs.map((e) => e.sourceId)))
+        ].map((sourceId) => {
+          const source = sources.find((s) => s.sourceId === sourceId);
+          return {
+            sourceId,
+            present: Boolean(source),
+            contentHash: source?.machine?.contentHash ?? null
+          };
+        });
+      }
+    }
     await this.dependencies.store.commitMutation(course.courseId, result, {
-      evidence: staged.evidence
+      evidence: staged.evidence,
+      ...(staged.courseDraft
+        ? { sourceInterpretation: archiveCourseDraft(staged.courseDraft, staged.workflowId, now) }
+        : {}),
+      replaceCurrentObjects: true
     });
     await this.dependencies.staging.clear(course.courseId, rebuildWorkflow.workflowId);
     await completeRebuildWorkflow();
@@ -650,10 +879,16 @@ export class ViewHandler {
     const payloadFacts = Array.isArray(item.payload.facts)
       ? item.payload.facts.filter(isFactRecord)
       : [];
-    const facts = storedFacts.length > 0 ? storedFacts : payloadFacts;
-    const evidenceIds = facts
-      .flatMap((fact) => fact.evidenceRefs.map((ref) => ref.evidenceId ?? ""))
-      .filter((id) => id.length > 0);
+    const facts = factsForReview(storedFacts, payloadFacts, item.changeType);
+    const evidenceIds = [
+      ...facts.flatMap((fact) => fact.evidenceRefs.map((ref) => ref.evidenceId ?? "")),
+      ...(isConstraintRecord(item.payload.constraint)
+        ? [item.payload.constraint]
+        : snapshot.constraints
+      )
+        .filter((c) => c.constraintId === item.targetId)
+        .flatMap((c) => c.evidenceRefs.map((ref) => ref.evidenceId ?? ""))
+    ].filter((id) => id.length > 0);
     const storedRecords = await this.dependencies.store.readEvidence(evidenceIds);
     const payloadEvidence = Array.isArray(item.payload.evidence)
       ? item.payload.evidence.filter(isEvidenceRecord)
@@ -687,11 +922,56 @@ export class ViewHandler {
     now: string
   ): Promise<void> {
     const state = await import("./course-state");
+    const pendingChange = snapshot.changes.find((c) => c.changeId === mutation.changeId);
+    if (!pendingChange) throw new CodedError("REVIEW_ITEM_NOT_FOUND");
+    const relatedReviews = snapshot.reviewItems.filter(
+      (item) =>
+        item.reviewItemId === mutation.changeId ||
+        item.payload.changeId === mutation.changeId ||
+        `change_${item.reviewItemId}` === mutation.changeId
+    );
+    const reviewedFacts = snapshot.facts.filter(
+      (f) =>
+        (f.assessmentId === pendingChange.targetId || f.constraintId === pendingChange.targetId) &&
+        (!pendingChange.field ||
+          f.factId === pendingChange.field ||
+          f.field === pendingChange.field)
+    );
+    const dependencyEvidence = await this.dependencies.store.readEvidence([
+      ...new Set([...pendingChange.currentEvidenceIds, ...pendingChange.newEvidenceIds])
+    ]);
+    const sourceIds = new Set([
+      ...dependencyEvidence.map((e) => e.sourceId),
+      ...reviewedFacts.flatMap((f) => f.evidenceRefs.map((e) => e.sourceId)),
+      ...(pendingChange.proposedFact?.evidenceRefs.map((e) => e.sourceId) ?? [])
+    ]);
+    const { sources } = await this.dependencies.store.readAllSourceStates(course.courseId);
+    const sourceDependencies = [...sourceIds].map((sourceId) => {
+      const source = sources.find((s) => s.sourceId === sourceId);
+      return {
+        sourceId,
+        present: Boolean(source),
+        contentHash: source?.machine?.contentHash ?? null
+      };
+    });
+    const keepsCurrent =
+      mutation.kind === "ResolveConflict" &&
+      pendingChange.currentValue &&
+      JSON.stringify(mutation.value.value) === JSON.stringify(pendingChange.currentValue.value);
+    const refs = await this.dependencies.store.readEvidence(
+      keepsCurrent ? pendingChange.currentEvidenceIds : pendingChange.newEvidenceIds
+    );
+    const evidenceRefs = refs.map((e) => ({
+      evidenceId: e.evidenceId,
+      sourceId: e.sourceId,
+      locator: e.locator
+    }));
     const result = (() => {
       switch (mutation.kind) {
         case "AcceptChange":
           return state.acceptChange(snapshot, {
             changeId: mutation.changeId,
+            evidenceRefs,
             expectedRevision,
             now
           });
@@ -705,6 +985,7 @@ export class ViewHandler {
           return state.resolveConflict(snapshot, {
             changeId: mutation.changeId,
             resolution: mutation.value,
+            ...(keepsCurrent ? {} : { evidenceRefs }),
             expectedRevision,
             now
           });
@@ -729,20 +1010,22 @@ export class ViewHandler {
           });
       }
     })();
-    await this.dependencies.store.commitMutation(course.courseId, result);
-    // The surface only ever holds a Review item id, so a change decision is resolved by finding
-    // the review item that carries this change — whether it was materialised under the change id
-    // or under an explicit `change_` prefix.
-    await this.dependencies.store.deleteReviewItems(
-      snapshot.reviewItems
-        .filter(
-          (item) =>
-            item.reviewItemId === mutation.changeId ||
-            item.payload.changeId === mutation.changeId ||
-            `change_${item.reviewItemId}` === mutation.changeId
-        )
-        .map((item) => item.reviewItemId)
+    for (const decision of result.decisions)
+      decision.details = {
+        ...decision.details,
+        reviewDependencyBound: true,
+        courseRevision: expectedRevision,
+        changeVersion: { changeId: pendingChange.changeId, updatedAt: pendingChange.updatedAt },
+        reviewedChange: structuredClone(pendingChange),
+        reviewedItems: structuredClone(relatedReviews),
+        scopeVersions: reviewedFacts.map((f) => ({ factId: f.factId, updatedAt: f.updatedAt })),
+        sourceDependencies: pendingChange.reviewSourceDependencies ?? sourceDependencies
+      };
+    const removedReviews = new Set(relatedReviews.map((r) => r.reviewItemId));
+    result.snapshot.reviewItems = result.snapshot.reviewItems.filter(
+      (r) => !removedReviews.has(r.reviewItemId)
     );
+    await this.dependencies.store.commitMutation(course.courseId, result);
   }
 
   private async applyEdit(
@@ -756,6 +1039,7 @@ export class ViewHandler {
     const result = editFact(snapshot, {
       factId: mutation.factId,
       value: mutation.value,
+      ...(mutation.semantics ? { semantics: mutation.semantics } : {}),
       expectedRevision,
       now
     });
@@ -852,3 +1136,15 @@ function isEvidenceRecord(value: unknown): value is EvidenceRecord {
 }
 
 export type { DurableTable };
+
+function isConstraintRecord(value: unknown): value is ConstraintRecord {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { constraintId?: unknown }).constraintId === "string" &&
+    typeof (value as { courseId?: unknown }).courseId === "string" &&
+    typeof (value as { content?: unknown }).content === "string" &&
+    Array.isArray((value as { evidenceRefs?: unknown }).evidenceRefs) &&
+    Array.isArray((value as { marks?: unknown }).marks)
+  );
+}

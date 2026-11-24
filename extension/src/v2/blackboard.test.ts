@@ -90,3 +90,42 @@ describe("BlackboardMachinePort empty content classification", () => {
     expect(result.text).toContain("contentDetail.resource/x-bb-blti-link.dueDate: 2026-10-18");
   });
 });
+
+describe("worker recovery discovery metadata", () => {
+  it("fetches persisted content after the in-memory index is lost", async () => {
+    const source = discovered({ rawText: "<p>Assessment weight 40 percent</p>" });
+    const port = machine([]);
+    const result = await port.fetchAndParse({ ...stored(source), discovery: source }, course, 42);
+    expect(result.fetchStatus).toBe("ok");
+    expect(result.text).toContain("Assessment weight 40 percent");
+  });
+
+  it("recovers visual attachment URLs for old records without rediscovery", async () => {
+    const source = discovered({
+      kind: "attachment",
+      nativeItemId: "https://ntulearn.ntu.edu.sg/bbcswebdav/example.pdf"
+    });
+    cacheDiscoveredSources(course.courseId, []);
+    const calls: string[] = [];
+    const port = new BlackboardMachinePort({
+      api: () => ({ get: () => Promise.reject(new Error("UNEXPECTED_REDISCOVERY")) }),
+      parseAttachment: () => Promise.reject(new Error("UNUSED")),
+      visualAttachment: (item) => {
+        calls.push(item.requestUrl ?? "");
+        return Promise.resolve({
+          parts: [{ locator: "page:1", dataUrl: "data:image/png;base64,test" }],
+          unresolved: []
+        });
+      },
+      missingPermissionOrigins: () => Promise.resolve([]),
+      observeRedirect: () => Promise.resolve(null),
+      recordPermissionOrigin: () => Promise.resolve()
+    });
+    expect((await port.visualParts(stored(source))).parts).toHaveLength(1);
+    expect(calls).toEqual([source.nativeItemId]);
+    await port.visualParts(
+      stored({ ...source, nativeItemId: "https://untrusted.example/file.pdf" })
+    );
+    expect(calls).toHaveLength(1);
+  });
+});

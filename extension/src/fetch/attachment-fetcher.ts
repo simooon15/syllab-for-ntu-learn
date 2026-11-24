@@ -75,7 +75,7 @@ export async function fetchAttachmentPayload(
   } = {}
 ): Promise<{ result: AttachmentFetchResult; bytes?: Uint8Array }> {
   const fetchImpl = options.fetchImpl ?? fetch;
-  const maxBytes = options.maxBytes ?? PROVISIONAL_FETCH_LIMIT_BYTES;
+  const maxBytes = options.maxBytes ?? Number.POSITIVE_INFINITY;
   try {
     const response = await fetchImpl(requestUrl, {
       method: "GET",

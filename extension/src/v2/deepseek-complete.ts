@@ -1,10 +1,9 @@
-/**
- * Failure-specific malformed / truncated response handling (Technical Design §9 correction).
- *
- * Truncation and empty responses receive one fresh request with a recomputed dynamic ceiling;
- * schema-invalid JSON receives one targeted repair. Transport failures are returned to the
- * workflow retry policy, and no failure gets an unbounded repair loop. Every physical call keeps
- * the original idempotency key, so a workflow replay cannot apply the same result twice.
+import { decodeDirectCapture } from "./direct-json";
+import { canonicalEnvelope, AI_SCHEMAS, type CompatibilityRepair } from "./contract-registry";
+import { completePrefixItems } from "./task-b-ledger";
+import type { ActivityScope } from "./activity";
+/** DA-004 completion boundary: exactly one paid dispatch per attempt. Deterministic local
+ * representation repair is allowed; unusable/ambiguous results require explicit user Retry.
  */
 
 import { isRecord } from "@syllab/contracts";
@@ -16,15 +15,11 @@ import { qaTrace } from "./qa-telemetry";
 import {
   computeOutputSafetyCeiling,
   DEEPSEEK_FLASH_CAPABILITIES,
-  estimateInputTokens,
-  TASK_RUNAWAY_GUARDS,
-  type InvocationTask
+  estimateInputTokens
 } from "./invocation-policy";
 
 /** Retained as a compatibility export; dynamic task guards now determine retry ceilings. */
 export const RETRY_OUTPUT_TOKEN_CEILING = 96_000;
-/** Bound on how much of a rejected response is echoed back into the repair request. */
-export const MALFORMED_EXCERPT_CHARS = 24_000;
 /**
  * The one wording for "the model ran out of room". A truncated answer reaches the reader through two
  * doors — it parsed anyway, or it did not — and both are the same problem, so both say the same
@@ -33,11 +28,19 @@ export const MALFORMED_EXCERPT_CHARS = 24_000;
 const TRUNCATION_PROBLEM = "the response was cut off before it finished";
 
 export interface AiTransportRequest {
+  /** Audits may stop exact repeated reasoning checkpoints; not an output capacity cap. */
+  reasoningCycleGuard?: true;
+  reasoningEffort?: "low" | "high";
+  /** Optional API max_tokens is omitted for this current Task B path; no owned output cap. */
+  providerRequestCompatibility?: "provider-default";
   system: string;
   user: string;
   maxTokens: number;
   /** Page images for Sources whose visual interpretation is necessary (mixed PDFs). */
   visualParts?: AiVisualPart[];
+  activityScope?: ActivityScope;
+  signal?: AbortSignal;
+  messages?: Array<{ role: "user" | "assistant"; content: string }>;
   /** QA-only metadata; never includes prompt text, response text or credentials. */
   telemetry?: {
     task: string;
@@ -59,9 +62,14 @@ export interface AiUsage {
   inputTokens: number;
   outputTokens: number;
   reasoningTokens?: number;
+  usageKnown?: boolean;
+  cacheHitTokens?: number;
+  cacheMissTokens?: number;
 }
 
 export interface AiFailure {
+  preGenerationBoundary?: boolean;
+  retryAfterMs?: number;
   errorCode: DeepSeekFailureCode;
   /**
    * Whether a paid request may have been served. An authentication rejection is refused before
@@ -100,10 +108,6 @@ export type JsonCompletion<T> =
       attempts: number;
     };
 
-function bounded(value: string): string {
-  return value.length <= MALFORMED_EXCERPT_CHARS ? value : value.slice(0, MALFORMED_EXCERPT_CHARS);
-}
-
 function errorText(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -111,13 +115,20 @@ function errorText(error: unknown): string {
 }
 
 function readUsage(usage: unknown): AiUsage {
-  if (!isRecord(usage)) return { inputTokens: 0, outputTokens: 0 };
+  if (!isRecord(usage)) return { inputTokens: 0, outputTokens: 0, usageKnown: false };
   const input = usage.prompt_tokens;
   const output = usage.completion_tokens;
   const reasoning = isRecord(usage.completion_tokens_details)
     ? usage.completion_tokens_details.reasoning_tokens
     : undefined;
   return {
+    usageKnown: typeof input === "number" && typeof output === "number",
+    ...(typeof usage.prompt_cache_hit_tokens === "number"
+      ? { cacheHitTokens: usage.prompt_cache_hit_tokens }
+      : {}),
+    ...(typeof usage.prompt_cache_miss_tokens === "number"
+      ? { cacheMissTokens: usage.prompt_cache_miss_tokens }
+      : {}),
     inputTokens: typeof input === "number" ? input : 0,
     outputTokens: typeof output === "number" ? output : 0,
     ...(typeof reasoning === "number" ? { reasoningTokens: reasoning } : {})
@@ -131,6 +142,22 @@ function renderPayload(payload: unknown): string {
   return typeof rendered === "string" ? rendered : "";
 }
 
+/** Only parser category/offsets; never quote rejected response text in diagnostics. */
+function jsonParseDiagnostic(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  const category = message.startsWith("Unexpected end")
+    ? "unexpected-end"
+    : message.startsWith("Unterminated")
+      ? "unterminated-string"
+      : message.startsWith("Expected")
+        ? "expected-separator-or-property"
+        : message.includes("control character")
+          ? "unescaped-control-character"
+          : "unexpected-token";
+  const position = message.match(/position (\d+)/)?.[1];
+  return category + (position === undefined ? "" : ` at character ${position}`);
+}
+
 /**
  * Reads a provider payload into either a parsed JSON value or a problem description. `raw` is the
  * message content when there is one and a bounded rendering of the payload when there is not, so
@@ -142,7 +169,7 @@ export function readProviderCompletion(payload: unknown): ProviderCompletion {
   if (!Array.isArray(choices) || choices.length === 0) {
     return {
       ok: false,
-      raw: bounded(renderPayload(payload)),
+      raw: renderPayload(payload),
       problem: "the provider response contained no choices",
       truncated: false,
       finishReason: null,
@@ -154,7 +181,7 @@ export function readProviderCompletion(payload: unknown): ProviderCompletion {
   if (!isRecord(choice)) {
     return {
       ok: false,
-      raw: bounded(renderPayload(payload)),
+      raw: renderPayload(payload),
       problem: "the provider response contained no message",
       truncated: false,
       finishReason: null,
@@ -169,7 +196,7 @@ export function readProviderCompletion(payload: unknown): ProviderCompletion {
   if (content.length === 0) {
     return {
       ok: false,
-      raw: bounded(renderPayload(payload)),
+      raw: renderPayload(payload),
       problem: "the response contained no message content",
       truncated,
       finishReason,
@@ -178,17 +205,30 @@ export function readProviderCompletion(payload: unknown): ProviderCompletion {
     };
   }
   try {
-    const value: unknown = JSON.parse(content);
+    const decoded = decodeDirectCapture(
+      content.trim().replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/u, "$1")
+    );
+    const value = decoded.value;
+    if (decoded.formatRecovery)
+      qaTrace("qa.json-format-recovery", { formatRecovery: decoded.formatRecovery });
     return { ok: true, raw: content, value, truncated, finishReason, usage };
-  } catch {
+  } catch (error) {
+    const parseDiagnostic = jsonParseDiagnostic(error);
+    qaTrace("qa.json-parse-failure", {
+      characters: content.length,
+      diagnostic: parseDiagnostic,
+      finishReason
+    });
     // A response that was cut off is not a response that was malformed, and calling it "not valid
     // JSON" sends its reader to the wrong problem. Every failing unit measured on MA6083 / MA6084
     // was `finish_reason: "length"` — a correct JSON prefix, the right `schema`, no closing brace,
     // and 6,601 characters of it that grew to 15,800 on the retry. (Gate 3 finding F35.)
     return {
       ok: false,
-      raw: bounded(content),
-      problem: truncated ? TRUNCATION_PROBLEM : "the response was not valid JSON",
+      raw: content,
+      problem: truncated
+        ? TRUNCATION_PROBLEM
+        : `the response was not valid JSON (${parseDiagnostic})`,
       truncated,
       finishReason,
       failureKind: "invalid-json",
@@ -202,26 +242,19 @@ function transportFailure(error: unknown): AiFailure {
   if (error instanceof DeepSeekFailure) {
     return {
       errorCode: error.code,
-      consumesApi: error.code !== "AI_AUTH",
-      detail: error.message
+      consumesApi: error.code !== "AI_AUTH" && !error.preGenerationBoundary,
+      ...(error.preGenerationBoundary ? { preGenerationBoundary: true } : {}),
+      detail: error.message,
+      ...(error.retryAfterMs ? { retryAfterMs: error.retryAfterMs } : {})
     };
   }
   return { errorCode: "AI_PROVIDER", consumesApi: true, detail: errorText(error) };
 }
 
-function repairUser(user: string, detail: string, malformed: string): string {
-  return `${user}
-
---- REPAIR REQUEST ---
-
-The previous response could not be used: ${detail}
-Return the same JSON object again with that problem corrected. Do not add anything that was not in the supplied input.
-
-Previous response:
-${malformed}`;
-}
-
 export interface JsonCompletionInput<T> {
+  singlePhysicalAttempt?: boolean;
+  taskBPhysicalContinuation?: boolean;
+  physicalWorkContinuation?: boolean;
   transport: AiTransport;
   apiKey: string;
   request: AiTransportRequest;
@@ -237,21 +270,6 @@ export interface JsonCompletionInput<T> {
   invocationFingerprint?: string | undefined;
 }
 
-/**
- * What an unusable answer looked like — without the answer.
- *
- * A failed unit used to leave nothing behind at all: `qa.deepseek-task` is written once a call has
- * succeeded, so a real run could report `AI_CONTRACT` three times running and no one could tell a
- * whitespace-only answer from a fenced one from an object whose `schema` field the model misspelled.
- * The length, the first characters and the top-level keys separate those, and they carry none of the
- * course content the answer was about. The prompt and the answer itself are still not recorded, and
- * `qaTrace` redacts anything shaped like a credential before it is written.
- *
- * `maxTokens` and the reported output usage are here for one question the first version could not
- * answer: a truncated answer proves the model ran out of room, but not whose room — the budget this
- * request carried, or a ceiling the provider keeps for itself. The two are told apart by how close
- * `outputTokens` came to `maxTokens`, and nothing else in the record can. (Gate 3 finding F35.)
- */
 function traceContractFailure(
   task: string,
   attempt: number,
@@ -302,17 +320,26 @@ function tracePhysicalCall(input: {
   qaTrace("qa.deepseek-physical-call", {
     task: input.task,
     logicalUnitId: input.logicalUnitId,
+    ...(input.request.activityScope?.packageUnitId
+      ? { packageUnitId: input.request.activityScope.packageUnitId }
+      : {}),
     attemptType: input.attemptType,
     provider: DEEPSEEK_FLASH_CAPABILITIES.provider,
     model: DEEPSEEK_FLASH_CAPABILITIES.model,
     thinking: DEEPSEEK_FLASH_CAPABILITIES.thinking,
-    reasoningEffort: DEEPSEEK_FLASH_CAPABILITIES.reasoningEffort,
-    maxTokens: input.maxTokens,
+    reasoningEffort: input.request.reasoningEffort ?? DEEPSEEK_FLASH_CAPABILITIES.reasoningEffort,
+    ...(input.request.providerRequestCompatibility
+      ? { providerRequestCompatibility: input.request.providerRequestCompatibility }
+      : { maxTokens: input.maxTokens }),
     estimatedInputTokens: estimateInputTokens(input.request.system, input.request.user),
     ...(input.completion
       ? {
-          inputTokens: input.completion.usage.inputTokens,
-          outputTokens: input.completion.usage.outputTokens,
+          inputTokens: input.completion.usage.usageKnown
+            ? input.completion.usage.inputTokens
+            : null,
+          outputTokens: input.completion.usage.usageKnown
+            ? input.completion.usage.outputTokens
+            : null,
           ...(input.completion.usage.reasoningTokens === undefined
             ? {}
             : { reasoningTokens: input.completion.usage.reasoningTokens }),
@@ -322,7 +349,9 @@ function tracePhysicalCall(input: {
     latencyMs: Math.max(0, Date.now() - input.startedAt),
     failureClass: input.failureClass ?? null,
     retryType: input.attemptType === "initial" ? "none" : input.attemptType,
-    cache: "miss",
+    cacheHitTokens: input.completion?.usage.cacheHitTokens ?? null,
+    cacheMissTokens: input.completion?.usage.cacheMissTokens ?? null,
+    cost: null,
     invocationFingerprint: input.invocationFingerprint ?? null
   });
 }
@@ -370,8 +399,10 @@ export async function completeJson<T>(input: JsonCompletionInput<T>): Promise<Js
       provider: DEEPSEEK_FLASH_CAPABILITIES.provider,
       model: DEEPSEEK_FLASH_CAPABILITIES.model,
       thinking: DEEPSEEK_FLASH_CAPABILITIES.thinking,
-      reasoningEffort: DEEPSEEK_FLASH_CAPABILITIES.reasoningEffort,
-      maxTokens,
+      reasoningEffort: request.reasoningEffort ?? DEEPSEEK_FLASH_CAPABILITIES.reasoningEffort,
+      ...(request.providerRequestCompatibility
+        ? { providerRequestCompatibility: request.providerRequestCompatibility }
+        : { maxTokens }),
       estimatedInputTokens: estimateInputTokens(request.system, request.user),
       retryType: attemptType === "initial" ? "none" : attemptType,
       invocationFingerprint: input.invocationFingerprint ?? null
@@ -381,6 +412,7 @@ export async function completeJson<T>(input: JsonCompletionInput<T>): Promise<Js
     } catch (error) {
       // A thrown transport error is not a response to repair: retry and backoff belong to the
       // workflow, which knows whether the unit is worth paying for again.
+      usage.usageKnown = false;
       lastFailure = transportFailure(error);
       tracePhysicalCall({
         task: input.task,
@@ -395,9 +427,35 @@ export async function completeJson<T>(input: JsonCompletionInput<T>): Promise<Js
       return { aborted: true, detail: lastFailure.detail ?? "" };
     }
     const completion = readProviderCompletion(payload);
+    if (completion.usage.usageKnown === false) usage.usageKnown = false;
     usage.inputTokens += completion.usage.inputTokens;
     usage.outputTokens += completion.usage.outputTokens;
     addReasoningUsage(usage, completion.usage);
+    if (
+      completion.truncated &&
+      (input.taskBPhysicalContinuation || input.physicalWorkContinuation)
+    ) {
+      const value = {
+        schema: input.physicalWorkContinuation ? AI_SCHEMAS.physical : AI_SCHEMAS.groundedB,
+        items: completePrefixItems(
+          completion.raw,
+          input.physicalWorkContinuation ? AI_SCHEMAS.physical : AI_SCHEMAS.groundedB
+        ),
+        physicalLength: true,
+        rawPrefix: completion.raw
+      };
+      tracePhysicalCall({
+        task: input.task,
+        logicalUnitId: input.logicalUnitId ?? input.idempotencyKey,
+        attemptType,
+        request: requestWithTelemetry,
+        maxTokens,
+        invocationFingerprint: input.invocationFingerprint,
+        startedAt,
+        completion
+      });
+      return { value: input.validate(value) };
+    }
     if (!completion.ok) {
       lastFailure = { errorCode: "AI_CONTRACT", consumesApi: true, detail: completion.problem };
       traceContractFailure(input.task, attempts, maxTokens, completion, completion.problem);
@@ -432,7 +490,12 @@ export async function completeJson<T>(input: JsonCompletionInput<T>): Promise<Js
       return { detail, malformed: completion.raw, completion };
     }
     try {
-      const value = input.validate(completion.value);
+      const value = input.validate(
+        (input.taskBPhysicalContinuation || input.physicalWorkContinuation) &&
+          isRecord(completion.value)
+          ? { ...completion.value, physicalLength: false }
+          : completion.value
+      );
       tracePhysicalCall({
         task: input.task,
         logicalUnitId: input.logicalUnitId ?? input.idempotencyKey,
@@ -473,7 +536,7 @@ export async function completeJson<T>(input: JsonCompletionInput<T>): Promise<Js
       attempts
     };
   }
-  if (first.aborted === true) {
+  if (first.aborted === true || input.singlePhysicalAttempt) {
     return {
       status: "failed",
       failure: lastFailure,
@@ -483,48 +546,12 @@ export async function completeJson<T>(input: JsonCompletionInput<T>): Promise<Js
     };
   }
 
-  const firstFailureClass = first.completion
-    ? failureClass(first.completion, first.detail ?? "")
-    : "transient";
-  const shouldFreshRetry = firstFailureClass === "truncation" || firstFailureClass === "empty";
-  const shouldRepair = firstFailureClass === "schema" || firstFailureClass === "invalid-json";
-  if (!shouldFreshRetry && !shouldRepair) {
-    return {
-      status: "failed",
-      failure: lastFailure,
-      idempotencyKey: input.idempotencyKey,
-      usage,
-      attempts
-    };
-  }
-
-  const retryBudget = shouldRepair
-    ? input.budget
-    : input.maxTokensForRequest
-      ? input.maxTokensForRequest(input.request)
-      : input.task in TASK_RUNAWAY_GUARDS
-        ? computeOutputSafetyCeiling(
-            input.task as InvocationTask,
-            input.request.system,
-            input.request.user
-          )
-        : Math.max(input.budget, Math.min(RETRY_OUTPUT_TOKEN_CEILING, input.budget * 2));
-  const retryRequest = shouldRepair
-    ? {
-        ...input.request,
-        user: repairUser(input.request.user, first.detail ?? "", first.malformed ?? "")
-      }
-    : input.request;
-  const retried = await attempt(retryRequest, retryBudget, shouldRepair ? "repair" : "fresh-retry");
-  if (retried.value !== undefined) {
-    return {
-      status: "succeeded",
-      value: retried.value,
-      idempotencyKey: input.idempotencyKey,
-      usage,
-      attempts
-    };
-  }
+  // DA-004: a completed/ambiguous dispatch cannot authorize another paid invocation.
+  qaTrace("qa.ai-user-retry-required", {
+    task: input.task,
+    attempts,
+    errorCode: lastFailure.errorCode
+  });
 
   return {
     status: "failed",
@@ -536,26 +563,25 @@ export async function completeJson<T>(input: JsonCompletionInput<T>): Promise<Js
 }
 
 /**
- * Production transport for the v0.2.0 baseline. Requests that need page images are refused instead
- * of being sent without them: the text-only `DeepSeekTransport` cannot carry a page image, and a
- * silently text-only extraction would misreport a visual Source as understood.
+ * Production transport forwards selective visual parts and the ephemeral Activity scope.
  */
 export function deepSeekTransport(
   transport: DeepSeekTransport = new DeepSeekTransport()
 ): AiTransport {
   return {
     async complete(apiKey, request) {
-      if ((request.visualParts?.length ?? 0) > 0) {
-        throw new DeepSeekFailure(
-          "AI_CONTRACT",
-          true,
-          "page images are not supported by the text-only transport"
-        );
-      }
       return transport.complete(apiKey, {
         system: request.system,
         user: request.user,
-        maxTokens: request.maxTokens
+        maxTokens: request.maxTokens,
+        ...(request.providerRequestCompatibility
+          ? { providerRequestCompatibility: request.providerRequestCompatibility }
+          : {}),
+        ...(request.visualParts ? { visualParts: request.visualParts } : {}),
+        ...(request.activityScope ? { activityScope: request.activityScope } : {}),
+        ...(request.signal ? { signal: request.signal } : {}),
+        ...(request.messages ? { messages: request.messages } : {}),
+        ...(request.telemetry ? { telemetry: request.telemetry } : {})
       });
     }
   };
@@ -567,14 +593,14 @@ export class AiUnitFailure extends DeepSeekFailure {
     super(
       failure.errorCode,
       failure.errorCode !== "AI_AUTH",
-      failure.detail ?? "The AI response could not be used"
+      failure.detail ?? "The AI response could not be used",
+      failure.retryAfterMs ?? 0
     );
   }
 }
 
 /**
- * Runs one whole AI unit for the workflow engine: the call's request, the repair and retry
- * escalation, and a check that the response carries the schema version the call asked for. A
+ * Runs one AI dispatch for the workflow engine with a check that the response carries the schema version the call asked for. A
  * failure is thrown as `AiUnitFailure` so the caller never has to distinguish "no usable answer"
  * from "no answer at all".
  */
@@ -590,20 +616,50 @@ export async function completeWithRepair(
   check?: (value: unknown) => void
 ): Promise<AiCallOutcome> {
   const bridge = transport instanceof DeepSeekTransport ? deepSeekTransport(transport) : transport;
+  let compatibilityRepair: CompatibilityRepair | undefined;
   const completion = await completeJson({
     transport: bridge,
+    ...(call.singlePhysicalAttempt ? { singlePhysicalAttempt: true } : {}),
+    taskBPhysicalContinuation: call.taskBPhysicalContinuation === true,
+    physicalWorkContinuation: call.physicalWorkContinuation === true,
     apiKey,
-    request: { system: call.system, user: call.user, maxTokens: call.maxTokens },
+    request: {
+      system: call.system,
+      user: call.user,
+      ...(call.reasoningCycleGuard ? { reasoningCycleGuard: true as const } : {}),
+      ...(call.reasoningEffort ? { reasoningEffort: call.reasoningEffort } : {}),
+      ...(call.providerRequestCompatibility
+        ? { providerRequestCompatibility: call.providerRequestCompatibility }
+        : {}),
+      maxTokens: call.maxTokens,
+      ...(call.visualParts ? { visualParts: call.visualParts } : {}),
+      ...(call.activityScope ? { activityScope: call.activityScope } : {}),
+      ...(call.signal ? { signal: call.signal } : {}),
+      ...(call.messages ? { messages: call.messages } : {})
+    },
     idempotencyKey: call.idempotencyKey,
     budget: call.maxTokens,
     task: call.task,
     maxTokensForRequest: (request) =>
-      computeOutputSafetyCeiling(call.task, request.system, request.user),
+      computeOutputSafetyCeiling(
+        call.task,
+        request.system,
+        request.messages ? JSON.stringify(request.messages) : request.user
+      ),
     logicalUnitId: call.idempotencyKey,
     invocationFingerprint: call.invocationFingerprint,
-    validate: (value) => {
-      if (!isRecord(value) || value.schema !== call.schemaVersion) {
-        throw new Error(`AI_CONTRACT:schema:${call.schemaVersion}`);
+    validate: (original) => {
+      const normalized = canonicalEnvelope(original, call.schemaVersion);
+      const value = normalized.value;
+      compatibilityRepair = normalized.repair;
+      if (
+        !isRecord(value) ||
+        (value.schema !== call.schemaVersion &&
+          !(call.schemaVersion === AI_SCHEMAS.courseDraft && value.schema === undefined))
+      ) {
+        throw new Error(
+          `AI_CONTRACT:schema:${call.schemaVersion}; top-level "schema" must equal the exact JSON string ${JSON.stringify(call.schemaVersion)}. Preserve every dot and slash; replace the incorrect value rather than repeating it.`
+        );
       }
       check?.(value);
       return value;
@@ -613,8 +669,11 @@ export async function completeWithRepair(
   return {
     call,
     value: completion.value,
-    inputTokens: completion.usage.inputTokens,
-    outputTokens: completion.usage.outputTokens,
+    consumesApi: true,
+    ...(compatibilityRepair ? { compatibilityRepair } : {}),
+    ...(completion.usage.usageKnown === false
+      ? {}
+      : { inputTokens: completion.usage.inputTokens, outputTokens: completion.usage.outputTokens }),
     ...(completion.usage.reasoningTokens === undefined
       ? {}
       : { reasoningTokens: completion.usage.reasoningTokens })

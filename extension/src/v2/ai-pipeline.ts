@@ -1,3 +1,9 @@
+import type { CompatibilityRepair } from "./contract-registry";
+import type { TaskASemanticCoverage } from "./semantic-coverage";
+import { qaTrace } from "./qa-telemetry";
+import { requestBoundary } from "./provider-request";
+import type { ActivityScope } from "./activity";
+import type { EvidenceCatalogEntry } from "./evidence-retrieval";
 /**
  * Task A/B/C orchestration. This module owns the deterministic workflow shape — which calls are
  * made, in what order, with which context — and nothing else. Identity, structure, change and
@@ -30,7 +36,8 @@ import {
   type AiCourseInput,
   type AiEvidence,
   type AiSourceIdentity,
-  type AiSourceInput
+  type AiSourceInput,
+  type AiVisualPart
 } from "./ai-context";
 import type { Chunk } from "./chunking";
 import { completeJson, type AiFailure, type AiTransport, type AiUsage } from "./deepseek-complete";
@@ -40,12 +47,29 @@ import { computeOutputSafetyCeiling, invocationFingerprint } from "./invocation-
 
 export type { AiCourseIndexEntry, AiCourseInput, AiEvidence, AiSourceIdentity, AiSourceInput };
 
-/** Technical Design §8.4: at most two Evidence expansion rounds after the first Task B call. */
-export const MAX_TASK_B_EXPANSION_ROUNDS = 2;
-
-export type AiTaskName = "task-a" | "task-a-consolidate" | "task-b" | "task-b-expand" | "task-c";
+export type AiTaskName =
+  | "retrieval-planner"
+  | "coverage-audit"
+  | "exhaustive-routing"
+  | "teaching-classification"
+  | "source-triage"
+  | "task-a"
+  | "task-a-consolidate"
+  | "task-b"
+  | "task-b-expand"
+  | "task-c";
 
 export interface AiCall {
+  /** Audits may stop exact repeated reasoning checkpoints; not an output capacity cap. */
+  reasoningCycleGuard?: true;
+  /** Task-specific effort; semantic audits keep high until low is quality-validated. */
+  reasoningEffort?: "low" | "high";
+  singlePhysicalAttempt?: boolean;
+  /** Task B physical prefix is checkpointed, never accepted as final semantic output. */
+  taskBPhysicalContinuation?: boolean;
+  physicalWorkContinuation?: boolean;
+  /** Optional API max_tokens is omitted for this current Task B path; no owned output cap. */
+  providerRequestCompatibility?: "provider-default";
   task: AiTaskName;
   schemaVersion: string;
   promptVersion: string;
@@ -55,9 +79,16 @@ export interface AiCall {
   user: string;
   /** Non-secret cache/config identity; never contains prompt text or credentials. */
   invocationFingerprint?: string;
+  visualParts?: AiVisualPart[];
+  activityScope?: ActivityScope;
+  signal?: AbortSignal;
+  messages?: Array<{ role: "user" | "assistant"; content: string }>;
 }
 
 export interface AiCallOutcome {
+  /** False for exact local reuse; omitted legacy ports default to a physical invocation. */
+  consumesApi?: boolean;
+  compatibilityRepair?: CompatibilityRepair;
   call: AiCall;
   value: unknown;
   inputTokens?: number;
@@ -138,6 +169,52 @@ export function assertNoProductInstructions(value: unknown): void {
     }
     assertNoProductInstructions(item);
   }
+}
+
+export function assertKnownIdentityObjects(value: unknown, known: ReadonlySet<string>): void {
+  if (!isRecord(value)) return;
+  const proposals = Array.isArray(value.canonicalAssessmentProposals)
+    ? (value.canonicalAssessmentProposals as unknown[])
+    : [];
+  const created = new Set(
+    proposals.flatMap((entry) =>
+      isRecord(entry) && typeof entry.proposalId === "string" ? [entry.proposalId] : []
+    )
+  );
+  const resolutions = Array.isArray(value.identityResolutions)
+    ? (value.identityResolutions as unknown[])
+    : [];
+  for (const resolution of resolutions) {
+    if (!isRecord(resolution) || !Array.isArray(resolution.involvedObjectIds)) continue;
+    for (const id of resolution.involvedObjectIds as unknown[])
+      if (typeof id !== "string" || (!known.has(id) && !created.has(id)))
+        throw new Error("AI_CONTRACT:unknown_object_id");
+  }
+}
+
+/** B/C may cite only the evidence they received or explicitly retrieved. No semantic inference. */
+export function assertSuppliedEvidence(value: unknown, supplied: AiEvidence[]): void {
+  if (Array.isArray(value)) {
+    for (const item of value) assertSuppliedEvidence(item, supplied);
+    return;
+  }
+  if (!isRecord(value)) return;
+  if (typeof value.evidenceId === "string" && typeof value.sourceId === "string") {
+    const entry = supplied.find((item) => item.evidenceId === value.evidenceId);
+    if (
+      !entry ||
+      entry.sourceId !== value.sourceId ||
+      (typeof value.locator === "string" && entry.locator !== value.locator) ||
+      (typeof value.excerpt === "string" && !entry.excerpt.includes(value.excerpt))
+    )
+      throw new Error("AI_CONTRACT:evidence_not_supplied");
+  }
+  if (Array.isArray(value.evidenceRefs))
+    for (const ref of value.evidenceRefs as unknown[]) {
+      if (typeof ref === "string" && !supplied.some((entry) => entry.evidenceId === ref))
+        throw new Error("AI_CONTRACT:evidence_ref_not_supplied");
+    }
+  for (const item of Object.values(value)) assertSuppliedEvidence(item, supplied);
 }
 
 function collectIdsWithKeys(value: unknown, keys: ReadonlySet<string>, into: Set<string>): void {
@@ -236,7 +313,13 @@ async function executeUnit<T>(
   const completion = await completeJson({
     transport: gatewayTransport(deps.gateway, call),
     apiKey: deps.apiKey,
-    request: { system: call.system, user: call.user, maxTokens: call.maxTokens },
+    request: {
+      system: call.system,
+      user: call.user,
+      maxTokens: call.maxTokens,
+      ...(call.reasoningCycleGuard ? { reasoningCycleGuard: true as const } : {}),
+      ...(call.reasoningEffort ? { reasoningEffort: call.reasoningEffort } : {})
+    },
     idempotencyKey: call.idempotencyKey,
     budget: call.maxTokens,
     task: call.task,
@@ -290,7 +373,8 @@ function callFromContext(
     idempotencyKey: context.idempotencyKey,
     maxTokens: context.maxTokens,
     system: context.system,
-    user: context.user
+    user: context.user,
+    ...(context.visualParts?.length ? { visualParts: context.visualParts } : {})
   };
   return {
     ...call,
@@ -300,7 +384,8 @@ function callFromContext(
       schemaVersion,
       system: call.system,
       user: call.user,
-      maxTokens: call.maxTokens
+      maxTokens: call.maxTokens,
+      ...(call.visualParts?.length ? { visualParts: call.visualParts } : {})
     })
   };
 }
@@ -313,15 +398,79 @@ export function buildTaskACalls(input: {
   source: AiSourceInput;
   course: AiCourseInput;
   chunks: Chunk[];
+  measuredPhysicalPacking?: boolean;
 }): AiCall[] {
-  return input.chunks.map((chunk) =>
-    callFromContext(
-      "task-a",
-      TASK_A_SCHEMA,
-      PROMPT_VERSIONS.a,
-      buildTaskAContext({ source: input.source, course: input.course, chunk })
-    )
-  );
+  if (input.measuredPhysicalPacking) {
+    if (input.chunks.length !== 1 || !input.chunks[0]) throw Error("FULL_SOURCE_CHUNK_REQUIRED");
+    return [
+      callFromContext(
+        "task-a",
+        TASK_A_SCHEMA,
+        PROMPT_VERSIONS.a,
+        buildTaskAContext({ source: input.source, course: input.course, chunk: input.chunks[0] })
+      )
+    ];
+  }
+  const pending = [...input.chunks];
+  const chunks: Chunk[] = [];
+  while (pending.length) {
+    const chunk = pending.shift();
+    if (!chunk) continue;
+    const context = buildTaskAContext({ source: input.source, course: input.course, chunk });
+    const boundary = requestBoundary({ ...context, visualParts: [] });
+    if (boundary.reason === "provider-inline-body-bytes" && chunk.text.length > 1) {
+      let middle = Math.floor(chunk.text.length / 2);
+      // Preserve UTF-16 surrogate pairs while splitting a text range, with no discarded overlap.
+      if (middle > 0 && /[\uD800-\uDBFF]/.test(chunk.text[middle - 1] ?? "")) middle--;
+      if (!middle) throw new DeepSeekFailure("AI_CONTRACT", false, boundary.reason);
+      qaTrace("qa.task-a-request-split", {
+        reason: boundary.reason,
+        bytes: boundary.bytes,
+        kind: "text"
+      });
+      pending.unshift(
+        { ...chunk, text: chunk.text.slice(0, middle), end: chunk.start + middle },
+        { ...chunk, text: chunk.text.slice(middle), start: chunk.start + middle }
+      );
+    } else {
+      if (boundary.reason) throw new DeepSeekFailure("AI_CONTRACT", false, boundary.reason);
+      chunks.push(chunk);
+    }
+  }
+  return chunks.flatMap((original, chunkIndex) => {
+    const chunk = { ...original, chunkIndex, chunkCount: chunks.length };
+    const context = buildTaskAContext({ source: input.source, course: input.course, chunk });
+    const parts = context.visualParts ?? [];
+    const groups: AiVisualPart[][] = [[]];
+    const baseBoundary = requestBoundary({ ...context, visualParts: [] });
+    if (baseBoundary.reason) throw new DeepSeekFailure("AI_CONTRACT", false, baseBoundary.reason);
+    for (const part of parts) {
+      let group = groups[groups.length - 1];
+      if (!group) throw new Error("MISSING_VISUAL_GROUP");
+      const boundary = requestBoundary({ ...context, visualParts: [...group, part] });
+      if (boundary.reason && group.length) {
+        qaTrace("qa.task-a-request-split", {
+          reason: boundary.reason,
+          bytes: boundary.bytes,
+          images: group.length + 1
+        });
+        group = [];
+        groups.push(group);
+      }
+      const single = requestBoundary({ ...context, visualParts: [part] });
+      if (single.reason) throw new DeepSeekFailure("AI_CONTRACT", false, single.reason);
+      group.push(part);
+    }
+    return groups.map((group, index) =>
+      callFromContext("task-a", TASK_A_SCHEMA, PROMPT_VERSIONS.a, {
+        ...context,
+        ...(groups.length > 1
+          ? { idempotencyKey: `${context.idempotencyKey}:visual:${String(index)}` }
+          : {}),
+        visualParts: group
+      })
+    );
+  });
 }
 
 export function buildTaskAConsolidationCall(input: {
@@ -347,6 +496,10 @@ export function buildTaskBCalls(input: {
   courseIndex: AiCourseIndexEntry[];
   evidence?: AiEvidence[];
   course?: AiCourseInput;
+  availableEvidenceRefs?: EvidenceCatalogEntry[];
+  sharedWorkingContexts?: unknown[];
+  unresolvedCoverage?: TaskASemanticCoverage;
+  groundedItems?: boolean;
 }): AiCall[] {
   return [
     callFromContext(
@@ -354,10 +507,18 @@ export function buildTaskBCalls(input: {
       TASK_B_SCHEMA,
       PROMPT_VERSIONS.b,
       buildTaskBContext({
+        ...(input.groundedItems ? { groundedItems: true } : {}),
+        ...(input.unresolvedCoverage ? { unresolvedCoverage: input.unresolvedCoverage } : {}),
+        ...(input.sharedWorkingContexts
+          ? { sharedWorkingContexts: input.sharedWorkingContexts }
+          : {}),
         drafts: input.drafts,
         constraintCandidates: input.constraintCandidates,
         courseIndex: input.courseIndex,
         evidence: input.evidence ?? [],
+        ...(input.availableEvidenceRefs
+          ? { availableEvidenceRefs: input.availableEvidenceRefs }
+          : {}),
         ...(input.course === undefined ? {} : { course: input.course })
       })
     )
@@ -516,7 +677,7 @@ export async function runTaskA(
 
 export interface TaskBValue {
   result: TaskBResult;
-  /** Evidence expansion rounds that followed the initial call (0, 1 or 2). */
+  /** Evidence expansion rounds that supplied additional original evidence. */
   expansionRounds: number;
 }
 
@@ -604,7 +765,7 @@ export async function runTaskB(
     const needing = [...involved].filter(
       (objectId) => indexIds.has(objectId) && !requested.has(objectId)
     );
-    if (needing.length === 0 || rounds >= MAX_TASK_B_EXPANSION_ROUNDS) {
+    if (needing.length === 0) {
       return {
         status: "succeeded",
         value: { result: unit.value, expansionRounds: rounds },

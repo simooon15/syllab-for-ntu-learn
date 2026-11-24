@@ -8,8 +8,10 @@
  * retried unit reuses the same idempotency key and never applies twice.
  */
 
-export const CHUNK_TARGET_CHARS = 10_000;
-export const CHUNK_HARD_LIMIT_CHARS = 14_000;
+// Native locators are evidence boundaries, not semantic tasks. Most Sources fit one package;
+// only the technical context guard splits them, with one file-level consolidation afterwards.
+export const CHUNK_TARGET_CHARS = 220_000;
+export const CHUNK_HARD_LIMIT_CHARS = 240_000;
 export const CHUNK_OVERLAP_LIMIT_CHARS = 800;
 
 /**
@@ -200,7 +202,20 @@ function labelsFor(spans: Span[], start: number, end: number): string[] {
  * Plans the chunks of one Source. The union of `[start, end)` ranges always covers the whole
  * text, and the text of every chunk is exactly `text.slice(start, end)`.
  */
-export function planChunks(input: ChunkInput): Chunk[] {
+export function planChunks(
+  input: ChunkInput,
+  limits: { targetChars: number; hardLimitChars: number } = {
+    targetChars: Math.max(1, input.text.length),
+    hardLimitChars: Math.max(1, input.text.length)
+  }
+): Chunk[] {
+  if (
+    !Number.isSafeInteger(limits.targetChars) ||
+    !Number.isSafeInteger(limits.hardLimitChars) ||
+    limits.targetChars < 1 ||
+    limits.hardLimitChars < limits.targetChars
+  )
+    throw new Error("INVALID_CHUNK_BUDGET");
   const text = input.text;
   if (text.length === 0) return [];
   const spans = structureSpans(text, input.structure);
@@ -211,13 +226,13 @@ export function planChunks(input: ChunkInput): Chunk[] {
   let chunkStart = 0;
   while (contentStart < text.length) {
     const inherited = chunkStart < contentStart ? contentStart - chunkStart : 0;
-    const budget = Math.max(1, CHUNK_HARD_LIMIT_CHARS - inherited);
+    const budget = Math.max(1, limits.hardLimitChars - inherited);
     const contentEnd = chooseContentEnd(
       native,
       paragraph,
       text.length,
       contentStart,
-      Math.min(CHUNK_TARGET_CHARS, budget),
+      Math.min(limits.targetChars, budget),
       budget
     );
     ranges.push({ start: chunkStart, end: contentEnd });

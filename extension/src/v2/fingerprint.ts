@@ -7,6 +7,7 @@ export interface SourceRepresentationInput {
   sourceType: string;
   parentSourceId?: string;
   text: string;
+  contentHash?: string;
   structure: string[];
 }
 
@@ -26,7 +27,7 @@ export async function sourceMachineRepresentation(
   return {
     sourceId: input.sourceId,
     canonicalMetadataHash: await sha256(metadata),
-    contentHash: await sha256(canonicalInlineText(input.text)),
+    contentHash: input.contentHash ?? (await sha256(canonicalInlineText(input.text))),
     structureHash: await sha256(stableStringify(input.structure.map(canonicalText))),
     representationVersion: 1
   };

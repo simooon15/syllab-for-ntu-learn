@@ -1,3 +1,4 @@
+import { installPrintDisclosure } from "../v2/screens/print";
 import { mount } from "../v2/screens/mount";
 
 /**
@@ -9,6 +10,7 @@ export function boot(): void {
   if (!root) throw new Error("APP_ROOT_MISSING");
   const surface =
     document.documentElement.dataset.surface === "side-panel" ? "side-panel" : "full-page";
+  installPrintDisclosure();
   mount({ root, surface });
 }
 

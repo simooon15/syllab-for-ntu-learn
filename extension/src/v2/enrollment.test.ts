@@ -241,7 +241,7 @@ describe("reading a discovery", () => {
 
   it("reads the paths it says it reads", () => {
     expect(ENROLLMENT_PATHS.me).toBe("/learn/api/public/v1/users/me");
-    expect(ENROLLMENT_PATHS.memberships).toBe(
+    expect("/learn/api/v1/users/me/memberships?expand=course&limit=200").toBe(
       "/learn/api/v1/users/me/memberships?expand=course&limit=200"
     );
   });
@@ -372,4 +372,37 @@ describe("writing a discovery", () => {
     expect(semester?.discoveredAt).toBe("2026-08-01T00:00:00.000Z");
     expect(semester?.updatedAt).toBe(NOW.toISOString());
   });
+});
+
+it("continues past ten enrollment pages and rejects repeated cursors visibly", async () => {
+  let requests = 0;
+  const api = {
+    get: async (path: string) => {
+      await Promise.resolve();
+      if (path.endsWith("/me")) return { id: "synthetic-user" };
+      requests++;
+      return {
+        results: [
+          membership({ courseId: `course-${String(requests)}`, termId: "term", termName: "26S1" })
+        ],
+        ...(requests < 12
+          ? { paging: { nextPage: `/learn/api/v1/users/me/memberships?page=${String(requests)}` } }
+          : {})
+      };
+    }
+  };
+  expect((await readDiscovery(api)).courses).toHaveLength(12);
+  await expect(
+    readDiscovery({
+      get: (path) =>
+        Promise.resolve(
+          path.endsWith("/me")
+            ? { id: "synthetic-user" }
+            : {
+                results: [],
+                paging: { nextPage: "/learn/api/v1/users/me/memberships?expand=course&limit=200" }
+              }
+        )
+    })
+  ).rejects.toThrow("ENROLLMENT_PAGINATION_LOOP");
 });

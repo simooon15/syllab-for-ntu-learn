@@ -15,7 +15,7 @@ import type {
 import { DATABASE_NAME, LocalDatabase } from "./storage";
 import { LocalStore } from "./store";
 import { RebuildStagingStore } from "./staging";
-import { taskStatus, ViewBuilder } from "./view";
+import { reviewItemView, taskStatus, ViewBuilder } from "./view";
 import { applyInitialReviewDecision } from "./course-state";
 
 /**
@@ -118,6 +118,59 @@ beforeEach(async () => {
 
 const previewFor = () =>
   views.build({ surface: "full-page", screen: "CAL-01", courseId: COURSE.courseId });
+
+it("keeps unresolved source interpretation and its native evidence visible after object Review has no pending items", async () => {
+  await store.setMetadata({
+    [`direct-course-checkpoint:${COURSE.courseId}`]: {
+      ledger: {
+        readingSummary: [
+          "One source remains preview-only; its omitted content is not claimed understood."
+        ],
+        draft: {
+          clauses: [
+            {
+              clauseId: "unowned",
+              content: "Prepare slides if this activity applies",
+              conditions: ["if this activity applies"],
+              exceptions: [],
+              context: "Ownership not yet determined",
+              evidence: [
+                {
+                  evidenceId: "source-native",
+                  sourceId: "source",
+                  locator: "page:4",
+                  excerpt: "Original conditional slide requirement"
+                }
+              ]
+            }
+          ],
+          links: [
+            {
+              clauseRef: "unowned",
+              disposition: "UNRESOLVED",
+              state: "UNCERTAIN",
+              basis: "Group versus individual heading conflicts"
+            }
+          ]
+        }
+      }
+    }
+  });
+  const view = await views.build({
+    surface: "full-page",
+    screen: "CRS-01",
+    courseId: COURSE.courseId
+  });
+  expect(view.course?.sourceContext?.questions[0]).toContain(
+    "UNCERTAIN: Group versus individual heading conflicts"
+  );
+  expect(view.course?.sourceContext?.evidence[0]?.excerpt).toBe(
+    "Original conditional slide requirement"
+  );
+  expect(view.course?.sourceContext?.readingScope[0]).toContain("preview-only");
+  expect(view.review).toBeUndefined();
+  expect((await store.readTrustedSnapshot(COURSE.courseId))?.facts).toHaveLength(0);
+});
 
 describe("the Calendar Export screen's projection", () => {
   it("places a day and month in the year the Course's Semester gives it", async () => {
@@ -235,6 +288,27 @@ describe("trusted Current Course State projections", () => {
     };
     await store.writeDraft({ assessments: [confirmed, pending], reviewItems: [pendingItem] });
 
+    await store.writeDraft({
+      facts: [
+        fact({
+          factId: "pending-weight",
+          field: "weight",
+          assessmentId: pending.assessmentId,
+          value: { state: "KNOWN", value: "7%" }
+        })
+      ]
+    });
+    const reviewView = await views.build({
+      surface: "full-page",
+      screen: "IRV-02",
+      courseId: COURSE.courseId
+    });
+    expect(reviewView.review?.targetAssessmentId).toBe(pending.assessmentId);
+    expect(reviewView.review?.assessment?.assessmentId).toBe(pending.assessmentId);
+    expect(
+      reviewView.review?.assessment?.facts.find((item) => item.factId === "pending-weight")?.display
+    ).toBe("7%");
+
     const courseView = await views.build({
       surface: "full-page",
       screen: "CRS-01",
@@ -345,99 +419,132 @@ describe("trusted Current Course State projections", () => {
 });
 
 describe("Rebuild preview projections", () => {
-  it("shows workflow-scoped partial staging without replacing trusted Current Course State", async () => {
-    const memory = new Map<string, unknown>();
-    const staging = new RebuildStagingStore({
-      get: (key) => Promise.resolve({ [String(key)]: memory.get(String(key)) }),
-      set: (items) => {
-        for (const [key, value] of Object.entries(items)) memory.set(key, value);
-        return Promise.resolve();
-      },
-      remove: (key) => {
-        memory.delete(String(key));
-        return Promise.resolve();
-      }
-    });
-    const workflow: WorkflowRecord = {
-      workflowId: "wf-partial-rebuild",
-      courseId: COURSE.courseId,
-      kind: "rebuild",
-      state: "waiting",
-      phase: "review",
-      phaseCursor: "complete",
-      waitingReason: "review",
-      attempt: 0,
-      baseCourseRevision: COURSE.currentRevision,
-      createdAt: NOW,
-      updatedAt: NOW
-    };
-    const stagedAssessment: AssessmentRecord = {
-      ...ASSESSMENT,
-      assessmentId: "assessment_rebuilt",
-      name: "Partial Rebuild Essay",
-      createdBy: "ai"
-    };
-    await store.saveWorkflow(workflow);
-    await store.writeDraft({
-      observations: [
-        {
-          observationId: "obs-fetch-failed",
-          workflowId: workflow.workflowId,
-          sourceId: "source-fetch-failed",
-          courseId: COURSE.courseId,
-          fetchStatus: "failed",
-          parseStatus: "not-attempted",
-          comparability: "incomparable",
-          errorCode: "NO_EXTRACTABLE_TEXT",
-          recordedAt: NOW
+  it.each([true, false])(
+    "shows partial Rebuild without changing trusted state when established=%s",
+    async (established) => {
+      await store.upsertCourse({ ...COURSE, established });
+      const memory = new Map<string, unknown>();
+      const staging = new RebuildStagingStore({
+        get: (key) => Promise.resolve({ [String(key)]: memory.get(String(key)) }),
+        set: (items) => {
+          for (const [key, value] of Object.entries(items)) memory.set(key, value);
+          return Promise.resolve();
+        },
+        remove: (key) => {
+          memory.delete(String(key));
+          return Promise.resolve();
         }
-      ]
-    });
-    await staging.write({
-      courseId: COURSE.courseId,
-      workflowId: workflow.workflowId,
-      stagedAt: NOW,
-      assessments: [stagedAssessment],
-      constraints: [],
-      facts: [],
-      evidence: [],
-      reviewItems: [],
-      changes: [],
-      taskACoverage: {
-        succeededSourceIds: ["source-readable"],
-        relevantSourceIds: ["source-readable"],
-        failedSources: []
-      }
-    });
-    const rebuiltViews = new ViewBuilder({
-      store,
-      staging,
-      productVersion: "0.2.0",
-      settings: () =>
-        Promise.resolve({
-          apiKey: { state: "valid" },
-          privacy: true,
-          apiUsage: true,
-          version: "0.2.0"
-        })
-    });
+      });
+      const workflow: WorkflowRecord = {
+        workflowId: "wf-partial-rebuild",
+        courseId: COURSE.courseId,
+        kind: "rebuild",
+        state: "waiting",
+        phase: "review",
+        phaseCursor: "complete",
+        waitingReason: "review",
+        attempt: 0,
+        baseCourseRevision: COURSE.currentRevision,
+        createdAt: NOW,
+        updatedAt: NOW
+      };
+      const stagedAssessment: AssessmentRecord = {
+        ...ASSESSMENT,
+        assessmentId: "assessment_rebuilt",
+        name: "Partial Rebuild Essay",
+        createdBy: "ai"
+      };
+      await store.saveWorkflow(workflow);
+      await store.writeDraft({
+        observations: [
+          {
+            observationId: "obs-fetch-failed",
+            workflowId: workflow.workflowId,
+            sourceId: "source-fetch-failed",
+            courseId: COURSE.courseId,
+            fetchStatus: "failed",
+            parseStatus: "not-attempted",
+            comparability: "incomparable",
+            errorCode: "NO_EXTRACTABLE_TEXT",
+            recordedAt: NOW
+          }
+        ]
+      });
+      await staging.write({
+        courseId: COURSE.courseId,
+        workflowId: workflow.workflowId,
+        stagedAt: NOW,
+        taskBRecovery: {
+          authorization: "P2E-021",
+          state: "settled",
+          at: NOW,
+          error: "AI_CONTRACT:schema"
+        },
+        taskBCheckpoint: {
+          schema: "syllab.ai.task-b/2",
+          registryHash: "",
+          items: [],
+          status: "partial",
+          recordedAt: NOW,
+          pendingEvidenceRequests: 0,
+          result: {
+            schema: "syllab.ai.task-b/1",
+            identityResolutions: [],
+            canonicalAssessmentProposals: [],
+            courseWideConstraintProposals: [],
+            fieldConsolidationResults: [],
+            structuralRelationships: [],
+            unresolvedIssues: []
+          }
+        },
+        assessments: [stagedAssessment],
+        constraints: [],
+        facts: [],
+        evidence: [],
+        reviewItems: [],
+        changes: [],
+        taskACoverage: {
+          succeededSourceIds: ["source-readable"],
+          relevantSourceIds: ["source-readable"],
+          failedSources: []
+        }
+      });
+      const rebuiltViews = new ViewBuilder({
+        store,
+        staging,
+        productVersion: "0.2.0",
+        settings: () =>
+          Promise.resolve({
+            apiKey: { state: "valid" },
+            privacy: true,
+            apiUsage: true,
+            version: "0.2.0"
+          })
+      });
 
-    const view = await rebuiltViews.build({
-      surface: "full-page",
-      screen: "RBL-02",
-      courseId: COURSE.courseId
-    });
+      const view = await rebuiltViews.build({
+        surface: "full-page",
+        screen: "RBL-02",
+        courseId: COURSE.courseId
+      });
 
-    expect(view.course?.assessments.map((item) => item.name)).toEqual(["Group Project"]);
-    expect(view.rebuildPreview).toMatchObject({
-      partial: true,
-      failedSourceCount: 1,
-      canAdopt: false
-    });
-    expect(view.rebuildPreview?.course.assessments.map((item) => item.name)).toEqual([
-      "Partial Rebuild Essay"
-    ]);
-  });
+      expect(view.course?.assessments.map((item) => item.name)).toEqual(["Group Project"]);
+      expect(view.rebuildPreview).toMatchObject({
+        partial: true,
+        failedSourceCount: 1,
+        canAdopt: false
+      });
+      expect(view.rebuildPreview?.course.assessments.map((item) => item.name)).toEqual([
+        "Partial Rebuild Essay"
+      ]);
+      expect(view.rebuildPreview?.taskBCoverage).toMatchObject({
+        provisional: true,
+        verifiedItems: 0,
+        status: "partial"
+      });
+      expect((await store.readCourse(COURSE.courseId))?.established).toBe(established);
+    }
+  );
 });
 
 /**
@@ -504,4 +611,214 @@ describe("what a Scan screen says about its run", () => {
       ).toMatchObject({ action: "OpenSettings" });
     }
   });
+});
+
+describe("uncertain candidate projection", () => {
+  it("preserves a single explicit candidate without choosing it or changing uncertainty", async () => {
+    await store.writeDraft({
+      facts: [
+        fact({
+          factId: "single-candidate",
+          field: "start_date",
+          value: { state: "UNCERTAIN", competingValues: ["2040-12-15"] }
+        })
+      ]
+    });
+    const view = await views.build({
+      surface: "full-page",
+      screen: "CRS-01",
+      courseId: COURSE.courseId
+    });
+    const projected = view.course?.assessments
+      .find((a) => a.assessmentId === ASSESSMENT.assessmentId)
+      ?.facts.find((f) => f.factId === "single-candidate");
+    expect(projected?.knowledge).toBe("UNCERTAIN");
+    expect(projected?.display).toBe("Not yet clear");
+    expect(projected?.competingValues).toEqual(["2040-12-15"]);
+  });
+});
+
+it("projects native evidence for an initial Rule and its unresolved source questions", async () => {
+  const rule = {
+    constraintId: "rule",
+    courseId: COURSE.courseId,
+    content: "Synthetic rule",
+    evidenceRefs: [{ evidenceId: "rule-e", sourceId: "source", locator: "page:1" }],
+    marks: [],
+    createdBy: "ai" as const,
+    updatedAt: NOW
+  };
+  const evidence = {
+    evidenceId: "rule-e",
+    courseId: COURSE.courseId,
+    sourceId: "source",
+    locator: "page:1",
+    excerpt: "Synthetic rule",
+    capturedAt: NOW
+  };
+  await store.writeDraft({
+    constraints: [rule],
+    evidence: [evidence],
+    reviewItems: [
+      {
+        reviewItemId: "rule-review",
+        courseId: COURSE.courseId,
+        workflowId: "workflow",
+        kind: "initial",
+        targetId: "rule",
+        payload: {
+          unresolvedQuestions: ["Synthetic applicability question"],
+          evidence: [evidence],
+          issueEvidenceIds: ["rule-e"]
+        },
+        createdAt: NOW,
+        updatedAt: NOW
+      }
+    ]
+  });
+  const view = await views.build({
+    surface: "full-page",
+    screen: "IRV-01",
+    courseId: COURSE.courseId
+  });
+  expect(view.review?.constraint?.evidence[0]?.excerpt).toBe("Synthetic rule");
+  expect(view.review?.issueEvidence?.[0]?.locator).toBe("page:1");
+});
+
+it("does not present the original source citation as evidence for a user-edited current value", () => {
+  const original = fact({
+    factId: "weight",
+    field: "weight",
+    value: { state: "KNOWN", value: "41%" },
+    userEdited: true,
+    evidenceRefs: [{ evidenceId: "old-source", sourceId: "source", locator: "page:1" }]
+  });
+  const item: ReviewItemRecord = {
+    reviewItemId: "conflict",
+    courseId: COURSE.courseId,
+    workflowId: "workflow",
+    kind: "change",
+    changeType: "CONFLICT",
+    targetId: ASSESSMENT.assessmentId,
+    payload: {},
+    createdAt: NOW,
+    updatedAt: NOW
+  };
+  const requests: string[][] = [];
+  const view = reviewItemView(
+    item,
+    {
+      assessments: [ASSESSMENT],
+      constraints: [],
+      facts: [original],
+      changes: [
+        {
+          changeId: "conflict",
+          courseId: COURSE.courseId,
+          workflowId: "workflow",
+          targetId: ASSESSMENT.assessmentId,
+          field: "weight",
+          changeType: "CONFLICT",
+          currentValue: original.value,
+          latestValue: { state: "UNCERTAIN", competingValues: ["40%", "41%"] },
+          currentEvidenceIds: [],
+          newEvidenceIds: [],
+          createdAt: NOW,
+          updatedAt: NOW
+        }
+      ]
+    },
+    (ids) => {
+      requests.push(ids);
+      return [];
+    },
+    { index: 1, total: 1 }
+  );
+  expect(view.current?.values[0]?.display).toBe("41%");
+  expect(requests.flat()).not.toContain("old-source");
+});
+
+it("shows NEW requirements on an existing owner alongside the unchanged user-edited Current value", async () => {
+  const current = fact({
+    factId: "weight",
+    field: "weight",
+    value: { state: "KNOWN", value: "41%" },
+    userEdited: true
+  });
+  const replacement = {
+    ...current,
+    userEdited: false,
+    value: { state: "KNOWN" as const, value: "45%" }
+  };
+  const addition = fact({
+    factId: "new-rule",
+    field: "requirement",
+    value: { state: "KNOWN", value: "No project-title registration is required." }
+  });
+  await store.writeDraft({
+    facts: [current],
+    reviewItems: [
+      {
+        reviewItemId: "new-rule-review",
+        courseId: COURSE.courseId,
+        workflowId: "wf",
+        kind: "change",
+        changeType: "NEW",
+        targetId: ASSESSMENT.assessmentId,
+        payload: { assessment: ASSESSMENT, facts: [replacement, addition] },
+        createdAt: NOW,
+        updatedAt: NOW
+      }
+    ]
+  });
+  const view = await views.build({
+    surface: "full-page",
+    screen: "CRV-02",
+    courseId: COURSE.courseId
+  });
+  expect(view.review?.assessment?.facts.map((f) => f.display)).toContain(
+    "No project-title registration is required."
+  );
+  expect(view.review?.assessment?.facts.find((f) => f.factId === "weight")?.display).toBe("41%");
+  expect((await store.readSnapshot(COURSE.courseId))?.facts).toEqual([current]);
+});
+
+it("shows newly proposed Rule content with UNCERTAIN state before confirmation", () => {
+  const rule = {
+    constraintId: "rule",
+    courseId: COURSE.courseId,
+    content: "Existing rule",
+    evidenceRefs: [],
+    marks: [],
+    createdBy: "ai" as const,
+    updatedAt: NOW
+  };
+  const addition = fact({
+    constraintId: "rule",
+    factId: "new-rule",
+    field: "content",
+    value: { state: "UNCERTAIN", value: "The checklist may count toward participation" }
+  });
+  delete addition.assessmentId;
+  const item: ReviewItemRecord = {
+    reviewItemId: "new-rule-review",
+    courseId: COURSE.courseId,
+    workflowId: "wf",
+    kind: "change",
+    changeType: "NEW",
+    targetId: "rule",
+    payload: { constraint: rule, facts: [addition] },
+    createdAt: NOW,
+    updatedAt: NOW
+  };
+  const view = reviewItemView(
+    item,
+    { assessments: [], facts: [], constraints: [rule], changes: [] },
+    () => [],
+    { index: 1, total: 1 }
+  );
+  expect(view.constraint?.content).toContain("Existing rule");
+  expect(view.constraint?.content).toContain(
+    "UNCERTAIN — The checklist may count toward participation"
+  );
 });

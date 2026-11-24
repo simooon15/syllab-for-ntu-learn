@@ -1,3 +1,5 @@
+import { archiveQaStream, type PrivateQaStream } from "./qa-stream-archive";
+import { StreamTextRenderer, viewportProjection } from "./stream-render";
 /**
  * The QA observation layer.
  *
@@ -51,7 +53,7 @@ function traceArea(): chrome.storage.StorageArea {
 const KEY_SHAPE = new RegExp(["s", "k-", "[A-Za-z0-9]{16,}"].join(""));
 
 /** Enough for a two-Course acceptance run, small enough to stay a debugging aid. */
-const QA_TRACE_LIMIT = 600;
+// No unverified event-retention ceiling; private session trace remains complete.
 
 /** Field names that must never be written, whatever their value looks like. */
 const SECRET_FIELDS = /(key|token|secret|password|cookie|authorization|bearer|session)/i;
@@ -62,7 +64,9 @@ const SAFE_TOKEN_USAGE_FIELDS = new Set([
   "inputTokens",
   "outputTokens",
   "reasoningTokens",
-  "estimatedInputTokens"
+  "estimatedInputTokens",
+  "cacheHitTokens",
+  "cacheMissTokens"
 ]);
 
 /** Long enough for a date and a label; a course body is not a field this layer has any use for. */
@@ -75,6 +79,8 @@ interface QaEvent {
 }
 
 const QA_STREAM_MESSAGE = "SYLLAB_QA_AI_STREAM";
+let currentStream: PrivateQaStream | undefined;
+const activeStreams = new Map<string, PrivateQaStream>();
 
 function sendLive(message: Record<string, unknown>): void {
   try {
@@ -84,11 +90,13 @@ function sendLive(message: Record<string, unknown>): void {
   }
 }
 
-/** Raw provider text is sent only to a currently open QA surface and is never persisted. */
+/** Live memory serves observer reopen; finished full streams archive privately in native IDB. */
 export function qaProviderStreamStart(
   streamId: string,
-  context: { system: string; user: string }
+  context: Omit<PrivateQaStream, "streamId" | "reasoning" | "content" | "finished">
 ): void {
+  currentStream = { streamId, ...context, reasoning: "", content: "", finished: false };
+  activeStreams.set(streamId, currentStream);
   sendLive({ event: "start", streamId, system: context.system, user: context.user });
 }
 
@@ -97,11 +105,41 @@ export function qaProviderStreamDelta(
   channel: "reasoning" | "content",
   text: string
 ): void {
+  const stream = activeStreams.get(streamId);
+  if (stream) stream[channel] += text;
   sendLive({ event: "delta", streamId, channel, text });
 }
 
-export function qaProviderStreamEnd(streamId: string): void {
+export async function qaProviderStreamEnd(streamId: string): Promise<void> {
+  const stream = activeStreams.get(streamId);
+  if (stream) {
+    stream.finished = true;
+    stream.finishedAt = new Date().toISOString();
+  }
   sendLive({ event: "end", streamId });
+  if (stream) {
+    try {
+      await archiveQaStream({ ...stream });
+      activeStreams.delete(streamId);
+    } catch {
+      qaTrace("qa.stream-archive-failed", {
+        streamId,
+        errorCode: "QA_STREAM_ARCHIVE_FAILED",
+        reasoningChars: stream.reasoning.length,
+        outputChars: stream.content.length
+      });
+      console.warn("QA_STREAM_ARCHIVE_FAILED");
+    }
+  }
+}
+
+/** Numeric usage and non-secret provider outcome, independent of displayed content. */
+export function qaProviderStreamResult(
+  streamId: string,
+  fields: Partial<Pick<PrivateQaStream, "providerUsage" | "finishReason" | "httpStatus">>
+): void {
+  const stream = activeStreams.get(streamId);
+  if (stream) Object.assign(stream, fields);
 }
 
 /**
@@ -149,13 +187,52 @@ function append(entry: QaEvent): void {
       const trace = Array.isArray(existing) ? (existing as QaEvent[]) : [];
       trace.push(entry);
       await area.set({
-        [QA_TRACE_KEY]: trace.slice(-QA_TRACE_LIMIT)
+        [QA_TRACE_KEY]: trace
       });
     })
     // Telemetry must never be the reason a product action fails; if the write is refused the run
     // simply has one fewer line in it.
     .catch(() => undefined);
   return;
+}
+
+/** Offscreen documents expose runtime only. Forward safe metadata to the single background writer. */
+export function installQaTelemetryReceiver(): void {
+  chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
+    if (
+      sender.id === chrome.runtime.id &&
+      sender.url?.startsWith(chrome.runtime.getURL("")) &&
+      typeof message === "object" &&
+      message !== null
+    ) {
+      const request = message as Record<string, unknown>;
+      if (request.type === "SYLLAB_QA_AI_STREAM_SNAPSHOT") {
+        respond(currentStream ?? null);
+        return false;
+      }
+      if (
+        request.type === "SYLLAB_QA_AI_STREAM_CLEAR" &&
+        request.streamId === currentStream?.streamId
+      ) {
+        sendLive({ event: "clear", streamId: currentStream?.streamId });
+        currentStream = undefined;
+        respond({ cleared: true });
+        return false;
+      }
+    }
+    if (sender.id !== chrome.runtime.id || !sender.url?.endsWith("/offscreen.html")) return false;
+    if (typeof message !== "object" || message === null) return false;
+    const record = message as Record<string, unknown>;
+    if (
+      record.type !== "SYLLAB_QA_TELEMETRY" ||
+      typeof record.event !== "string" ||
+      !/^qa\.[a-z0-9-]+$/.test(record.event)
+    )
+      return false;
+    if (typeof record.fields === "object" && record.fields !== null)
+      qaTrace(record.event, record.fields as Record<string, unknown>);
+    return false;
+  });
 }
 
 /**
@@ -165,6 +242,15 @@ function append(entry: QaEvent): void {
 export function qaTrace(event: string, fields: Record<string, unknown> = {}): void {
   try {
     const scrubbed = scrubbable(fields);
+    if (
+      typeof chrome !== "undefined" &&
+      !(chrome as unknown as { storage?: typeof chrome.storage }).storage
+    ) {
+      void chrome.runtime
+        .sendMessage({ type: "SYLLAB_QA_TELEMETRY", event, fields: scrubbed })
+        .catch(() => undefined);
+      return;
+    }
     append({
       at: new Date().toISOString(),
       event,
@@ -185,6 +271,8 @@ export function qaBuild(): boolean {
 
 /** QA-only Product Owner monitor; release builds resolve this export to an inert stub. */
 export function mountQaMonitor(): () => void {
+  // Non-browser screen fixtures have no frame scheduler or native Text nodes.
+  if (typeof requestAnimationFrame !== "function") return () => undefined;
   const panel = document.createElement("details");
   panel.className = "qa-ai-monitor";
   // A diagnostic must never sit over a product control. Keep it available but collapsed until the
@@ -279,7 +367,33 @@ export function mountQaMonitor(): () => void {
   const changed = (_changes: Record<string, chrome.storage.StorageChange>, area: string): void => {
     if (area === "session") void render();
   };
+  const reasoningView = new StreamTextRenderer(
+      reasoning,
+      (callback) => requestAnimationFrame(callback),
+      (id) => cancelAnimationFrame(id),
+      (text) => viewportProjection(reasoning, text)
+    ),
+    outputView = new StreamTextRenderer(
+      output,
+      (callback) => requestAnimationFrame(callback),
+      (id) => cancelAnimationFrame(id),
+      (text) => viewportProjection(output, text)
+    );
+  const toggle = (): void => {
+    reasoningView.setVisible(panel.open);
+    outputView.setVisible(panel.open);
+  };
+  panel.addEventListener("toggle", toggle);
   let activeStreamId: string | undefined;
+  let privateContext = "";
+  Object.assign(globalThis, {
+    __syllabQaStreamSnapshot: () => ({
+      streamId: activeStreamId,
+      reasoning: reasoningView.contents(),
+      content: outputView.contents(),
+      context: privateContext
+    })
+  });
   const live = (message: unknown): void => {
     if (typeof message !== "object" || message === null) return;
     const record = message as Record<string, unknown>;
@@ -287,9 +401,11 @@ export function mountQaMonitor(): () => void {
     if (record.event === "start") {
       activeStreamId = record.streamId;
       panel.open = true;
-      contextText.textContent = `SYSTEM\n${text(record.system)}\n\nUSER\n${text(record.user)}`;
-      reasoning.textContent = "";
-      output.textContent = "";
+      privateContext = `SYSTEM\n${text(record.system)}\n\nUSER\n${text(record.user)}`;
+      contextText.textContent = `Context retained in private trace: ${String(text(record.system).length)} system characters / ${String(text(record.user).length)} user characters.`;
+      reasoningView.clear();
+      outputView.clear();
+      toggle();
       status.textContent = "Provider stream active";
       return;
     }
@@ -299,12 +415,21 @@ export function mountQaMonitor(): () => void {
       typeof record.text === "string" &&
       (record.channel === "reasoning" || record.channel === "content")
     ) {
-      const target = record.channel === "reasoning" ? reasoning : output;
-      target.textContent += record.text;
-      target.scrollTop = target.scrollHeight;
+      (record.channel === "reasoning" ? reasoningView : outputView).append(record.text);
       return;
     }
-    if (record.event === "end") status.textContent = "Provider stream finished";
+    if (record.event === "end") {
+      reasoningView.flush();
+      outputView.flush();
+      status.textContent = "Provider stream finished";
+    }
+    if (record.event === "clear") {
+      reasoningView.clear();
+      outputView.clear();
+      contextText.textContent = "";
+      activeStreamId = undefined;
+      status.textContent = "Waiting for the first provider call";
+    }
   };
   chrome.storage.onChanged.addListener(changed);
   const runtimeMessages = (
@@ -316,10 +441,32 @@ export function mountQaMonitor(): () => void {
     }
   ).onMessage;
   if (runtimeMessages) runtimeMessages.addListener(live);
+  let disposed = false;
+  void chrome.runtime
+    .sendMessage({ type: "SYLLAB_QA_AI_STREAM_SNAPSHOT" })
+    .then((snapshot: unknown) => {
+      if (disposed || activeStreamId || typeof snapshot !== "object" || snapshot === null) return;
+      const saved = snapshot as Record<string, unknown>;
+      live({ type: QA_STREAM_MESSAGE, ...saved, event: "start" });
+      for (const channel of ["reasoning", "content"])
+        live({
+          type: QA_STREAM_MESSAGE,
+          streamId: saved.streamId,
+          event: "delta",
+          channel,
+          text: saved[channel]
+        });
+      if (saved.finished) live({ type: QA_STREAM_MESSAGE, streamId: saved.streamId, event: "end" });
+    })
+    .catch(() => undefined);
   void render();
   return () => {
+    disposed = true;
     chrome.storage.onChanged.removeListener(changed);
     if (runtimeMessages) runtimeMessages.removeListener(live);
+    panel.removeEventListener("toggle", toggle);
+    reasoningView.dispose();
+    outputView.dispose();
     panel.remove();
   };
 }

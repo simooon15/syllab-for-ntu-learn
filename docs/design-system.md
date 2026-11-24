@@ -345,6 +345,15 @@ Two patterns worth copying when you add something:
   `cubic-bezier(0.4, 0.2, 0.6, 0.8)`, which is what ships. The rule is `y1/x1 > 0` and
   `(1 − y2)/(1 − x2) > 0`, not "use linear".
 
+### v0.3 shared interaction implementation
+
+The v0.3 baseline keeps the flat forest palette, typography and hierarchy. Shared press feedback is
+100ms, reveal 180ms and view continuity 200ms, using the tokens in `app.css`. `screens/continuity.ts`
+preserves unsubmitted input, focus, selection and scroll through asynchronous screen replacement;
+its WAAPI transitions cancel before a newer transition starts. Reduced motion neutralizes these
+transitions. Activity updates its own text region without replacing the screen. Synthetic browser
+qualification is `node scripts/v030-browser-check.mjs`; human visual acceptance remains a separate gate.
+
 ### The motion vocabulary
 
 Motion exists to explain a change of state, never to decorate it. Everything animates once and

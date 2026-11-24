@@ -24,7 +24,8 @@ const allowedExtensions = new Set([
   ""
 ]);
 const forbidden = [
-  /sk-[A-Za-z0-9_-]{20,}/g,
+  // Credential prefix starts a token; the suffix of ordinary "Task-..." prose is not a key.
+  /\bsk-[A-Za-z0-9_-]{20,}/g,
   /DEEPSEEK_API_KEY[ \t]*=[ \t]*[^\s#][^\r\n]*/g,
   /Authorization:\s*Bearer\s+[A-Za-z0-9._~-]{16,}/gi
 ];
@@ -35,7 +36,8 @@ async function walk(directory) {
     if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
     const path = join(directory, entry.name);
     if (entry.isDirectory()) paths.push(...(await walk(path)));
-    else if (allowedExtensions.has(extname(entry.name))) paths.push(path);
+    // Scan repository file contents, never follow links into external browser/runtime state.
+    else if (entry.isFile() && allowedExtensions.has(extname(entry.name))) paths.push(path);
   }
   return paths;
 }

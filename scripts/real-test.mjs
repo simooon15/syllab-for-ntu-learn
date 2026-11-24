@@ -24,7 +24,13 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { chromium } from "playwright";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const OUT = resolve(ROOT, "artifacts", "real-test");
+const versionIndex = process.argv.indexOf("--version");
+const runVersion = versionIndex < 0 ? "0.2.0" : process.argv[versionIndex + 1];
+if (!/^0\.\d+\.\d+$/.test(runVersion ?? "")) throw new Error("INVALID_RUN_VERSION");
+const OUT =
+  runVersion === "0.2.0"
+    ? resolve(ROOT, "artifacts", "real-test")
+    : resolve(ROOT, "evidence", "private", `v${runVersion}`, "real-test");
 const SHOTS = join(OUT, "screenshots");
 const DOWNLOADS = join(OUT, "downloaded");
 const CONFIG_PATH = resolve(ROOT, ".real-test.local.json");
@@ -1183,7 +1189,7 @@ async function writeTrace(trace) {
 
 async function writeReport(profile) {
   const lines = [
-    "# Syllab v0.2.0 — Gate 3 real acceptance run",
+    `# Syllab v${runVersion} — real acceptance run`,
     "",
     "Produced by `npm run test:real`: the machine's own Google Chrome, the QA build of the",
     "extension, real NTU Learn and the real DeepSeek provider. Nothing is seeded or replayed, and",

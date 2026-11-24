@@ -1,0 +1,214 @@
+import { LocalDatabase } from "./extension/src/v2/storage";
+import { LocalStore } from "./extension/src/v2/store";
+import { WorkflowEngine } from "./extension/src/v2/workflow";
+import { createInitialWorkflow } from "./extension/src/v2/course-state";
+import { RebuildStagingStore } from "./extension/src/v2/staging";
+import { ViewBuilder } from "./extension/src/v2/view";
+import { ViewHandler } from "./extension/src/v2/handler";
+import { renderApp } from "./extension/src/v2/screens/render";
+import { V2_MESSAGE_CONTRACT } from "./extension/src/v2/contract";
+import type { SourceRecord, CourseRecord } from "./extension/src/v2/schema";
+const host = window as unknown as {
+  savedSources052: () => Promise<SourceRecord[]>;
+  physical052: (call: unknown, sources: SourceRecord[]) => Promise<unknown>;
+  qa052: unknown;
+  qaRunLabel:string;
+};
+const now = () => new Date();
+const database = new LocalDatabase(indexedDB, "syllab-native-052-isolated");
+const store = new LocalStore(database);
+const memory: Record<string, unknown> = {};
+const staging = new RebuildStagingStore({
+  get: async (keys) =>
+    Object.fromEntries((typeof keys === "string" ? [keys] : keys).map((k) => [k, memory[k]])),
+  set: async (rows) => {
+    Object.assign(memory, structuredClone(rows));
+  },
+  remove: async (keys) => {
+    for (const k of typeof keys === "string" ? [keys] : keys) delete memory[k];
+  }
+});
+const forbidden = () => {
+  throw Error("NO_NEW_SCAN_OR_FETCH");
+};
+const engine = new WorkflowEngine({
+  store,
+  staging,
+  clock: { now },
+  directCourse: true,
+  directCourseOutputLimit: 98304,
+  machine: {
+    discover: forbidden,
+    fetchAndParse: forbidden,
+    missingPermissionOrigins: async () => []
+  },
+  ai: {
+    apiKey: async () => "isolated-external-secret-boundary",
+    privacyAuthorized: async () => true,
+    usageAuthorized: async () => true,
+    execute: async (call) => ({
+      call,
+      value: await host.physical052(call, (await store.readAllSourceStates(courseId)).sources)
+    })
+  },
+  buildTaskACalls: forbidden,
+  buildTaskAConsolidationCall: forbidden,
+  buildTaskBCalls: forbidden,
+  buildTaskBExpansionCall: forbidden,
+  buildTaskCCalls: forbidden,
+  planChunks: forbidden
+});
+const views = new ViewBuilder({
+  store,
+  staging,
+  productVersion: "0.3.0",
+  settings: async () => ({
+    apiKey: { state: "valid" },
+    privacy: true,
+    apiUsage: true,
+    version: "0.3.0"
+  })
+});
+const handler = new ViewHandler({
+  store,
+  database,
+  staging,
+  session: { get: async () => undefined, set: async () => {} },
+  views,
+  engine,
+  surfaceRoutes: new Map(),
+  now,
+  driveWorkflow: () => {},
+  resolveScanTab: async () => undefined,
+  exportBackup: async () => {},
+  exportCalendar: async () => {},
+  setApiKey: async () => {},
+  validateApiKey: async () => "valid",
+  setAuthorization: async () => {},
+  productVersion: "0.3.0"
+});
+let courseId = "";
+let workflowId = "";
+let mutations: Promise<unknown>[] = [];
+const actions = {
+  runtime: { hints: {}, notice: undefined, error: undefined, restoreStage: undefined },
+  onMutation: (mutation: unknown) => {
+    mutations.push(
+      (async () => {
+        const c = await store.readCourse(courseId);
+        const result = await handler.handle({
+          contract: V2_MESSAGE_CONTRACT,
+          type: "MUTATE",
+          surface: "full-page",
+          courseId,
+          expectedRevision: c!.currentRevision,
+          mutation
+        } as never);
+        if (!result.ok) throw Error("MUTATION_FAILED");
+        await paint();
+      })()
+    );
+  },
+  onOpenScreen: () => {},
+  onOpenSettings: () => {},
+  onOpenFullPage: () => {},
+  onExportCalendar: () => {},
+  onExportBackup: () => {},
+  onValidateApiKey: () => {},
+  onSaveApiKey: () => {},
+  onClearApiKey: () => {}
+};
+async function paint() {
+  const view = await views.build({ surface: "full-page", screen: "IRV-01", courseId });
+  renderApp(document.getElementById("root")!, view, actions as never);
+  return view;
+}
+async function mutate(mutation:unknown) {
+ const course=(await store.readCourse(courseId))!;
+ const result=await handler.handle({contract:V2_MESSAGE_CONTRACT,type:"MUTATE",surface:"full-page",courseId,expectedRevision:course.currentRevision,mutation} as never);
+ if(!result.ok) throw Error("ISOLATED_ACTION_FAILED");
+}
+host.qa052 = {
+  async start() {
+    await store.initialize();
+    const sources = await host.savedSources052();
+    courseId = sources[0]!.courseId;
+    const stamp = now().toISOString();
+    const course: CourseRecord = {
+      courseId,
+      semesterId: "isolated-052",
+      courseCode: "MA6081",
+      courseName: "Fundamentals of Project Management - B",
+      curriculum: true,
+      established: false,
+      currentRevision: 0,
+      consecutiveCheckFailures: 0,
+      updatedAt: stamp
+    };
+    await store.upsertCourse(course);
+    await store.writeDraft({ sources });
+    const w = {
+      ...createInitialWorkflow(host.qaRunLabel, course, stamp, "initial"),
+      phase: "task-b" as const,
+      directCoursePolicy: "native-global/1" as const
+    };
+    workflowId = w.workflowId;
+    await store.saveWorkflow(w);
+    await engine.run(workflowId);
+    const workflow = await store.readWorkflow(workflowId);
+    await paint();
+    return { state: workflow?.state, phase: workflow?.phase, problem: workflow?.lastErrorDetail };
+  },
+  async summary() {
+    const raw = await store.readSnapshot(courseId),
+      trusted = await store.readTrustedSnapshot(courseId);
+    return {
+      workflow: await store.readWorkflow(workflowId),
+      assessments: raw?.assessments.length,
+      rules: raw?.constraints.length,
+      reviewItems: raw?.reviewItems.length,
+      trustedAssessments: trusted?.assessments.length,
+      trustedRules: trusted?.constraints.length,
+      questions: (await paint()).review?.unresolvedQuestions.length
+    };
+  },
+  async settle() {
+    await Promise.all(mutations);
+    mutations = [];
+    return this.summary();
+  },
+  async resume() {
+    await engine.run(workflowId);
+    return this.summary();
+  },
+  async deepProof() {
+    // Only the isolated test DB: exercise actual Human-action handlers before C.
+    for (const item of (await store.readSnapshot(courseId))!.reviewItems) {
+      await mutate({kind:"ConfirmReviewItem",reviewItemId:item.reviewItemId});
+    }
+    const initial = (await store.readTrustedSnapshot(courseId))!;
+    const exam = initial.assessments.find(a=>a.kind==="exam")!;
+    const weight = initial.facts.find(f=>f.assessmentId===exam.assessmentId && f.field==="weight")!;
+    if(!weight) throw Error("EXAM_WEIGHT_MISSING");
+    await mutate({kind:"EditFact",factId:weight.factId,value:{state:"KNOWN",value:"41%",competingValues:[]}});
+    const before = await store.readTrustedSnapshot(courseId);
+    const course = (await store.readCourse(courseId))!;
+    const check = {...createInitialWorkflow(`${host.qaRunLabel}-check`,course,now().toISOString(),"check"),phase:"task-b" as const,directCoursePolicy:"native-global/1" as const};
+    await store.saveWorkflow(check);await engine.run(check.workflowId);
+    const after = await store.readTrustedSnapshot(courseId);
+    const raw = (await store.readSnapshot(courseId))!;
+    const changes=raw.changes;
+    const override=(after!.facts.find(f=>f.factId===weight.factId))!.value;
+    const rebuild={...createInitialWorkflow(`${host.qaRunLabel}-rebuild`,(await store.readCourse(courseId))!,now().toISOString(),"rebuild"),phase:"task-b" as const,directCoursePolicy:"native-global/1" as const};
+    await store.saveWorkflow(rebuild);await engine.run(rebuild.workflowId);
+    const staged=await staging.read(courseId,rebuild.workflowId);
+    await mutate({kind:"KeepCurrentCourse"});
+    return {check:await store.readWorkflow(check.workflowId),before,after,changes,override,rebuild:await store.readWorkflow(rebuild.workflowId),stagingExisted:!!staged,stagingCleared:!(await staging.read(courseId,rebuild.workflowId)),afterKeep:await store.readTrustedSnapshot(courseId)};
+  },
+  async readPrivate() {
+    return {
+      snapshot: await store.readSnapshot(courseId),
+      staged: await staging.read(courseId, workflowId)
+    };
+  }
+};

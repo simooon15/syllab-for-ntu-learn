@@ -1,3 +1,4 @@
+import type { ParseResult, ParsedTextUnit } from "../parser/domain";
 import { CONTRACT_VERSION, isRecord, type DiscoveredSource } from "@syllab/contracts";
 
 import { DiscoveryApiError, type DiscoveryApiPort } from "../discovery/domain";
@@ -10,10 +11,20 @@ export interface MachinePortDependencies {
   api(courseId: string, tabId: number | undefined): DiscoveryApiPort;
   /** Fetches one attachment's bytes and returns its parsed text, or a failure code. */
   parseAttachment(source: DiscoveredSource): Promise<{
-    status: "ok" | "failed" | "unsupported" | "permission-denied";
+    status: "ok" | "partial" | "failed" | "unsupported" | "permission-denied";
     text: string;
     structure: string[];
+    units?: ParsedTextUnit[];
+    contentHash?: string;
+    canonicalization?: ParseResult["canonicalization"];
     errorCode?: string;
+  }>;
+  visualAttachment?(
+    source: DiscoveredSource,
+    stored: SourceRecord
+  ): Promise<{
+    parts: Array<{ locator: string; dataUrl: string }>;
+    unresolved: string[];
   }>;
   /** The Origins a read has redirected to that the extension is not allowed to read yet. */
   missingPermissionOrigins(): Promise<string[]>;
@@ -31,7 +42,7 @@ export interface MachinePortDependencies {
   recordPermissionOrigin(origin: string): Promise<void>;
 }
 
-/** In-memory discovery index; rebuilt from storage when the worker has been evicted. */
+/** Fast discovery index; persisted Source metadata survives worker eviction. */
 const discoveryCache = new Map<string, DiscoveredSource[]>();
 
 export function cacheDiscoveredSources(courseId: string, sources: DiscoveredSource[]): void {
@@ -40,6 +51,36 @@ export function cacheDiscoveredSources(courseId: string, sources: DiscoveredSour
 
 export function cachedSources(courseId: string): DiscoveredSource[] {
   return discoveryCache.get(courseId) ?? [];
+}
+
+/** Older attachment records encode the canonical URL as their native identifier. */
+function recoveredDiscovery(source: SourceRecord): DiscoveredSource | undefined {
+  if (source.discovery) return source.discovery;
+  const cached = cachedSources(source.courseId).find((item) => item.sourceId === source.sourceId);
+  if (cached) return cached;
+  if (source.kind !== "attachment") return undefined;
+  let url: URL;
+  try {
+    url = new URL(source.nativeItemId);
+  } catch {
+    return undefined;
+  }
+  if (url.origin !== "https://ntulearn.ntu.edu.sg" || url.username || url.password)
+    return undefined;
+  return {
+    sourceId: source.sourceId,
+    courseId: source.courseId,
+    scanId: `v2-${source.courseId}`,
+    nativeItemId: source.nativeItemId,
+    kind: "attachment",
+    title: source.title,
+    requestUrl: url.href,
+    canonicalUrl: url.href,
+    discoveryPath: [],
+    depth: 0,
+    status: "discovered",
+    ...(source.parentSourceId ? { parentSourceId: source.parentSourceId } : {})
+  };
 }
 
 /**
@@ -61,7 +102,7 @@ export function structureFromHtml(raw: string): { text: string; structure: strin
     const text = decodeEntities(block).replace(/\s+/g, " ").trim();
     if (text.length === 0) continue;
     index += 1;
-    structure.push(`${String(index)}. ${text.slice(0, 40)}`);
+    structure.push(`${String(index)}. ${text}`);
     lines.push(text);
   }
   return { text: lines.join("\n"), structure };
@@ -103,10 +144,17 @@ export class BlackboardMachinePort implements MachinePort {
       origin: "https://ntulearn.ntu.edu.sg",
       api: this.dependencies.api(course.courseId, tabId)
     });
-    cacheDiscoveredSources(course.courseId, result.checkpoint.sources);
+    if (result.status === "Complete")
+      cacheDiscoveredSources(course.courseId, result.checkpoint.sources);
     return {
+      coverage: {
+        status: result.status,
+        pagesProcessed: result.checkpoint.pagesProcessed,
+        issueCodes: result.checkpoint.issues.map((issue) => issue.code)
+      },
       sources: result.checkpoint.sources.map((source) => ({
         sourceId: source.sourceId,
+        discovery: source,
         // Carried through rather than left behind: it is the item's own identifier, and a caller
         // that only has the Source id cannot address the item it came from. (Gate 3 finding F30.)
         nativeItemId: source.nativeItemId,
@@ -119,12 +167,10 @@ export class BlackboardMachinePort implements MachinePort {
 
   async fetchAndParse(
     source: SourceRecord,
-    course: CourseRecord,
+    _course: CourseRecord,
     _tabId: number | undefined
   ): Promise<FetchedSource> {
-    const discovered = cachedSources(course.courseId).find(
-      (item) => item.sourceId === source.sourceId
-    );
+    const discovered = recoveredDiscovery(source);
     if (!discovered) {
       return {
         sourceId: source.sourceId,
@@ -189,16 +235,34 @@ export class BlackboardMachinePort implements MachinePort {
       title: discovered.title,
       text: parsed.text,
       structure: parsed.structure,
+      ...(parsed.units ? { units: parsed.units } : {}),
+      ...(parsed.contentHash ? { contentHash: parsed.contentHash } : {}),
+      ...(parsed.canonicalization ? { canonicalization: parsed.canonicalization } : {}),
       fetchStatus:
         parsed.status === "permission-denied"
           ? "permission-denied"
-          : parsed.status === "ok"
+          : parsed.status === "ok" || parsed.status === "partial"
             ? "ok"
             : "failed",
       parseStatus:
-        parsed.status === "ok" ? "ok" : parsed.status === "unsupported" ? "unsupported" : "failed",
+        parsed.status === "ok" || parsed.status === "partial"
+          ? parsed.status
+          : parsed.status === "unsupported"
+            ? "unsupported"
+            : "failed",
       ...(parsed.errorCode ? { errorCode: parsed.errorCode } : {})
     };
+  }
+
+  async visualParts(source: SourceRecord) {
+    const discovered = recoveredDiscovery(source);
+    if (!discovered || !this.dependencies.visualAttachment)
+      return {
+        parts: [],
+        unresolved:
+          source.parsed?.units?.filter((unit) => unit.partial).map((unit) => unit.locator) ?? []
+      };
+    return this.dependencies.visualAttachment(discovered, source);
   }
 
   async missingPermissionOrigins(): Promise<string[]> {

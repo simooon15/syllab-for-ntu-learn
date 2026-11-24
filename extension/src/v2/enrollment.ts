@@ -67,8 +67,6 @@ export interface AppliedDiscovery {
 
 export class EnrollmentUnavailable extends Error {}
 
-const MAX_MEMBERSHIP_PAGES = 10;
-
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
@@ -307,7 +305,10 @@ async function readMemberships(
   terms: Map<string, DiscoveredTerm>
 ): Promise<void> {
   let path: string | null = ENROLLMENT_PATHS.memberships;
-  for (let page = 0; path && page < MAX_MEMBERSHIP_PAGES; page += 1) {
+  const visited = new Set<string>();
+  while (path) {
+    if (visited.has(path)) throw new EnrollmentUnavailable("ENROLLMENT_PAGINATION_LOOP");
+    visited.add(path);
     const payload = await api.get(path);
     collectMemberships(payload, courses, terms);
     path = nextPage(payload);

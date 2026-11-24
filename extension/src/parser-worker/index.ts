@@ -1,3 +1,5 @@
+import { unzipSync } from "fflate";
+import { detectDocumentFormat } from "../parser/format-detector";
 import { isRecord } from "@syllab/contracts";
 
 import { parseDocument } from "../parser";
@@ -12,6 +14,29 @@ self.addEventListener("message", (event: MessageEvent<unknown>) => {
     typeof event.data.requestId === "string"
   ) {
     self.postMessage({ requestId: event.data.requestId, status: "READY" });
+    return;
+  }
+  if (
+    isRecord(event.data) &&
+    typeof event.data.requestId === "string" &&
+    event.data.bytes instanceof ArrayBuffer &&
+    ["DETECT", "ARCHIVE_ENTRIES"].includes(String(event.data.operation))
+  ) {
+    const requestId = event.data.requestId;
+    try {
+      const bytes = new Uint8Array(event.data.bytes);
+      const names = Array.isArray(event.data.names)
+        ? event.data.names.filter((name): name is string => typeof name === "string")
+        : [];
+      const wanted = new Set(names);
+      const result =
+        event.data.operation === "DETECT"
+          ? detectDocumentFormat(bytes)
+          : unzipSync(bytes, { filter: (entry) => wanted.has(entry.name) });
+      self.postMessage({ requestId, status: "COMPLETE", result });
+    } catch {
+      self.postMessage({ requestId, status: "FAILED", errorCode: "ARCHIVE_DECODE_FAILED" });
+    }
     return;
   }
   if (

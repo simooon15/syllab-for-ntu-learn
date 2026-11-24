@@ -1,9 +1,13 @@
+import { requirePresent } from "../errors";
 import { control, data, el } from "../../app/dom";
 import { t } from "../copy";
+import type { FactValue, FactSemantics } from "../schema";
 import type { AssessmentCardView, ReviewItemView, ScreenId } from "../contract";
-import { assessmentBody, renderCourse } from "./course";
+import { assessmentBody, renderCourse, renderConstraint } from "./course";
 import {
   actionRow,
+  evidenceBlock,
+  toggleEvidence,
   backAction,
   hintFor,
   linkAction,
@@ -64,7 +68,62 @@ export function reviewShell(ctx: ScreenContext, options: ReviewShellOptions): HT
     header.append(progress);
   }
   root.append(header);
+  const directory = ctx.view.review?.directory;
+  if (directory?.length) {
+    const nav = el("nav", "review-navigation");
+    const index = directory.findIndex(
+      (entry) => entry.reviewItemId === ctx.view.review?.reviewItemId
+    );
+    const visit = (id: string) =>
+      ctx.open(options.screen.startsWith("CRV") ? "CRV-01" : "IRV-01", {
+        ...(ctx.view.courseId ? { courseId: ctx.view.courseId } : {}),
+        reviewItemId: id
+      });
+    if (index > 0)
+      nav.append(
+        linkAction(t("reviewPrevious"), () =>
+          visit(requirePresent(directory[index - 1]).reviewItemId)
+        )
+      );
+    if (index + 1 < directory.length)
+      nav.append(
+        linkAction(t("reviewNext"), () => visit(requirePresent(directory[index + 1]).reviewItemId))
+      );
+    const select = el("select", "text-input review-directory");
+    select.setAttribute("aria-label", t("reviewDirectory"));
+    for (const entry of directory) {
+      const option = el(
+        "option",
+        "",
+        `${entry.deferred ? t("reviewDeferredPrefix") : ""}${entry.title}`
+      );
+      option.value = entry.reviewItemId;
+      option.selected = entry.reviewItemId === ctx.view.review?.reviewItemId;
+      select.append(option);
+    }
+    select.addEventListener("change", () => visit(select.value));
+    nav.append(select);
+    root.append(nav);
+  }
+  if (ctx.view.review?.excluded?.length) {
+    const details = el("details", "excluded-reviews");
+    details.append(el("summary", "", t("reviewExcludedItems")));
+    for (const item of ctx.view.review.excluded)
+      details.append(
+        linkAction(t("reviewRestoreItem", { title: item.title }), () =>
+          ctx.actions.onMutation({ kind: "UndeleteExclusion", reviewItemId: item.reviewItemId })
+        )
+      );
+    root.append(details);
+  }
   appendNotice(ctx, root);
+  const readingScope = ctx.view.course?.sourceContext?.readingScope ?? [];
+  if (readingScope.length) {
+    const coverage = el("details", "review-reading-scope");
+    coverage.append(el("summary", "", t("reviewReadingScope")));
+    for (const line of readingScope) coverage.append(el("p", "hint", line));
+    root.append(coverage);
+  }
 
   const title = el("h2", "review-title", options.title);
   root.append(title);
@@ -125,12 +184,39 @@ export function renderInitialReview(ctx: ScreenContext, screen: ScreenId): HTMLE
   }
 
   const body: HTMLElement[] = [];
+  if (review.scopeNotice) body.push(el("p", "review-scope", review.scopeNotice));
+  if (review.scopeBasis)
+    body.push(el("p", "hint", t("reviewScopeBasis", { basis: review.scopeBasis })));
+  if (review.previewAssessments?.length) {
+    const preview = el("details", "review-preview");
+    preview.open = true;
+    preview.append(el("summary", "", t("reviewPreviewScope")));
+    for (const child of review.previewAssessments)
+      preview.append(assessmentBody(ctx, child, { nested: true, showDetailAction: false }));
+    body.push(preview);
+  }
+  if (review.constraint) body.push(renderConstraint(ctx, review.constraint));
   if (assessment)
     body.push(assessmentBody(ctx, assessment, { nested: false, showDetailAction: true }));
   for (const question of review.unresolvedQuestions) {
     body.push(el("p", "fact-question", question));
   }
 
+  if (review.issueEvidence?.length) {
+    const key = `issues:${review.reviewItemId}`;
+    if (ctx.ui.evidence.includes(key)) body.push(evidenceBlock(ctx, key, review.issueEvidence));
+    else
+      body.push(
+        control(
+          t("showEvidence", { label: t("evidenceCourseSource") }),
+          "fact-value is-swappable is-fact",
+          () => {
+            toggleEvidence(ctx, key);
+            ctx.repaint();
+          }
+        )
+      );
+  }
   const available = new Set(review.actions);
   const quiet: ReviewAction[] = [];
   if (available.has("Edit")) {
@@ -208,7 +294,7 @@ export function confirmItem(
   review: ReviewItemView,
   edited?: {
     name?: string;
-    facts?: Array<{ factId: string; value: { state: "KNOWN"; value: string } }>;
+    facts?: Array<{ factId: string; value: FactValue; semantics?: FactSemantics }>;
   },
   completeScreen?: ScreenId
 ): void {
@@ -217,7 +303,7 @@ export function confirmItem(
     reviewItemId: review.reviewItemId,
     ...(edited ? { edited } : {})
   });
-  if (review.position.total > 0 && review.position.index >= review.position.total) {
+  if (review.position.total === 1) {
     ctx.actions.onNotify({
       message: t("toastReviewComplete"),
       ...(completeScreen === undefined ? {} : { screen: completeScreen })
@@ -231,26 +317,86 @@ function renderReviewEdit(
   review: ReviewItemView,
   assessment: AssessmentCardView | undefined
 ): HTMLElement {
-  const factEditors: Array<{ factId: string; display: string; input: HTMLInputElement }> = [];
+  const factEditors: Array<{
+    factId: string;
+    display: string;
+    input: HTMLInputElement;
+    state: HTMLSelectElement;
+    originalState: FactValue["state"];
+    competingValues: string[];
+    semantics?: {
+      original: FactSemantics;
+      modality: HTMLInputElement;
+      conditions: HTMLTextAreaElement;
+      exceptions: HTMLTextAreaElement;
+    };
+  }> = [];
   const nameRow = el("label", "field-row");
   nameRow.append(el("span", "field-label", t("editNameLabel")));
   const nameInput = el("input", "text-input");
   nameInput.type = "text";
-  nameInput.value = review.title;
+  nameInput.dataset.editKey = `review:${review.reviewItemId}:name`;
+  const originalName = assessment?.name ?? review.title;
+  nameInput.value = originalName;
   nameRow.append(nameInput);
 
-  const fields: HTMLElement[] = [nameRow];
-  if (assessment) {
-    for (const fact of assessment.facts) {
+  const fields: HTMLElement[] = review.constraint || review.ownerScope === false ? [] : [nameRow];
+  const scopedFacts = assessment?.facts ?? review.constraint?.facts;
+  if (scopedFacts) {
+    for (const fact of scopedFacts) {
       if (!fact.editable) continue;
       const row = el("label", "field-row");
       row.append(el("span", "field-label", fact.label));
       const input = el("input", "text-input");
       input.type = "text";
-      input.value = fact.display;
-      row.append(input);
+      input.dataset.editKey = `review:${review.reviewItemId}:fact:${fact.factId}`;
+      input.value = fact.rawDisplay ?? fact.display;
+      const state = el("select", "text-input");
+      state.setAttribute("aria-label", t("reviewValueState", { label: fact.label }));
+      state.dataset.editKey = `review:${review.reviewItemId}:state:${fact.factId}`;
+      for (const [value, label] of [
+        ["KNOWN", t("reviewKnown")],
+        ["UNCERTAIN", t("reviewUncertain")],
+        ["EXPLICITLY_UNKNOWN", t("reviewUnknown")]
+      ]) {
+        const option = el("option", "", label);
+        option.value = value ?? "";
+        option.selected = value === fact.knowledge;
+        state.append(option);
+      }
+      row.append(input, state);
       fields.push(row);
-      factEditors.push({ factId: fact.factId, display: fact.display, input });
+      let semantics: (typeof factEditors)[number]["semantics"];
+      if (fact.semantics) {
+        const modality = el("input", "text-input");
+        modality.type = "text";
+        modality.value = fact.semantics.modality;
+        const conditions = el("textarea", "text-input");
+        conditions.value = fact.semantics.conditions.join("\n");
+        const exceptions = el("textarea", "text-input");
+        exceptions.value = fact.semantics.exceptions.join("\n");
+        for (const [key, editor, label] of [
+          ["modality", modality, t("reviewModality")],
+          ["conditions", conditions, t("reviewConditions")],
+          ["exceptions", exceptions, t("reviewExceptions")]
+        ] as const) {
+          editor.dataset.editKey = `review:${review.reviewItemId}:${key}:${fact.factId}`;
+          editor.setAttribute("aria-label", `${label} · ${fact.label}`);
+          const facetRow = el("label", "field-row");
+          facetRow.append(el("span", "field-label", label), editor);
+          fields.push(facetRow);
+        }
+        semantics = { original: fact.semantics, modality, conditions, exceptions };
+      }
+      factEditors.push({
+        ...(semantics ? { semantics } : {}),
+        factId: fact.factId,
+        display: fact.rawDisplay ?? fact.display,
+        input,
+        state,
+        originalState: fact.knowledge,
+        competingValues: fact.competingValues ?? []
+      });
     }
   }
 
@@ -264,15 +410,51 @@ function renderReviewEdit(
       label: t("reviewConfirm"),
       onActivate: () => {
         const editedFacts = factEditors
-          .filter((editor) => editor.input.value !== editor.display)
+          .filter(
+            (editor) =>
+              editor.input.value !== editor.display ||
+              editor.state.value !== editor.originalState ||
+              (editor.semantics &&
+                (editor.semantics.modality.value !== editor.semantics.original.modality ||
+                  editor.semantics.conditions.value !==
+                    editor.semantics.original.conditions.join("\n") ||
+                  editor.semantics.exceptions.value !==
+                    editor.semantics.original.exceptions.join("\n")))
+          )
           .map((editor) => ({
             factId: editor.factId,
-            value: { state: "KNOWN" as const, value: editor.input.value }
+            ...(editor.semantics
+              ? {
+                  semantics: {
+                    modality: editor.semantics.modality.value.trim(),
+                    conditions: editor.semantics.conditions.value
+                      .split("\n")
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                    exceptions: editor.semantics.exceptions.value
+                      .split("\n")
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                  }
+                }
+              : {}),
+            value: {
+              state: editor.state.value as FactValue["state"],
+              ...(editor.state.value === "EXPLICITLY_UNKNOWN" ? {} : { value: editor.input.value }),
+              ...(editor.state.value === "UNCERTAIN"
+                ? { competingValues: editor.competingValues }
+                : {})
+            }
           }));
         const name = nameInput.value.trim();
         ctx.ui.editingReviewId = undefined;
         confirmItem(ctx, review, {
-          ...(name.length > 0 && name !== review.title ? { name } : {}),
+          ...(!review.constraint &&
+          review.ownerScope !== false &&
+          name.length > 0 &&
+          name !== originalName
+            ? { name }
+            : {}),
           ...(editedFacts.length > 0 ? { facts: editedFacts } : {})
         });
       }
@@ -292,10 +474,16 @@ function renderReviewEdit(
 
 /** IRV-03 / SYS-… — the user's own reading of "this is the same Assessment as that one". */
 function renderMerge(ctx: ScreenContext, screen: ScreenId, review: ReviewItemView): HTMLElement {
-  const candidates = (ctx.view.course?.assessments ?? []).filter(
-    (assessment) => assessment.name !== review.title
+  const candidates = (review.mergeCandidates ?? ctx.view.course?.assessments ?? []).filter(
+    (assessment) =>
+      review.targetAssessmentId
+        ? assessment.assessmentId !== review.targetAssessmentId
+        : assessment.name !== review.title
   );
-  const body: HTMLElement[] = [el("p", "review-note", t("mergeIntro"))];
+  const body: HTMLElement[] = [
+    el("p", "review-note", t("mergeIntro")),
+    el("p", "review-note", t("reviewStructureScope"))
+  ];
   const hint = hintFor(ctx, "same-assessment-as", t("hintSameAssessmentAs"));
   if (hint) body.push(hint);
   if (candidates.length === 0) {
@@ -363,7 +551,10 @@ function renderSplit(
   const body: HTMLElement[] = [];
   const hint = hintFor(ctx, "split", t("hintSplit"));
   if (hint) body.push(hint);
-  body.push(el("p", "review-note", t("splitIntro")));
+  body.push(
+    el("p", "review-note", t("splitIntro")),
+    el("p", "review-note", t("reviewStructureScope"))
+  );
 
   const partList = el("div", "split-parts");
   parts.forEach((part, index) => {
@@ -463,5 +654,8 @@ export function assessmentForReview(
   review: ReviewItemView
 ): AssessmentCardView | undefined {
   const assessments = ctx.view.course?.assessments ?? [];
-  return assessments.find((assessment) => assessment.name === review.title) ?? assessments[0];
+  return (
+    review.assessment ??
+    assessments.find((assessment) => assessment.assessmentId === review.targetAssessmentId)
+  );
 }

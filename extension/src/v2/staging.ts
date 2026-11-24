@@ -1,3 +1,7 @@
+import type { BLogicalLedger } from "./task-b-ledger";
+import type { BCheckpoint } from "./task-b-grounding";
+import type { CourseDraft } from "./selective-course";
+import type { TaskASemanticCoverage } from "./semantic-coverage";
 import type {
   AssessmentRecord,
   ChangeRecord,
@@ -6,7 +10,7 @@ import type {
   FactRecord,
   ReviewItemRecord
 } from "./domain";
-import type { TaskBResult } from "./ai-contracts";
+import type { TaskCResult, TaskBResult } from "./ai-contracts";
 
 /**
  * Rebuild staging. A Rebuild re-runs the whole course-establishment chain, and its result must be
@@ -24,6 +28,17 @@ export interface StagedCourseState {
   reviewItems: ReviewItemRecord[];
   changes: ChangeRecord[];
   taskBResult?: TaskBResult;
+  directIncremental?: TaskCResult;
+  courseDraft?: CourseDraft;
+  taskBCheckpoint?: BCheckpoint;
+  taskBLogicalLedger?: BLogicalLedger;
+  taskBRecovery?: {
+    authorization: "P2E-021" | "normal" | "normal-recovery" | "P2E-028";
+    state: "authorized" | "dispatched" | "settled";
+    at: string;
+    error?: string;
+  };
+  semanticCoverage?: TaskASemanticCoverage;
   taskACoverage?: {
     succeededSourceIds: string[];
     relevantSourceIds: string[];

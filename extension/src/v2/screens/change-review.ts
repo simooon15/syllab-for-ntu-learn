@@ -1,3 +1,4 @@
+import type { FactValue } from "../schema";
 import { control, data, el } from "../../app/dom";
 import { t } from "../copy";
 import type { EvidenceView, ReviewItemView, ScreenId } from "../contract";
@@ -43,7 +44,7 @@ export function renderChangeReview(
     return reviewShell(ctx, {
       ...shellBase,
       ...(review.subtitle === undefined ? {} : { subtitle: review.subtitle }),
-      body: conflictBody(ctx, review),
+      body: [...conflictBody(ctx, review), ...reviewContext(ctx, review)],
       quiet: [
         {
           label: t("conflictEditValue"),
@@ -66,9 +67,7 @@ export function renderChangeReview(
     const markRow = el("div", "review-marks");
     for (const mark of markChips(["PossiblyRemoved"])) markRow.append(mark);
     body.push(markRow);
-    for (const question of review.unresolvedQuestions) {
-      body.push(el("p", "fact-question", question));
-    }
+    body.push(...reviewContext(ctx, review));
     return reviewShell(ctx, {
       ...shellBase,
       body,
@@ -91,7 +90,8 @@ export function renderChangeReview(
     const body = [
       staticValue(review.current?.values[0]?.display ?? review.title),
       el("p", "identity-separator", t("identitySeparator")),
-      staticValue(review.latest?.values[0]?.display ?? review.subtitle ?? review.title)
+      staticValue(review.latest?.values[0]?.display ?? review.subtitle ?? review.title),
+      ...reviewContext(ctx, review)
     ];
     return reviewShell(ctx, {
       ...shellBase,
@@ -125,7 +125,8 @@ export function renderChangeReview(
     ...shellBase,
     body: [
       sideBlock(ctx, "current", review.current?.label ?? t("changeCurrent"), review.current),
-      sideBlock(ctx, "latest", review.latest?.label ?? t("changeLatest"), review.latest)
+      sideBlock(ctx, "latest", review.latest?.label ?? t("changeLatest"), review.latest),
+      ...reviewContext(ctx, review)
     ],
     primary: {
       label: t("acceptChange"),
@@ -144,6 +145,29 @@ export function renderChangeReview(
 
 type ReviewSide = ReviewItemView["current"];
 type ReviewValue = { display: string; evidence: EvidenceView[] };
+
+/** All change dispositions retain their scoped judgment and source context, including no-value conflicts. */
+function reviewContext(ctx: ScreenContext, review: ReviewItemView): HTMLElement[] {
+  const body: HTMLElement[] = review.unresolvedQuestions.map((question) =>
+    el("p", "fact-question", question)
+  );
+  if (review.issueEvidence?.length) {
+    const key = `issues:${review.reviewItemId}`;
+    if (ctx.ui.evidence.includes(key)) body.push(evidenceBlock(ctx, key, review.issueEvidence));
+    else
+      body.push(
+        control(
+          t("showEvidence", { label: t("evidenceCourseSource") }),
+          "fact-value is-swappable is-fact",
+          () => {
+            ctx.ui.evidence = [...ctx.ui.evidence, key];
+            ctx.repaint();
+          }
+        )
+      );
+  }
+  return body;
+}
 
 function staticValue(text: string): HTMLElement {
   return el("p", "fact-value is-static", text);
@@ -211,6 +235,21 @@ function conflictBody(ctx: ScreenContext, review: ReviewItemView): HTMLElement[]
     row.append(el("span", "field-label", t("conflictValueLabel")));
     const input = el("input", "text-input");
     input.type = "text";
+    input.dataset.editKey = `conflict:${review.reviewItemId}`;
+    const state = el("select", "text-input");
+    state.setAttribute("aria-label", t("reviewValueState", { label: review.title }));
+    state.dataset.editKey = `conflict-state:${review.reviewItemId}`;
+    for (const [value, label] of [
+      ["KNOWN", t("reviewKnown")],
+      ["UNCERTAIN", t("reviewUncertain")],
+      ["EXPLICITLY_UNKNOWN", t("reviewUnknown")]
+    ] as const) {
+      const option = el("option", "", label);
+      option.value = value;
+      option.selected = value === (review.current?.value?.state ?? "KNOWN");
+      state.append(option);
+    }
+    row.append(state);
     row.append(input);
     body.push(row);
     body.push(
@@ -220,7 +259,25 @@ function conflictBody(ctx: ScreenContext, review: ReviewItemView): HTMLElement[]
           ctx.actions.onMutation({
             kind: "ResolveConflict",
             changeId: review.reviewItemId,
-            value: { state: "KNOWN", value: input.value }
+            value: {
+              state: state.value as FactValue["state"],
+              ...(state.value === "EXPLICITLY_UNKNOWN" ? {} : { value: input.value }),
+              ...(state.value === "UNCERTAIN"
+                ? {
+                    competingValues: [
+                      review.current?.value?.value,
+                      review.latest?.value?.value,
+                      ...(review.current?.value?.competingValues ?? []),
+                      ...(review.latest?.value?.competingValues ?? [])
+                    ]
+                      .filter((v): v is NonNullable<FactValue["value"]> => v !== undefined)
+                      .filter(
+                        (v, i, all) =>
+                          all.findIndex((x) => JSON.stringify(x) === JSON.stringify(v)) === i
+                      )
+                  }
+                : {})
+            }
           });
         }),
         secondaryAction(t("cancel"), () => {

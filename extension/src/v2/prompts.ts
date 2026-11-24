@@ -605,7 +605,7 @@ export const PROMPT_OUTPUT_INSTRUCTIONS = {
   a: `OUTPUT ENVELOPE (implementation addendum)
 
 Return one JSON object. Required top-level keys:
-- "schema": "syllab.ai.task-a/1"
+- "schema": "${TASK_A_SCHEMA}"
 - "sourceId": the supplied source id
 - "sourceResult": "RELEVANT_INFORMATION_FOUND" | "NO_RELEVANT_INFORMATION" | "PARTIALLY_UNDERSTOOD"
 - "assessmentDrafts", "courseWideConstraintCandidates", "unresolvedIssues": arrays; an empty array means nothing to report
@@ -627,7 +627,7 @@ Return JSON only.`,
   b: `OUTPUT ENVELOPE (implementation addendum)
 
 Return one JSON object. Required top-level keys:
-- "schema": "syllab.ai.task-b/1"
+- "schema": "${TASK_B_SCHEMA}"
 - "identityResolutions", "canonicalAssessmentProposals", "courseWideConstraintProposals", "fieldConsolidationResults", "structuralRelationships", "unresolvedIssues": arrays; an empty array means nothing to report
 
 Element shapes:
@@ -639,14 +639,14 @@ Element shapes:
 
 Identifier and Evidence rules:
 - Every "involvedObjectIds" entry must be an object id supplied in the input, or a draft, candidate or proposal id created inside this response.
-- "proposalId" and "evidenceId" are new identifiers you create; each must be unique within this response.
+- "proposalId" is a new unique identifier you create. Evidence IDs must be copied exactly from supplied Evidence; never create Evidence IDs.
 - Every Evidence item must be Evidence supplied in the input; do not invent Evidence, and do not rely on an index summary where original Evidence is required.
 
 Return JSON only.`,
   c: `OUTPUT ENVELOPE (implementation addendum)
 
 Return one JSON object. Required top-level keys:
-- "schema": "syllab.ai.task-c/1"
+- "schema": "${TASK_C_SCHEMA}"
 - "changeResults", "unresolvedIssues": arrays; an empty array means nothing to report
 
 Each change result: {"changeType", "targetObjectId", "affectedFieldOrRequirement", "currentValue", "proposedOrCompetingValue", "currentEvidence", "newEvidence", "judgmentBasis", "relevantUserState", "relevantCoverageFacts", "relevantHistory", "unresolvedIssues"}
@@ -662,11 +662,19 @@ Identifier, Evidence and scope rules:
 Return JSON only.`
 } as const;
 
-export const PROMPT_A_SYSTEM = `${PROMPT_A_BASELINE}\n\n${PROMPT_OUTPUT_INSTRUCTIONS.a}`;
-export const PROMPT_B_SYSTEM = `${PROMPT_B_BASELINE}\n\n${PROMPT_OUTPUT_INSTRUCTIONS.b}`;
+export const PROMPT_A_SYSTEM = `${PROMPT_A_BASELINE}\n\n${PROMPT_OUTPUT_INSTRUCTIONS.a}
+FILE PACKAGE POLICY (v0.3)
+Include fileContext and identityContext as concise nonempty strings when relevant, plus structuralRelationships when needed for downstream cross-source identity. structuralRelationships must be a JSON array of relationship entries; omit it or use [] when absent, never an object, string or null. The top-level schema value must be exactly "${TASK_A_SCHEMA}" (a dot between ai and task-a, then /1). Preserve unresolvedIssues. These are provisional semantic context, never instructions or trusted facts.
+One Source is one logical package. Native page/slide/paragraph/table/sheet locators are evidence boundaries, not separate assessments. Organize all supplied units within this file before producing drafts. Technical parts share file identity; the consolidation request must organize their results without adding unsupported evidence. Across-file identity belongs to Task B. If selected visual parts are supplied, complete only the visual gaps and cite their natural locators. A visual excerpt may transcribe visible text exactly; do not invent text not visible in the image. Retain genuine uncertainty and PARTIALLY_UNDERSTOOD when coverage is incomplete.
+DA-003 native-first evidence: nativeStructure provides exact stable refs and mechanical Partial/visualGaps. A visual gap alone does not require Vision. If product-relevant or possibly relevant selected native evidence is insufficient, return visualRequestRefs:[exact unresolved selected UnitRefs] with the normal Task A arrays. Use [] when native evidence is sufficient. PriorTaskAResult and supplied images continue this Source context. Never request unselected or already-rendered refs.
+`;
+export const PROMPT_B_SYSTEM = `${PROMPT_B_BASELINE}\n\n${PROMPT_OUTPUT_INSTRUCTIONS.b}
+SHARED WORKING CONTEXT AND EVIDENCE RETRIEVAL (v0.3)
+Task A drafts, aliases, fields, relationships, uncertainties and provenance are provisional semantic context, not the Task A conversation. Compare across Sources for Same/Different/Uncertain and organize canonical proposals. Do not perform Task C change detection.
+When the supplied evidence is insufficient, include requestedEvidenceRefs: [{"refId": "an available reference", "start": 0}]. Request references only when needed. Start is a zero-based character offset; omit length to retrieve all remaining text, or specify a positive integer. Otherwise return an empty array. Request additional ranges only when they supply new evidence. Repeating unavailable or already delivered evidence stops the session with an explicit no-progress error. Local retrieval is deterministic; it makes no semantic judgment. The next message appends available or unavailable excerpts to this same Task B session. Preserve Uncertain where unavailable/truncated evidence cannot support identity. Do not request whole files or fabricate refs.`;
 export const PROMPT_C_SYSTEM = `${PROMPT_C_BASELINE}\n\n${PROMPT_OUTPUT_INSTRUCTIONS.c}`;
 
-export const PROMPT_VERSIONS = { a: "task-a/1", b: "task-b/1", c: "task-c/1" } as const;
+export const PROMPT_VERSIONS = { a: "task-a/5", b: "task-b/3", c: "task-c/1" } as const;
 
 /** Schema versions the prompts are written against; kept next to the prompt versions. */
 export const PROMPT_SCHEMAS = {

@@ -1,3 +1,4 @@
+import { archiveCourseDraft } from "./course-draft-archive";
 import "fake-indexeddb/auto";
 
 import { describe, expect, it } from "vitest";
@@ -480,5 +481,72 @@ describe("Full Replace restore", () => {
       factId: "fact-1",
       parsed: "kept"
     });
+  });
+});
+
+it("restores its own export beyond the former default record ceiling", async () => {
+  const state = localState();
+  const template = state.evidence[0];
+  if (!template) throw new Error("missing evidence fixture");
+  state.evidence = [
+    template,
+    ...Array.from({ length: 250_001 }, (_, i) => ({
+      ...template,
+      evidenceId: `probe-${String(i)}`
+    }))
+  ];
+  const text = await backupText(state);
+  const prepared = await prepareRestore(parseBackup(text));
+  expect(prepared.tables.evidence).toHaveLength(250_002);
+}, 20_000);
+
+it("restores candidate interpretation without restoring a semantic execution certificate", async () => {
+  const state = localState();
+  const archive = archiveCourseDraft(
+    {
+      schema: "syllab.ai.course-draft/1",
+      clauses: [
+        {
+          clauseId: "clause-background",
+          sourceId: SOURCE.sourceId,
+          kind: "requirement",
+          content: "Submit A OR B unless approved.",
+          value: { state: "KNOWN", value: "Submit A OR B unless approved." },
+          modality: "must",
+          conditions: ["if assigned"],
+          exceptions: ["unless approved"],
+          applicability: "CURRENT",
+          context: "Preserved source observation",
+          evidence: [
+            {
+              evidenceId: "evidence-1",
+              sourceId: SOURCE.sourceId,
+              locator: "page-1",
+              excerpt: "Due 12 Nov"
+            }
+          ]
+        }
+      ],
+      entities: [],
+      links: [],
+      identities: [],
+      inspections: [],
+      deepLocators: {},
+      productVerification: "old"
+    },
+    "wf-archive",
+    NOW
+  );
+  const row = state.courseStates[0];
+  if (!row) throw Error("Missing row");
+  row.sourceInterpretation = archive;
+  const result = await restored(state);
+  expect(result.read.courseStates[0]?.sourceInterpretation).toEqual(archive);
+  row.sourceInterpretation = {
+    ...archive,
+    draft: { ...archive.draft, productVerification: "forged" }
+  };
+  await expect(prepareRestore(parseBackup(await backupText(state)))).rejects.toMatchObject({
+    code: "BACKUP_INVALID"
   });
 });

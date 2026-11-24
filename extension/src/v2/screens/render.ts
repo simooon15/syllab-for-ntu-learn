@@ -1,3 +1,4 @@
+import { replaceSurface } from "./continuity";
 import { el } from "../../app/dom";
 import { t } from "../copy";
 import type { AppView, ScreenId, SemesterView, Surface } from "../contract";
@@ -141,7 +142,7 @@ export function renderApp(
     const bar = errorBar(context);
     const tree = buildScreen(context, screen);
     // A refused request is the only thing that renders outside the screen it happened on.
-    root.replaceChildren(...(bar ? [bar, tree] : [tree]));
+    replaceSurface(root, bar ? [bar, tree] : [tree], keepScroll);
     if (scroller) scroller.scrollTop = keepScroll ? (scrollByScreen.get(screen) ?? previous) : 0;
     scrollByScreen.set(screen, scroller?.scrollTop ?? 0);
     lastScreen = screen;
@@ -195,7 +196,7 @@ function buildScreenBody(context: ScreenContext, screen: ScreenId): HTMLElement 
     return renderInitialReview(context, screen);
   }
   if (REVIEW_SCREENS.includes(screen)) {
-    return renderChangeReview(context, screen, reviewLayout(context.view, screen));
+    return renderChangeReview(context, screen, reviewLayout(context.view));
   }
   return renderSemester(
     context,
@@ -314,12 +315,7 @@ function settingsScreen(screen: ScreenId): ScreenId {
   return "SET-01";
 }
 
-function reviewLayout(view: AppView, screen: ScreenId): ChangeLayout {
-  if (screen === "CRV-01") return "changed";
-  if (screen === "CRV-02") return "new";
-  if (screen === "CRV-03") return "conflict";
-  if (screen === "CRV-04") return "removed";
-  if (screen === "CRV-05") return "identity";
+function reviewLayout(view: AppView): ChangeLayout {
   const review = view.review;
   if (review?.kind === "initial") return review.changeType === "NEW" ? "new" : "initial";
   if (review?.changeType === "CONFLICT") return "conflict";
@@ -334,20 +330,11 @@ function reviewScreen(view: AppView, state: UiState, surface: Surface, screen: S
   // empty Review screen and no completion page. This state used to fall through to the Change
   // Review layout, which drew a `changed` screen about nothing. (Gate 3 finding F33.)
   if (view.review === undefined) return surface === "side-panel" ? "CRS-02" : "CRS-01";
-  const layout = reviewLayout(view, screen);
+  const layout = reviewLayout(view);
   if (layout === "initial" || layout === "new") {
     if (state.splitOpen) return "IRV-04";
     if (state.mergeOpen) return "IRV-03";
     if (state.editingReviewId !== undefined || screen === "IRV-02") return "IRV-02";
-  }
-  if (
-    screen === "CRV-01" ||
-    screen === "CRV-02" ||
-    screen === "CRV-03" ||
-    screen === "CRV-04" ||
-    screen === "CRV-05"
-  ) {
-    return screen;
   }
   switch (layout) {
     case "initial":

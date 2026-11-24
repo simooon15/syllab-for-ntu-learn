@@ -7,3 +7,8 @@ docs/versions
 .spike-backups
 artifacts
 *.zip
+# Product-owned inbound Handoff stays byte-identical to its authoritative Drive copy.
+docs/collaboration/CHATGPT_TO_CODEX_HANDOFF.md
+
+# Product-owned collaboration protocol also preserves authoritative inbound bytes.
+docs/PROJECT_COLLABORATION_MODEL.md

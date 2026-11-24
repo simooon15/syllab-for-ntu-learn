@@ -46,6 +46,13 @@
   --green-tint: #e2efe4;
   --clay: #bd6a3f;
   --clay-wash: #f7e8de;
+  --space-inline: 12px;
+  --space-card: 22px;
+  --space-section: 28px;
+  --motion-press: 100ms;
+  --motion-reveal: 180ms;
+  --motion-view: 200ms;
+  --motion-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --r-card: 14px;
   --r-ctl: 10px;
   --r-sm: 8px;
@@ -78,6 +85,7 @@ body {
 }
 
 body {
+  font-optical-sizing: auto;
   font: 400 15px/1.6 var(--font-ui);
 }
 
@@ -90,6 +98,19 @@ select {
 
 button {
   cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    color 140ms ease-out,
+    background-color 140ms ease-out,
+    border-color 140ms ease-out,
+    transform var(--motion-press) var(--motion-ease);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+button:disabled {
+  cursor: default;
 }
 
 button:focus-visible,
@@ -276,6 +297,7 @@ html[data-surface="side-panel"] .screen {
 }
 
 .course-name {
+  letter-spacing: -0.02em;
   font: 500 28px/1.2 var(--font-display);
 }
 
@@ -608,7 +630,7 @@ html[data-surface="side-panel"] .semester-name {
 
 .course-body {
   display: grid;
-  gap: 22px;
+  gap: var(--space-section);
 }
 
 .group-heading {
@@ -619,8 +641,8 @@ html[data-surface="side-panel"] .semester-name {
 
 .assessment {
   display: grid;
-  gap: 10px;
-  padding: 16px;
+  gap: var(--space-inline);
+  padding: var(--space-card);
   border: 1px solid var(--line);
   border-radius: var(--r-card);
   background: var(--surface);
@@ -641,6 +663,7 @@ html[data-surface="side-panel"] .semester-name {
 }
 
 .assessment-name {
+  letter-spacing: -0.015em;
   padding: 0;
   border: 0;
   background: transparent;
@@ -1172,6 +1195,7 @@ html[data-surface="side-panel"] .semester-name {
 .task-body,
 .review-note,
 .settings-body {
+  font-optical-sizing: auto;
   font: 400 15px/1.62 var(--font-display);
   font-variation-settings: "opsz" 11;
   color: var(--ink-2);
@@ -1409,6 +1433,7 @@ html[data-surface="side-panel"] .semester-name {
 }
 
 .status-body {
+  font-optical-sizing: auto;
   font: 400 14px/1.6 var(--font-display);
   color: var(--ink-2);
 }
@@ -1495,6 +1520,7 @@ html[data-surface="side-panel"] .semester-name {
 }
 
 .warning-body {
+  font-optical-sizing: auto;
   font: 400 14px/1.6 var(--font-display);
   color: var(--ink-2);
 }
@@ -1569,6 +1595,61 @@ html[data-surface="side-panel"] .competing-values {
   }
 }
 
+/* Shared v0.3 refinement: structure, controls and feedback use the same tokens on both surfaces. */
+html[data-surface="side-panel"] {
+  --space-card: 16px;
+  --space-section: 22px;
+}
+.section-heading,
+.group-heading {
+  letter-spacing: 0.005em;
+  line-height: 1.5;
+}
+.assessment .facts {
+  row-gap: 10px;
+}
+.text-input,
+select {
+  transition:
+    border-color 140ms ease-out,
+    background-color 140ms ease-out;
+}
+.text-input:hover,
+select:hover {
+  border-color: var(--line-strong);
+}
+.text-input:focus,
+select:focus {
+  border-color: var(--green);
+  background-color: var(--page);
+}
+.edit-form {
+  padding: var(--space-card);
+  background: var(--surface-2);
+  border-radius: var(--r-card);
+}
+.task-block {
+  border-radius: var(--r-card);
+}
+.ai-activity {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-ctl);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font: 400 13px/1.65 var(--font-ui);
+  overflow-wrap: anywhere;
+  max-height: 12em;
+  overflow: hidden;
+}
+.ai-activity p + p {
+  margin-top: 8px;
+}
+.ai-activity p {
+  animation: disclose 150ms var(--motion-ease);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1576,5 +1657,658 @@ html[data-surface="side-panel"] .competing-values {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* RC2: scoped navigation and structured student actions retain the existing visual tokens. */
+.review-navigation {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-block: 16px;
+}
+.review-directory {
+  min-width: 0;
+  flex: 1 1 220px;
+  max-width: 100%;
+}
+.review-scope {
+  padding-block: 12px;
+  border-block: 1px solid var(--line);
+}
+.product-details {
+  margin-block: 16px;
+}
+.product-details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding-block: 8px;
+}
+.product-checklist,
+.product-primary,
+.product-action-children {
+  padding-inline-start: 20px;
+  margin-block: 8px;
+}
+.product-action {
+  margin-block: 10px;
+  overflow-wrap: anywhere;
+}
+.product-primary {
+  list-style: none;
+  padding-inline-start: 0;
+}
+.product-action .fact {
+  display: block;
+}
+.product-action .fact-label {
+  display: block;
+  margin-bottom: 4px;
+}
+.product-action .fact-value {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.checklist-heading {
+  margin-block: 16px 8px;
+}
+.choice-label {
+  display: block;
+  font-weight: 600;
+}
+@media print {
+  .fact {
+    display: block;
+  }
+  .fact-label,
+  .fact-value {
+    display: block;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .fact-value {
+    max-width: 100%;
+  }
+  .review-actions,
+  .review-navigation,
+  .more-menu {
+    display: none;
+  }
+  .product-action {
+    break-inside: auto;
+  }
+  .assessment-heading,
+  .checklist-heading {
+    break-after: avoid;
+  }
+}
+
+/* The overview uses existing facts and Evidence; long execution trees follow it. */
+.assessment-cards {
+  display: grid;
+  gap: 12px;
+}
+.assessment-cards > .is-summary {
+  padding: 16px;
+}
+.assessment-cards > .is-summary > .assessment-name {
+  display: block;
+  margin-bottom: 8px;
+}
+
+@media (min-width: 800px) {
+  .assessment-cards {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 32px;
+  }
+  .assessment-cards > .section-heading {
+    grid-column: 1 / -1;
+  }
+}
+
+.assessment-cards > .is-summary {
+  align-self: stretch;
+  block-size: clamp(26rem, 65vh, 36rem);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 12px;
+}
+.assessment-card-header,
+.assessment-card-footer {
+  flex: 0 0 auto;
+}
+.assessment-card-header .assessment-name {
+  display: block;
+}
+.assessment-card-header .assessment-kind {
+  display: block;
+  margin-block: 8px;
+}
+.assessment-card-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  overscroll-behavior-y: contain;
+}
+.assessment-card-scroll > .fact {
+  margin-block: 8px;
+}
+.assessment-card-footer > .secondary-action {
+  width: 100%;
+}
+.scroll-hint {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.action-facet {
+  display: inline;
+  margin-inline-end: 8px;
+}
+@media (max-width: 799px) {
+  .assessment-cards > .is-summary {
+    block-size: clamp(26rem, 70vh, 34rem);
+  }
+}
+.assessment-cards > .is-summary > .assessment-kind {
+  display: block;
+}
+.fact-alias {
+  display: none;
+}
+.organized-details {
+  display: grid;
+  gap: 24px;
+}
+
+/* Print is a document flow; screen scroll containment must never clip content. */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  html,
+  body,
+  #app,
+  .screen,
+  .course-screen,
+  .assessment-detail {
+    height: auto;
+    overflow: visible;
+  }
+  .assessment-cards,
+  .organized-details,
+  .facts {
+    display: block;
+  }
+  .assessment-cards > .is-summary {
+    display: block;
+    block-size: auto;
+    min-height: 0;
+    max-height: none;
+  }
+  .assessment-card-scroll {
+    display: block;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .assessment-card-header,
+  .assessment-card-footer {
+    position: static;
+  }
+  .assessment-card-footer,
+  .back-action,
+  .scroll-hint {
+    display: none;
+  }
+  .product-action,
+  .product-action-children,
+  .product-checklist,
+  .fact,
+  .evidence {
+    break-inside: auto;
+  }
+  .fact,
+  .fact-label,
+  .fact-value,
+  .fact-question,
+  .competing-values {
+    position: static;
+    float: none;
+    height: auto;
+  }
+  .product-action .fact-label:empty {
+    display: none;
+  }
+  .product-details {
+    display: block;
+  }
+  .product-details > summary {
+    break-after: avoid;
+  }
+}
+
+.organized-details .fact-label:empty {
+  display: none;
+}
+@media print {
+  #preview-label,
+  #preview-review-label {
+    position: static !important;
+  }
+  .organized-details .product-action .fact-value {
+    display: block;
+    width: auto;
+  }
+}
+
+@media print {
+  .assessment-card-scroll:focus {
+    outline: none;
+  }
+  .section-heading,
+  .checklist-heading,
+  .fact-label {
+    break-after: avoid;
+  }
+  .rubric-score-pair {
+    break-inside: avoid;
+  }
+  .assessment-detail > .action-row {
+    display: none;
+  }
+}
+
+/* P061: a planning surface ranks known planning facts before supporting instructions. */
+.course-print-document {
+  display: none;
+}
+.course-print-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-block: 12px 28px;
+}
+.assessment-cards > .is-summary {
+  padding: var(--space-card);
+  gap: 22px;
+  block-size: clamp(28rem, 62vh, 36rem);
+}
+.assessment-card-header .assessment-name {
+  font-size: 23px;
+  line-height: 1.22;
+}
+.assessment-card-header .assessment-kind {
+  margin-block: 8px 22px;
+  font-size: 12px;
+}
+.assessment-primary-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px 28px;
+}
+.planning-primary.fact {
+  display: block;
+  min-width: 0;
+}
+.planning-primary .fact-label {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.planning-primary .fact-value {
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.planning-weight .fact-value {
+  font-size: 42px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+.planning-primary:not(.planning-weight):only-child {
+  grid-column: 1 / -1;
+}
+.assessment-card-scroll {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
+  gap: 16px 22px;
+}
+.assessment-card-scroll > .fact {
+  display: block;
+  margin: 0;
+  min-width: 0;
+}
+.planning-secondary .fact-label {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.planning-secondary .fact-value {
+  font-size: 14px;
+  line-height: 1.65;
+}
+.assessment-card-scroll > [data-field="presentation_date"],
+.assessment-card-scroll > [data-field="submission_method"],
+.assessment-card-scroll > [data-field="responsibility"],
+.assessment-card-scroll > [data-field="deliverable"] {
+  grid-column: 1 / -1;
+}
+.assessment-risk-link {
+  display: block;
+  padding: 0 0 0 10px;
+  border: 0;
+  border-inline-start: 2px solid var(--clay);
+  margin-block-start: 16px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 12px/1.6 var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.assessment-risk-link:hover {
+  color: var(--green-deep);
+}
+.planning-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 22px 32px;
+  margin-block: 24px 28px;
+}
+.planning-summary > .fact {
+  display: block;
+  max-width: 32rem;
+}
+.organized-details .detail-business-group > .section-heading {
+  font: 600 22px/1.35 var(--font-display);
+  margin-block-end: 22px;
+}
+.organized-details .checklist-heading {
+  font-size: 14px;
+  margin-block: 22px 12px;
+}
+.organized-details .product-action {
+  margin-block: 12px 22px;
+  max-width: 72ch;
+}
+.organized-details .product-action[data-modality="must"] > .fact > .fact-value,
+.organized-details .product-action[data-modality="prohibition"] > .fact > .fact-value,
+.organized-details .product-action[data-role="risk"] > .fact > .fact-value {
+  font-weight: 600;
+}
+.organized-details .product-action[data-role="reference"] > .fact {
+  font-size: 13px;
+}
+.organized-details .action-facet {
+  display: block;
+  font-size: 13px;
+  margin-block: 8px;
+}
+.course-rule-details {
+  margin-block: 24px;
+}
+.course-rule-details > summary {
+  font: 600 21px/1.4 var(--font-display);
+}
+.course-rule-details .organized-details {
+  padding-block: 16px;
+}
+.rubric-score-pair.fact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: baseline;
+}
+.rubric-score-pair .fact-label {
+  font-weight: 600;
+}
+.rubric-score-pair .fact-value {
+  font-size: 24px;
+  font-weight: 600;
+}
+@media (max-width: 799px) {
+  .assessment-cards > .is-summary {
+    block-size: clamp(28rem, 60vh, 34rem);
+    padding: 22px;
+  }
+  .assessment-card-scroll {
+    grid-template-columns: 1fr;
+  }
+  .assessment-primary-facts {
+    gap: 12px 22px;
+  }
+  .planning-weight .fact-value {
+    font-size: 38px;
+  }
+  .planning-primary .fact-value {
+    overflow-wrap: anywhere;
+  }
+  .planning-weight .fact-value {
+    font-size: 38px;
+  }
+  .course-print-actions {
+    justify-content: flex-start;
+  }
+}
+@media print {
+  .course-print-actions,
+  .has-print-document > :not(.course-header):not(.course-print-document) {
+    display: none !important;
+  }
+  .course-print-document {
+    display: block;
+  }
+  .course-print-document .assessment-cards > .is-summary {
+    display: block;
+    block-size: auto;
+    padding: 16px;
+    margin-block: 12px;
+    break-inside: avoid;
+  }
+  .course-print-document .assessment-card-scroll {
+    display: grid;
+    overflow: visible;
+    grid-template-columns: 1fr 1fr;
+  }
+  .course-print-document .assessment-primary-facts {
+    margin-block: 12px;
+  }
+  .course-print-document .assessment-card-header .assessment-kind {
+    margin-block: 6px 12px;
+  }
+  .course-print-document .planning-weight .fact-value {
+    font-size: 32px;
+  }
+  .course-print-document .assessment-card-footer,
+  .course-print-document .actions,
+  .course-print-document .more-menu {
+    display: none;
+  }
+  .course-print-document .assessment-detail {
+    break-before: auto;
+    padding-block-start: 28px;
+  }
+  .course-print-document > .assessment-detail:first-of-type {
+    break-before: auto;
+  }
+  .print-purpose {
+    font: 600 14px/1.5 var(--font-ui);
+    margin-block: 8px 22px;
+  }
+  .print-source-path {
+    display: block;
+    width: 100%;
+    font: 400 10px/1.5 var(--font-ui);
+    overflow-wrap: anywhere;
+    margin-block-start: 6px;
+  }
+  .print-reading-note {
+    margin-block: 22px;
+    font-size: 12px;
+  }
+  .print-rule-risk {
+    border-inline-start: 2px solid var(--clay);
+    padding-inline-start: 10px;
+    font-size: 12px;
+  }
+  .print-critical-rules {
+    margin-block: 28px;
+  }
+  .print-critical-rules .organized-details .product-action {
+    margin-block: 8px 12px;
+  }
+  .print-critical-rules .section-heading {
+    font-size: 15px;
+  }
+  .print-critical-rules .fact-value {
+    font-size: 12px;
+  }
+  .print-critical-rules .checklist-heading {
+    font-size: 12px;
+  }
+  .rubric-score-pair .print-source-path {
+    grid-column: 1 / -1;
+  }
+}
+
+.assessment-card-header .assessment-name {
+  overflow-wrap: anywhere;
+}
+
+/* Planning percentages and rubric scalars are one value, never vertical digit fragments. */
+.planning-weight .fact-value,
+.rubric-score-pair .fact-value {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  min-width: 3ch;
+}
+.rubric-score-pair.fact {
+  grid-template-columns: minmax(0, 1fr) max-content;
+}
+@media print {
+  .print-critical-rules .organized-details {
+    gap: 12px;
+  }
+  .print-critical-rules .organized-details .section-heading {
+    display: none;
+  }
+  .print-critical-rules .organized-details .product-action {
+    margin-block: 4px 8px;
+  }
+}
+@media print {
+  .course-print-document .assessment-detail > .assessment-name {
+    break-after: avoid;
+  }
+  .course-print-document .planning-summary > .fact {
+    break-inside: avoid;
+  }
+  .course-print-document .print-source-path {
+    break-before: avoid;
+    break-inside: avoid;
+  }
+}
+
+/* P063 final typography: one sans family for everyday planning and instructions. */
+.assessment-card-header .assessment-name,
+.assessment-detail > .assessment-name,
+.organized-details .detail-business-group > .section-heading,
+.course-rule-details > summary {
+  font-family: var(--font-ui);
+  font-weight: 600;
+}
+.organized-details .product-action[data-modality="must"] > .fact > .fact-value,
+.organized-details .product-action[data-modality="prohibition"] > .fact > .fact-value,
+.organized-details .product-action[data-role="risk"] > .fact > .fact-value {
+  font-weight: 400;
+}
+.assessment-name,
+.fact,
+.product-checklist {
+  font-family: var(--font-ui), "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+@media print {
+  /* A4 @page owns outer whitespace; screen padding must not create an empty tail page. */
+  .screen.course-screen {
+    padding: 0;
+  }
+  .course-print-document > :last-child,
+  .print-critical-rules > :last-child {
+    margin-block-end: 0;
+  }
+}
+
+/* P064: reuse the existing title font with its real variable weight range.
+   A separate face keeps this approved course typography scoped to the Course screen. */
+@font-face {
+  font-family: "Fraunces Course";
+  src: url("fonts/fraunces-var-normal.woff2") format("woff2");
+  font-weight: 100 900;
+}
+.course-screen {
+  --font-display: "Fraunces Course", Georgia, "Songti SC", "SimSun", serif;
+}
+.course-screen .course-name {
+  font: 500 21px/1.35 var(--font-display);
+  letter-spacing: normal;
+}
+.course-screen .course-code {
+  font: 400 12px/1.5 var(--font-ui);
+}
+.course-screen .assessment-card-header .assessment-name,
+.course-screen .assessment-detail > .assessment-name {
+  font: 550 20px/1.28 var(--font-display);
+  letter-spacing: normal;
+}
+.course-screen .assessment-name,
+.course-screen .component-name,
+.course-screen .section-heading,
+.course-screen .checklist-heading,
+.course-screen .course-rule-details > summary {
+  font-family: var(--font-display);
+}
+.course-screen .organized-details .detail-business-group > .section-heading,
+.course-screen .course-rule-details > summary {
+  font-weight: 500;
+}
+.course-screen .planning-primary .fact-value {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.course-screen .planning-weight .fact-value {
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+.course-screen .fact-label,
+.course-screen .planning-secondary .fact-label {
+  font-weight: 500;
+}
+.course-screen .secondary-action {
+  font-weight: 500;
+}
+@media (max-width: 799px) {
+  .course-screen .planning-weight .fact-value {
+    font-size: 34px;
+  }
+}
+@media print {
+  .course-screen .course-print-document .planning-weight .fact-value {
+    font-size: 30px;
   }
 }

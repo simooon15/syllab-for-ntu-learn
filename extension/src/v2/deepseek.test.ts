@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { DEEPSEEK_REQUEST_TIMEOUT_MS, DeepSeekTransport } from "./deepseek";
+import { DeepSeekTransport } from "./deepseek";
 
 describe("DeepSeek BYOK transport", () => {
   afterEach(() => {
@@ -10,7 +10,11 @@ describe("DeepSeek BYOK transport", () => {
   it("maps invalid credentials without exposing the key", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response("", { status: 401 }));
     const transport = new DeepSeekTransport(fetcher);
-    const promise = transport.complete("private-value", { system: "s", user: "u", maxTokens: 8 });
+    const promise = transport.complete("private-value", {
+      system: "Output JSON.",
+      user: "u",
+      maxTokens: 8
+    });
     await expect(promise).rejects.toMatchObject({
       code: "AI_AUTH",
       retryable: false
@@ -23,7 +27,7 @@ describe("DeepSeek BYOK transport", () => {
       .fn<typeof fetch>()
       .mockResolvedValue(Response.json({ choices: [{ message: { content: "{}" } }] }));
     await new DeepSeekTransport(fetcher).complete("key", {
-      system: "system",
+      system: "Output JSON.",
       user: "user",
       maxTokens: 16_000
     });
@@ -39,7 +43,7 @@ describe("DeepSeek BYOK transport", () => {
     });
   });
 
-  it("reassembles the QA SSE stream while preserving reasoning and visible output", async () => {
+  it("reassembles SSE output without retaining provider reasoning", async () => {
     vi.stubGlobal("__SYLLAB_E2E_FIXTURES__", true);
     const encoder = new TextEncoder();
     const response = new Response(
@@ -63,7 +67,7 @@ describe("DeepSeek BYOK transport", () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response);
 
     const payload = await new DeepSeekTransport(fetcher).complete("key", {
-      system: "system",
+      system: "Output JSON.",
       user: "user",
       maxTokens: 96_000
     });
@@ -77,7 +81,7 @@ describe("DeepSeek BYOK transport", () => {
     expect(payload).toMatchObject({
       choices: [
         {
-          message: { content: '{"ok":true}', reasoning_content: "think " },
+          message: { content: '{"ok":true}' },
           finish_reason: "stop"
         }
       ],
@@ -102,7 +106,7 @@ describe("DeepSeek BYOK transport", () => {
 
     const transport = new DeepSeekTransport();
     await expect(
-      transport.complete("key", { system: "s", user: "u", maxTokens: 8 })
+      transport.complete("key", { system: "Output JSON.", user: "u", maxTokens: 8 })
     ).resolves.toBeDefined();
     expect(real).toHaveBeenCalledTimes(1);
   });
@@ -112,24 +116,41 @@ describe("DeepSeek BYOK transport", () => {
       throw new TypeError("Failed to execute 'fetch' on 'WorkerGlobalScope': Illegal invocation");
     });
     await expect(
-      refused.complete("key", { system: "s", user: "u", maxTokens: 8 })
+      refused.complete("key", { system: "Output JSON.", user: "u", maxTokens: 8 })
     ).rejects.toMatchObject({ code: "AI_CONTRACT", retryable: false });
 
     const offline = new DeepSeekTransport(() => Promise.reject(new TypeError("Failed to fetch")));
     await expect(
-      offline.complete("key", { system: "s", user: "u", maxTokens: 8 })
+      offline.complete("key", { system: "Output JSON.", user: "u", maxTokens: 8 })
     ).rejects.toMatchObject({ code: "NETWORK_TRANSIENT", retryable: true });
   });
 
-  it("passes a bounded timeout and maps an aborted provider request to a retryable failure", async () => {
+  it("uses ownership cancellation without an absolute normal-request deadline", async () => {
+    const controller = new AbortController();
     const fetcher = vi.fn<typeof fetch>().mockImplementation((_input, init) => {
-      expect(init?.signal).toBeInstanceOf(AbortSignal);
-      expect(DEEPSEEK_REQUEST_TIMEOUT_MS).toBe(300_000);
-      throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+      expect(init?.signal).toBe(controller.signal);
+      controller.abort();
+      throw new DOMException("Cancelled", "AbortError");
     });
     await expect(
-      new DeepSeekTransport(fetcher).complete("key", { system: "s", user: "u", maxTokens: 8 })
-    ).rejects.toMatchObject({ code: "NETWORK_TRANSIENT", retryable: true });
+      new DeepSeekTransport(fetcher).complete("key", {
+        system: "Output JSON.",
+        user: "u",
+        maxTokens: 8,
+        signal: controller.signal
+      })
+    ).rejects.toMatchObject({ layer: "abort" });
+    const normal = vi.fn<typeof fetch>().mockImplementation((_input, init) => {
+      expect(init?.signal).toBeUndefined();
+      return Promise.resolve(new Response(JSON.stringify({ choices: [] })));
+    });
+    await expect(
+      new DeepSeekTransport(normal).complete("key", {
+        system: "Output JSON.",
+        user: "u",
+        maxTokens: 8
+      })
+    ).resolves.toBeDefined();
   });
 
   it("checks a key against the models list, which costs nothing", async () => {
@@ -141,5 +162,135 @@ describe("DeepSeek BYOK transport", () => {
       vi.fn<typeof fetch>().mockResolvedValue(new Response("", { status: 401 }))
     );
     await expect(rejected.verify("key")).rejects.toMatchObject({ code: "AI_AUTH" });
+  });
+});
+
+it("rejects oversized visual input before sending any provider request", async () => {
+  const fetcher = vi.fn<typeof fetch>();
+  const transport = new DeepSeekTransport(fetcher);
+  await expect(
+    transport.complete("synthetic-credential", {
+      system: "Output JSON.",
+      user: "u",
+      maxTokens: 1,
+      visualParts: Array.from({ length: 601 }, () => ({
+        locator: "page:1",
+        dataUrl: "data:image/png;base64,AA=="
+      }))
+    })
+  ).rejects.toMatchObject({ code: "AI_CONTRACT", retryable: false });
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
+it("forwards cancellation and respects the provider Retry-After without shortening it", async () => {
+  const controller = new AbortController();
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockResolvedValue(new Response("", { status: 429, headers: { "Retry-After": "120" } }));
+  const request = new DeepSeekTransport(fetcher).complete("synthetic-credential", {
+    system: "Output JSON.",
+    user: "u",
+    maxTokens: 1,
+    signal: controller.signal
+  });
+  await expect(request).rejects.toMatchObject({ code: "AI_RATE_LIMIT", retryAfterMs: 120_000 });
+  controller.abort();
+  expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+});
+
+it("classifies a body-stream disconnect after HTTP success as a network failure", async () => {
+  const body = new ReadableStream({
+    start(controller) {
+      setTimeout(() => controller.error(new TypeError("Failed to fetch")), 0);
+    }
+  });
+  const transport = new DeepSeekTransport(() =>
+    Promise.resolve(new Response(body, { headers: { "content-type": "text/event-stream" } }))
+  );
+  await expect(
+    transport.complete("synthetic", { system: "Output JSON.", user: "u", maxTokens: 8 })
+  ).rejects.toMatchObject({ code: "NETWORK_TRANSIENT", layer: "network", retryable: true });
+});
+it("rejects premature stream EOF even if a valid JSON prefix has already arrived", async () => {
+  const text = 'data: {"choices":[{"delta":{"content":"{}"},"finish_reason":null}]}\n\n';
+  const transport = new DeepSeekTransport(() =>
+    Promise.resolve(new Response(text, { headers: { "content-type": "text/event-stream" } }))
+  );
+  await expect(
+    transport.complete("synthetic", { system: "Output JSON.", user: "u", maxTokens: 8 })
+  ).rejects.toMatchObject({ code: "NETWORK_TRANSIENT", layer: "network", retryable: true });
+});
+
+it("rejects missing JSON-mode instructions before fetching or consuming API credit", async () => {
+  const fetcher = vi.fn<typeof fetch>();
+  await expect(
+    new DeepSeekTransport(fetcher).complete("synthetic", {
+      system: "Inspect one native passage",
+      user: "Synthetic text",
+      maxTokens: 8192
+    })
+  ).rejects.toMatchObject({ code: "AI_CONTRACT", message: "provider-json-directive" });
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
+it("cancels a stalled audit stream before an answer, without retry or claiming a pre-generation rejection", async () => {
+  let cancelled = false;
+  const checkpoint =
+    "Check independent deadline A.\nCheck authored submission B.\nCheck exception evidence C.\n";
+  const body = new ReadableStream({
+    start(controller) {
+      controller.enqueue(
+        new TextEncoder().encode(
+          "data: " +
+            JSON.stringify({ choices: [{ delta: { reasoning_content: checkpoint.repeat(3) } }] }) +
+            "\n\n"
+        )
+      );
+    },
+    cancel() {
+      cancelled = true;
+    }
+  });
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockResolvedValue(new Response(body, { headers: { "content-type": "text/event-stream" } }));
+  await expect(
+    new DeepSeekTransport(fetcher).complete("synthetic", {
+      system: "Output JSON.",
+      user: "Audit",
+      maxTokens: 384000,
+      reasoningCycleGuard: true
+    })
+  ).rejects.toMatchObject({
+    message: "PROVIDER_REASONING_CYCLE",
+    code: "AI_PROVIDER",
+    retryable: false,
+    preGenerationBoundary: false
+  });
+  expect(cancelled).toBe(true);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it("does not cancel delivered answer progress merely because earlier reasoning repeats", async () => {
+  const checkpoint =
+    "Check independent deadline A.\nCheck authored submission B.\nCheck exception evidence C.\n";
+  const frames =
+    [
+      { choices: [{ delta: { content: "{}" } }] },
+      { choices: [{ delta: { reasoning_content: checkpoint.repeat(4) }, finish_reason: "stop" }] }
+    ]
+      .map((x) => "data: " + JSON.stringify(x) + "\n\n")
+      .join("") + "data: [DONE]\n\n";
+  const transport = new DeepSeekTransport(() =>
+    Promise.resolve(new Response(frames, { headers: { "content-type": "text/event-stream" } }))
+  );
+  const result = await transport.complete("synthetic", {
+    system: "Output JSON.",
+    user: "Audit",
+    maxTokens: 384000,
+    reasoningCycleGuard: true
+  });
+  expect(result).toMatchObject({
+    choices: [{ message: { content: "{}" }, finish_reason: "stop" }]
   });
 });

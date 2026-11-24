@@ -232,6 +232,7 @@ export function reviewItem(
   return {
     kind: "initial",
     title: "Group Project",
+    targetAssessmentId: "a-project",
     position: { index: 2, total: 5 },
     unresolvedQuestions: [],
     actions: ["Confirm", "Edit", "Exclude", "ReviewLater", "SameAssessmentAs", "Split"],

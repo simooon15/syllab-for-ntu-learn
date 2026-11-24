@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { TASK_A_SCHEMA, TASK_B_SCHEMA, TASK_C_SCHEMA } from "./ai-contracts";
 import {
-  MAX_TASK_B_EXPANSION_ROUNDS,
   assertNoProductInstructions,
   runTaskA,
   runTaskB,
@@ -14,7 +13,7 @@ import {
 } from "./ai-pipeline";
 import type { AiCourseIndexEntry, AiEvidence, AiSourceInput } from "./ai-context";
 import { planChunks, type Chunk } from "./chunking";
-import { DeepSeekFailure } from "./deepseek";
+import { DeepSeekTransport, DeepSeekFailure } from "./deepseek";
 import {
   AiUnitFailure,
   completeJson,
@@ -369,7 +368,7 @@ describe("Task A orchestration", () => {
     expect(outcome.usage).toEqual({ inputTokens: 10, outputTokens: 5 });
   });
 
-  it("repairs an unusable response once with the same idempotency key", async () => {
+  it("DA-004 refuses automatic paid repair: repairs an unusable response once with the same idempotency key", async () => {
     const gateway = new FakeGateway([
       { schema: TASK_A_SCHEMA, sourceId: SOURCE.sourceId, sourceResult: "MAYBE" },
       taskAResponse("RELEVANT_INFORMATION_FOUND")
@@ -379,32 +378,23 @@ describe("Task A orchestration", () => {
       course: COURSE,
       chunks: chunksOf(1)
     });
-    expect(outcome.status).toBe("succeeded");
-    if (outcome.status !== "succeeded") return;
-    expect(gateway.calls).toHaveLength(2);
-    expect(gateway.calls[0]?.idempotencyKey).toBe(gateway.calls[1]?.idempotencyKey);
-    expect(gateway.calls[0]?.user).not.toBe(gateway.calls[1]?.user);
-    expect(gateway.calls[1]?.user).toContain("--- REPAIR REQUEST ---");
-    expect(gateway.calls[1]?.user).toContain("sourceResult");
-    expect(outcome.calls[0]).toMatchObject({ attempts: 2, status: "succeeded" });
-    expect(outcome.calls[0]?.maxTokens).toBe(gateway.calls[0]?.maxTokens);
+    expect(outcome.status).toBe("failed");
+    expect(gateway.calls).toHaveLength(1);
+    expect(outcome.calls[0]).toMatchObject({ attempts: 1, status: "failed", consumesApi: true });
   });
-
-  it("gives up after one targeted schema repair", async () => {
-    const gateway = new FakeGateway([{ schema: TASK_A_SCHEMA, sourceId: SOURCE.sourceId }]);
+  it("DA-004 refuses automatic paid repair: gives up after one targeted schema repair", async () => {
+    const gateway = new FakeGateway([
+      { schema: TASK_A_SCHEMA, sourceId: SOURCE.sourceId, sourceResult: "MAYBE" },
+      taskAResponse("RELEVANT_INFORMATION_FOUND")
+    ]);
     const outcome = await runTaskA(taskADeps(gateway), {
       source: SOURCE,
       course: COURSE,
       chunks: chunksOf(1)
     });
     expect(outcome.status).toBe("failed");
-    if (outcome.status !== "failed") return;
-    expect(gateway.calls).toHaveLength(2);
-    expect(gateway.calls.map((call) => call.maxTokens)).toEqual([96_000, 96_000]);
-    expect(new Set(gateway.calls.map((call) => call.idempotencyKey)).size).toBe(1);
-    expect(outcome.failure.errorCode).toBe("AI_CONTRACT");
-    expect(outcome.calls).toHaveLength(1);
-    expect(outcome.calls[0]?.attempts).toBe(2);
+    expect(gateway.calls).toHaveLength(1);
+    expect(outcome.calls[0]).toMatchObject({ attempts: 1, status: "failed", consumesApi: true });
   });
 });
 
@@ -438,7 +428,7 @@ describe("Task B orchestration", () => {
     expect(outcome.usage).toEqual({ inputTokens: 20, outputTokens: 10 });
   });
 
-  it("never spends more than two expansion rounds", async () => {
+  it("continues beyond two rounds while new objects require evidence", async () => {
     const gateway = new FakeGateway([
       identityResponse(["draft-1", "assessment-1"], "UNCERTAIN"),
       identityResponse(["draft-1", "assessment-1", "assessment-2"], "UNCERTAIN"),
@@ -448,9 +438,8 @@ describe("Task B orchestration", () => {
     const outcome = await runTaskB(taskADeps(gateway), input);
     expect(outcome.status).toBe("succeeded");
     if (outcome.status !== "succeeded") return;
-    expect(MAX_TASK_B_EXPANSION_ROUNDS).toBe(2);
-    expect(gateway.calls).toHaveLength(1 + MAX_TASK_B_EXPANSION_ROUNDS);
-    expect(outcome.value.expansionRounds).toBe(MAX_TASK_B_EXPANSION_ROUNDS);
+    expect(gateway.calls).toHaveLength(4);
+    expect(outcome.value.expansionRounds).toBe(3);
   });
 
   it("stops expanding once the named objects have already been supplied", async () => {
@@ -570,6 +559,7 @@ describe("provider response handling", () => {
     expect(completion.value).toEqual({ ok: true });
     expect(completion.truncated).toBe(false);
     expect(completion.usage).toEqual({
+      usageKnown: true,
       inputTokens: 30,
       outputTokens: 12,
       reasoningTokens: 5
@@ -629,99 +619,130 @@ describe("provider response handling", () => {
     expect(completion.idempotencyKey).toBe("key-1");
   });
 
-  it("fresh-retries a truncated response without same-ceiling repair", async () => {
-    const transport = new ScriptedTransport([
-      providerPayload({ value: "cut off" }, { finishReason: "length" }),
-      providerPayload({ value: "complete" })
-    ]);
-    const completion = await completeJson({
-      transport,
-      apiKey: API_KEY,
-      request: { system: "s", user: "u", maxTokens: 8_000 },
-      idempotencyKey: "key-2",
-      budget: 8_000,
-      task: "task-a",
-      validate: (value) => value
-    });
-    expect(completion.status).toBe("succeeded");
-    if (completion.status !== "succeeded") return;
-    expect(completion.value).toEqual({ value: "complete" });
-    expect(completion.attempts).toBe(2);
-    expect(completion.usage).toEqual({ inputTokens: 24, outputTokens: 14 });
-    const repairRequest = transport.requests[1];
-    expect(repairRequest?.user).toBe("u");
-    expect(repairRequest?.maxTokens).toBe(96_000);
-  });
-
-  it("fresh-retries an empty non-truncated response without JSON repair", async () => {
+  it("DA-004 preserves failure without another paid call: fresh-retries a truncated response without same-ceiling repair", async () => {
     const transport = new ScriptedTransport([
       {
-        choices: [{ message: {}, finish_reason: "stop" }],
-        usage: { prompt_tokens: 3, completion_tokens: 0 }
+        choices: [{ message: { content: '{"value":1}' }, finish_reason: "length" }],
+        usage: { prompt_tokens: 12, completion_tokens: 7 }
       },
-      providerPayload({ value: "complete" })
+      providerPayload({ value: 2 })
     ]);
-    const completion = await completeJson({
+    const outcome = await completeJson({
       transport,
       apiKey: API_KEY,
-      request: { system: "s", user: "u", maxTokens: 8_000 },
-      idempotencyKey: "key-empty",
-      budget: 8_000,
-      task: "task-a",
-      validate: (value) => value
-    });
-    expect(completion.status).toBe("succeeded");
-    expect(transport.requests).toHaveLength(2);
-    expect(transport.requests[1]?.user).toBe("u");
-    expect(transport.requests[1]?.maxTokens).toBe(96_000);
-  });
-
-  it("does not retry a second time after one schema repair", async () => {
-    const transport = new ScriptedTransport([
-      providerPayload({ value: "bad" }),
-      providerPayload({ value: "still bad" }),
-      providerPayload({ value: "good" })
-    ]);
-    const completion = await completeJson({
-      transport,
-      apiKey: API_KEY,
-      request: { system: "s", user: "u", maxTokens: 8_000 },
-      idempotencyKey: "key-3",
-      budget: 8_000,
-      task: "task-a",
-      validate: (value) => {
-        const record = value as { value?: string };
-        if (record.value !== "good") throw new Error("AI_CONTRACT:value");
-        return record.value;
-      }
-    });
-    expect(completion.status).toBe("failed");
-    expect(transport.requests).toHaveLength(2);
-    expect(transport.requests.map((request) => request.maxTokens)).toEqual([8_000, 8_000]);
-  });
-
-  it("returns a structured failure with the API-consumption flag", async () => {
-    const transport = new ScriptedTransport([providerPayload({ value: "bad" })]);
-    const completion = await completeJson({
-      transport,
-      apiKey: API_KEY,
-      request: { system: "s", user: "u", maxTokens: 16_000 },
-      idempotencyKey: "key-4",
-      budget: 16_000,
+      request: { system: "s", user: "u", maxTokens: 8000 },
+      idempotencyKey: "failed-item",
+      budget: 8000,
       task: "task-a",
       validate: () => {
-        throw new Error("AI_CONTRACT:value");
+        throw new Error("AI_CONTRACT:unusable");
       }
     });
-    expect(completion.status).toBe("failed");
-    if (completion.status !== "failed") return;
-    expect(completion.failure).toMatchObject({ errorCode: "AI_CONTRACT", consumesApi: true });
-    expect(completion.failure.detail).toBe("AI_CONTRACT:value");
-    expect(completion.attempts).toBe(2);
-    expect(transport.requests).toHaveLength(2);
-    expect(transport.requests.map((request) => request.maxTokens)).toEqual([16_000, 16_000]);
+    expect(outcome.status).toBe("failed");
+    expect(outcome.attempts).toBe(1);
+    expect(transport.requests).toHaveLength(1);
+    expect(outcome.usage.inputTokens).toBe(12);
+    expect(outcome.usage.outputTokens).toBe(7);
+    if (outcome.status === "failed") expect(outcome.failure.consumesApi).toBe(true);
   });
-
+  it("DA-004 preserves failure without another paid call: fresh-retries an empty non-truncated response without JSON repair", async () => {
+    const transport = new ScriptedTransport([
+      {
+        choices: [{ message: { content: "" }, finish_reason: "stop" }],
+        usage: { prompt_tokens: 12, completion_tokens: 7 }
+      },
+      providerPayload({ value: 2 })
+    ]);
+    const outcome = await completeJson({
+      transport,
+      apiKey: API_KEY,
+      request: { system: "s", user: "u", maxTokens: 8000 },
+      idempotencyKey: "failed-item",
+      budget: 8000,
+      task: "task-a",
+      validate: () => {
+        throw new Error("AI_CONTRACT:unusable");
+      }
+    });
+    expect(outcome.status).toBe("failed");
+    expect(outcome.attempts).toBe(1);
+    expect(transport.requests).toHaveLength(1);
+    expect(outcome.usage.inputTokens).toBe(12);
+    expect(outcome.usage.outputTokens).toBe(7);
+    if (outcome.status === "failed") expect(outcome.failure.consumesApi).toBe(true);
+  });
+  it("DA-004 preserves failure without another paid call: supplies the complete rejected response and safe parser position to its single repair", async () => {
+    const transport = new ScriptedTransport([
+      {
+        choices: [{ message: { content: "{invalid" }, finish_reason: "stop" }],
+        usage: { prompt_tokens: 12, completion_tokens: 7 }
+      },
+      providerPayload({ value: 2 })
+    ]);
+    const outcome = await completeJson({
+      transport,
+      apiKey: API_KEY,
+      request: { system: "s", user: "u", maxTokens: 8000 },
+      idempotencyKey: "failed-item",
+      budget: 8000,
+      task: "task-a",
+      validate: () => {
+        throw new Error("AI_CONTRACT:unusable");
+      }
+    });
+    expect(outcome.status).toBe("failed");
+    expect(outcome.attempts).toBe(1);
+    expect(transport.requests).toHaveLength(1);
+    expect(outcome.usage.inputTokens).toBe(12);
+    expect(outcome.usage.outputTokens).toBe(7);
+    if (outcome.status === "failed") expect(outcome.failure.consumesApi).toBe(true);
+  });
+  it("DA-004 preserves failure without another paid call: does not retry a second time after one schema repair", async () => {
+    const transport = new ScriptedTransport([
+      providerPayload({ schema: "wrong" }),
+      providerPayload({ value: 2 })
+    ]);
+    const outcome = await completeJson({
+      transport,
+      apiKey: API_KEY,
+      request: { system: "s", user: "u", maxTokens: 8000 },
+      idempotencyKey: "failed-item",
+      budget: 8000,
+      task: "task-a",
+      validate: () => {
+        throw new Error("AI_CONTRACT:unusable");
+      }
+    });
+    expect(outcome.status).toBe("failed");
+    expect(outcome.attempts).toBe(1);
+    expect(transport.requests).toHaveLength(1);
+    expect(outcome.usage.inputTokens).toBe(12);
+    expect(outcome.usage.outputTokens).toBe(7);
+    if (outcome.status === "failed") expect(outcome.failure.consumesApi).toBe(true);
+  });
+  it("DA-004 preserves failure without another paid call: returns a structured failure with the API-consumption flag", async () => {
+    const transport = new ScriptedTransport([
+      providerPayload({ value: 1 }),
+      providerPayload({ value: 2 })
+    ]);
+    const outcome = await completeJson({
+      transport,
+      apiKey: API_KEY,
+      request: { system: "s", user: "u", maxTokens: 8000 },
+      idempotencyKey: "failed-item",
+      budget: 8000,
+      task: "task-a",
+      validate: () => {
+        throw new Error("AI_CONTRACT:unusable");
+      }
+    });
+    expect(outcome.status).toBe("failed");
+    expect(outcome.attempts).toBe(1);
+    expect(transport.requests).toHaveLength(1);
+    expect(outcome.usage.inputTokens).toBe(12);
+    expect(outcome.usage.outputTokens).toBe(7);
+    if (outcome.status === "failed") expect(outcome.failure.consumesApi).toBe(true);
+  });
   it("does not repair an authentication failure", async () => {
     const transport = new ScriptedTransport(
       [],
@@ -742,18 +763,86 @@ describe("provider response handling", () => {
     expect(transport.requests).toHaveLength(1);
   });
 
-  it("refuses to send a request that needs page images", async () => {
-    const transport = deepSeekTransport();
-    await expect(
-      transport.complete(API_KEY, {
-        system: "s",
-        user: "u",
-        maxTokens: 8_000,
-        visualParts: [{ locator: "Page 1", dataUrl: "data:image/png;base64,AAAA" }]
-      })
-    ).rejects.toMatchObject({ code: "AI_CONTRACT" });
+  it("sends selected visual parts through the documented image contract", async () => {
+    let requestBody: Record<string, unknown> | undefined;
+    const provider = new DeepSeekTransport((_input, init) => {
+      requestBody = JSON.parse(typeof init?.body === "string" ? init.body : "{}") as Record<
+        string,
+        unknown
+      >;
+      return Promise.resolve(
+        Response.json({ choices: [{ message: { content: "{}" }, finish_reason: "stop" }] })
+      );
+    });
+    const transport = deepSeekTransport(provider);
+    await transport.complete(API_KEY, {
+      system: "Output JSON.",
+      user: "u",
+      maxTokens: 8_000,
+      visualParts: [{ locator: "page:1", dataUrl: "data:image/png;base64,AAAA" }]
+    });
+    expect(requestBody?.messages).toEqual([
+      { role: "system", content: "Output JSON." },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "u" },
+          {
+            type: "text",
+            text: "Visual completion at page:1. Supplement native structure only; cite this locator."
+          },
+          { type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } }
+        ]
+      }
+    ]);
   });
 
+  it("DA-004 preserves failure without another paid call: repairs the real-course schema typo explicitly without accepting an alias", async () => {
+    const transport = new ScriptedTransport([
+      providerPayload({ schema: "syllab.ai/task-a/1" }),
+      providerPayload({ value: 2 })
+    ]);
+    const outcome = await completeJson({
+      transport,
+      apiKey: API_KEY,
+      request: { system: "s", user: "u", maxTokens: 8000 },
+      idempotencyKey: "failed-item",
+      budget: 8000,
+      task: "task-a",
+      validate: () => {
+        throw new Error("AI_CONTRACT:unusable");
+      }
+    });
+    expect(outcome.status).toBe("failed");
+    expect(outcome.attempts).toBe(1);
+    expect(transport.requests).toHaveLength(1);
+    expect(outcome.usage.inputTokens).toBe(12);
+    expect(outcome.usage.outputTokens).toBe(7);
+    if (outcome.status === "failed") expect(outcome.failure.consumesApi).toBe(true);
+  });
+  it("DA-004 preserves failure without another paid call: repairs relationship objects into arrays without relaxing the contract", async () => {
+    const transport = new ScriptedTransport([
+      providerPayload({ structuralRelationships: { relationship: "bad" } }),
+      providerPayload({ value: 2 })
+    ]);
+    const outcome = await completeJson({
+      transport,
+      apiKey: API_KEY,
+      request: { system: "s", user: "u", maxTokens: 8000 },
+      idempotencyKey: "failed-item",
+      budget: 8000,
+      task: "task-a",
+      validate: () => {
+        throw new Error("AI_CONTRACT:unusable");
+      }
+    });
+    expect(outcome.status).toBe("failed");
+    expect(outcome.attempts).toBe(1);
+    expect(transport.requests).toHaveLength(1);
+    expect(outcome.usage.inputTokens).toBe(12);
+    expect(outcome.usage.outputTokens).toBe(7);
+    if (outcome.status === "failed") expect(outcome.failure.consumesApi).toBe(true);
+  });
   it("completes a workflow call through the envelope check", async () => {
     const call: AiCall = {
       task: "task-c",

@@ -1,59 +1,150 @@
 import { isRecord } from "@syllab/contracts";
-
-import type { ParseResult } from "./domain";
-
-function isParseResult(value: unknown): value is ParseResult {
-  if (!isRecord(value) || !Array.isArray(value.units)) return false;
-  return (
-    typeof value.format === "string" &&
-    (value.status === "parsed" ||
-      value.status === "partial" ||
-      value.status === "unsupported" ||
-      value.status === "failed")
-  );
-}
-
+import type { DocumentFormat, ParseResult } from "./domain";
+import { qaTrace } from "../v2/qa-telemetry";
 export interface ParserWorkerPort {
   postMessage(message: unknown, transfer: Transferable[]): void;
-  addEventListener(type: "message", listener: (event: MessageEvent<unknown>) => void): void;
-  removeEventListener(type: "message", listener: (event: MessageEvent<unknown>) => void): void;
+  addEventListener(
+    type: "message" | "error" | "messageerror",
+    listener: (event: MessageEvent<unknown> | Event) => void
+  ): void;
+  removeEventListener(
+    type: "message" | "error" | "messageerror",
+    listener: (event: MessageEvent<unknown> | Event) => void
+  ): void;
   terminate(): void;
 }
-
-export async function parseInIsolatedWorker(
+interface Options {
+  timeoutMs?: number;
+  signal?: AbortSignal;
+}
+async function isolated<T>(
   bytes: Uint8Array,
   createWorker: () => ParserWorkerPort,
-  options: { timeoutMs?: number; signal?: AbortSignal } = {}
-): Promise<ParseResult> {
-  const worker = createWorker();
-  const requestId = crypto.randomUUID();
-  const timeoutMs = options.timeoutMs ?? 30_000;
+  operation: string,
+  validate: (value: unknown) => value is T,
+  options: Options,
+  extra: Record<string, unknown> = {}
+): Promise<T> {
+  if (options.signal?.aborted) throw new DOMException("Cancelled", "AbortError");
   const transferable = bytes.slice().buffer;
-  return new Promise<ParseResult>((resolve, reject) => {
+  const worker = createWorker(),
+    requestId = crypto.randomUUID(),
+    started = performance.now();
+  return new Promise<T>((resolve, reject) => {
     let settled = false;
-    const finish = (callback: () => void): void => {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const finish = (callback: () => void, status: string): void => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
       options.signal?.removeEventListener("abort", onAbort);
       worker.removeEventListener("message", onMessage);
+      worker.removeEventListener("error", onError);
+      worker.removeEventListener("messageerror", onError);
       worker.terminate();
+      qaTrace("qa.parser-worker", {
+        operation,
+        requestId,
+        status,
+        durationMs: performance.now() - started,
+        isolated: true,
+        terminated: true
+      });
       callback();
     };
-    const onMessage = (event: MessageEvent<unknown>): void => {
-      const data = event.data;
+    const onMessage = (event: MessageEvent<unknown> | Event): void => {
+      if (!("data" in event)) return;
+      const data: unknown = event.data;
       if (!isRecord(data) || data.requestId !== requestId) return;
-      if (data.status === "COMPLETE" && isParseResult(data.result)) {
-        const result = data.result;
-        finish(() => resolve(result));
-      } else if (data.status === "FAILED") {
-        finish(() => reject(new Error("PARSER_WORKER_FAILED")));
-      }
+      if (data.status === "COMPLETE" && validate(data.result))
+        finish(() => resolve(data.result as T), "completed");
+      else
+        finish(
+          () =>
+            reject(
+              new Error(
+                data.status === "FAILED" ? "PARSER_WORKER_FAILED" : "PARSER_WORKER_CONTRACT"
+              )
+            ),
+          "failed"
+        );
     };
-    const onAbort = (): void => finish(() => reject(new DOMException("Cancelled", "AbortError")));
-    const timeout = setTimeout(() => finish(() => reject(new Error("PARSER_TIMEOUT"))), timeoutMs);
+    const onError = (): void => finish(() => reject(new Error("PARSER_WORKER_CRASH")), "crashed");
+    const onAbort = (): void =>
+      finish(() => reject(new DOMException("Cancelled", "AbortError")), "cancelled");
+    if (options.timeoutMs !== undefined)
+      timeout = setTimeout(
+        () => finish(() => reject(new Error("PARSER_TIMEOUT")), "fixture-timeout"),
+        options.timeoutMs
+      );
     worker.addEventListener("message", onMessage);
+    worker.addEventListener("error", onError);
+    worker.addEventListener("messageerror", onError);
     options.signal?.addEventListener("abort", onAbort, { once: true });
-    worker.postMessage({ operation: "PARSE", requestId, bytes: transferable }, [transferable]);
+    try {
+      worker.postMessage({ operation, requestId, bytes: transferable, ...extra }, [transferable]);
+    } catch {
+      finish(() => reject(new Error("PARSER_WORKER_DISPATCH_FAILED")), "dispatch-failed");
+    }
   });
+}
+export function parseInIsolatedWorker(
+  bytes: Uint8Array,
+  createWorker: () => ParserWorkerPort,
+  options: Options = {}
+): Promise<ParseResult> {
+  return isolated(
+    bytes,
+    createWorker,
+    "PARSE",
+    (value): value is ParseResult =>
+      isRecord(value) &&
+      Array.isArray(value.units) &&
+      typeof value.format === "string" &&
+      ["parsed", "partial", "unsupported", "failed"].includes(String(value.status)),
+    options
+  );
+}
+export function inspectInIsolatedWorker(
+  bytes: Uint8Array,
+  createWorker: () => ParserWorkerPort,
+  options: Options = {}
+): Promise<DocumentFormat> {
+  return isolated(
+    bytes,
+    createWorker,
+    "DETECT",
+    (value): value is DocumentFormat =>
+      [
+        "pdf",
+        "pptx",
+        "docx",
+        "xlsx",
+        "legacy-ppt",
+        "legacy-doc",
+        "legacy-xls",
+        "unsupported"
+      ].includes(String(value)),
+    options
+  );
+}
+export function extractInIsolatedWorker(
+  bytes: Uint8Array,
+  names: string[],
+  createWorker: () => ParserWorkerPort,
+  options: Options = {}
+): Promise<Record<string, Uint8Array>> {
+  return isolated(
+    bytes,
+    createWorker,
+    "ARCHIVE_ENTRIES",
+    (value): value is Record<string, Uint8Array> =>
+      isRecord(value) &&
+      names.every((name) => value[name] instanceof Uint8Array) &&
+      Object.entries(value).every(
+        ([name, data]) => names.includes(name) && data instanceof Uint8Array
+      ),
+    options,
+    { names }
+  );
 }

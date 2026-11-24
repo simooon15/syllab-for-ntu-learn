@@ -52,3 +52,11 @@ export function needsFreshnessAttention(schedule: CheckSchedule, now: Date): boo
   if (!schedule.lastSuccessfulCheckAt) return false;
   return now.getTime() - Date.parse(schedule.lastSuccessfulCheckAt) >= 72 * HOUR;
 }
+
+/** DA-004: opportunity cadence cannot implicitly retry the latest failed paid workflow. */
+export function automaticCheckPermitted(workflows: WorkflowRecord[], courseId: string): boolean {
+  const latest = workflows
+    .filter((w) => w.courseId === courseId)
+    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0];
+  return !(latest?.state === "failed" && latest.phase.startsWith("task"));
+}

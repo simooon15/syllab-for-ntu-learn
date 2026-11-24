@@ -1,3 +1,13 @@
+import {
+  canonicalOutputFieldName,
+  validateOutputA,
+  validateOutputB,
+  validateOutputField,
+  OUTPUT_KINDS,
+  OUTPUT_ROLES
+} from "./assessment-output";
+import type { AiEvidence } from "./ai-context";
+import { stableDigest } from "./chunking";
 import type { TaskAResult, TaskBResult, TaskCResult } from "./ai-contracts";
 import { sha256, stableStringify } from "./crypto";
 import type {
@@ -82,8 +92,8 @@ interface RawIdentityResolution {
 }
 
 const FIELD_STATES: KnowledgeState[] = ["KNOWN", "EXPLICITLY_UNKNOWN", "UNCERTAIN"];
-const ASSESSMENT_KINDS = ["assignment", "project", "quiz_test", "exam", "other"] as const;
-const ASSESSMENT_ROLES = ["assessment", "component", "series", "series_instance"] as const;
+const ASSESSMENT_KINDS = OUTPUT_KINDS;
+const ASSESSMENT_ROLES = OUTPUT_ROLES;
 
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
@@ -111,6 +121,10 @@ function scalar(value: unknown): FactValue["value"] | undefined {
 }
 
 export interface MaterializeContext {
+  /** New sessions fail closed; historical saved workflows retain their original contract. */
+  strictOutput?: boolean;
+  evidence?: AiEvidence[];
+  sourceRecords?: SourceRecord[];
   course: CourseRecord;
   workflowId: string;
   /** Source id → the record it came from. Evidence naming anything else is dropped. */
@@ -121,6 +135,9 @@ export interface MaterializeContext {
 }
 
 export interface EvidenceDraft {
+  capturedAt?: string;
+  origin?: "native" | "visual" | "unverified";
+  representationHash?: string;
   evidenceId: string;
   sourceId: string;
   locator: string;
@@ -133,6 +150,34 @@ export class MaterializeError extends Error {
   constructor(readonly code: string) {
     super(code);
   }
+}
+
+/** Provider IDs are request-local; persistent IDs bind exact provenance and course/Source scope. */
+export function evidenceStorageId(
+  courseId: string,
+  record: {
+    evidenceId: string;
+    sourceId: string;
+    locator: string;
+    excerpt: string;
+    representationHash?: string;
+    page?: number;
+    region?: unknown;
+  }
+): string {
+  const prefix = `ev:${encodeURIComponent(courseId)}:${encodeURIComponent(record.sourceId)}:`;
+  const identity = stableDigest(
+    stableStringify({
+      locator: record.locator,
+      excerpt: record.excerpt,
+      ...(record.representationHash ? { representationHash: record.representationHash } : {}),
+      ...(record.page === undefined ? {} : { page: record.page }),
+      ...(record.region === undefined ? {} : { region: record.region })
+    })
+  );
+  if (record.evidenceId.startsWith(prefix) && record.evidenceId.endsWith(`:${identity}`))
+    return record.evidenceId;
+  return `${prefix}${encodeURIComponent(record.evidenceId)}:${identity}`;
 }
 
 /**
@@ -151,10 +196,55 @@ function evidence(
   const excerpt = text(record.excerpt);
   if (!sourceId || !locator || !excerpt) return null;
   if (!context.sources.has(sourceId)) throw new MaterializeError("EVIDENCE_UNKNOWN_SOURCE");
-  const evidenceId = text(record.evidenceId) ?? `ev_${randomSuffix()}`;
-  const page = typeof record.page === "number" ? record.page : undefined;
-  const region = isRegion(record.region) ? record.region : undefined;
+  const providerEvidenceId = text(record.evidenceId) ?? "unidentified";
+  const source = context.sourceRecords?.find((item) => item.sourceId === sourceId);
+  const native =
+    source?.parsed?.units?.find((unit) => unit.locator === locator)?.text ?? source?.parsed?.text;
+  const registered = context.evidence?.find((item) => item.evidenceId === providerEvidenceId);
+  if (
+    registered &&
+    (registered.sourceId !== sourceId ||
+      registered.locator !== locator ||
+      registered.excerpt !== excerpt)
+  )
+    throw new MaterializeError("EVIDENCE_REFERENCED_ALIAS_COLLISION");
+  const page = registered
+    ? registered.page
+    : typeof record.page === "number"
+      ? record.page
+      : undefined;
+  const region = registered
+    ? registered.region
+    : isRegion(record.region)
+      ? record.region
+      : undefined;
+  const origin = registered
+    ? registered.origin
+    : native?.includes(excerpt)
+      ? "native"
+      : source?.parsed?.visualEvidenceLocators?.includes(locator)
+        ? "visual"
+        : "unverified";
+  if (context.strictOutput && origin === "unverified")
+    throw new MaterializeError("EVIDENCE_UNVERIFIED");
+  const representationHash = registered
+    ? registered.representationHash
+    : (source?.parsed?.contentHash ?? source?.machine?.contentHash);
+  const evidenceId =
+    registered?.evidenceId ??
+    evidenceStorageId(context.course.courseId, {
+      evidenceId: providerEvidenceId,
+      sourceId,
+      locator,
+      excerpt,
+      ...(representationHash ? { representationHash } : {}),
+      ...(page === undefined ? {} : { page }),
+      ...(region ? { region } : {})
+    });
   const draft: EvidenceDraft = {
+    ...(registered?.capturedAt ? { capturedAt: registered.capturedAt } : {}),
+    ...(origin ? { origin } : {}),
+    ...(representationHash ? { representationHash } : {}),
     evidenceId,
     sourceId,
     locator,
@@ -162,7 +252,10 @@ function evidence(
     ...(page !== undefined ? { page } : {}),
     ...(region ? { region } : {})
   };
-  if (!collected.some((item) => item.evidenceId === evidenceId)) collected.push(draft);
+  const previous = collected.find((item) => item.evidenceId === evidenceId);
+  if (previous && stableStringify(previous) !== stableStringify(draft))
+    throw new MaterializeError("EVIDENCE_IDENTITY_COLLISION");
+  if (!previous) collected.push(draft);
   return draft;
 }
 
@@ -191,8 +284,10 @@ function factFromField(
   index: number
 ): FactRecord | null {
   if (typeof raw !== "object" || raw === null) return null;
+  if (context.strictOutput) validateOutputField(raw);
   const field = raw as RawField;
-  const fieldName = text(field.fieldName);
+  const name = text(field.fieldName);
+  const fieldName = name && context.strictOutput ? canonicalOutputFieldName(name) : name;
   if (!fieldName) return null;
   const state = oneOf<KnowledgeState>(field.state, FIELD_STATES, "KNOWN");
   const value = scalar(field.value);
@@ -255,6 +350,7 @@ export function materializeTaskA(
   result: TaskAResult,
   context: MaterializeContext
 ): MaterializedInitial {
+  if (context.strictOutput) validateOutputA(result);
   const collected: EvidenceDraft[] = [];
   const drafts: MaterializedInitial["drafts"] = [];
   for (const raw of result.assessmentDrafts) {
@@ -330,7 +426,9 @@ export function materializeTaskA(
         excerpt: entry.excerpt,
         ...(entry.page !== undefined ? { page: entry.page } : {}),
         ...(entry.region ? { region: entry.region } : {}),
-        capturedAt: context.now
+        ...(entry.origin ? { origin: entry.origin } : {}),
+        ...(entry.representationHash ? { representationHash: entry.representationHash } : {}),
+        capturedAt: entry.capturedAt ?? context.now
       }))
     }
   };
@@ -355,12 +453,27 @@ export function materializeTaskB(
   result: TaskBResult,
   context: MaterializeContext,
   draftFacts: Map<string, FactRecord[]>,
-  existingAssessmentIds: Set<string>
+  existingAssessmentIds: Set<string>,
+  existingConstraintIds: Set<string> = new Set()
 ): MaterializedCanonical {
+  if (context.strictOutput) validateOutputB(result);
   const collected: EvidenceDraft[] = [];
   const assessments: AssessmentRecord[] = [];
   const createdFacts: FactRecord[] = [];
 
+  const proposalIds = new Map<string, string>();
+  for (const raw of result.canonicalAssessmentProposals) {
+    if (!raw || typeof raw !== "object") continue;
+    const p = raw as RawProposal;
+    const id = text(p.proposalId);
+    if (id)
+      proposalIds.set(
+        id,
+        existingAssessmentIds.has(id)
+          ? id
+          : `${p.role === "component" || p.role === "series_instance" ? "component" : "assessment"}_${id}`
+      );
+  }
   for (const raw of result.canonicalAssessmentProposals) {
     if (typeof raw !== "object" || raw === null) continue;
     const proposal = raw as RawProposal;
@@ -415,7 +528,17 @@ export function materializeTaskB(
     assessments.push({
       assessmentId,
       courseId: context.course.courseId,
-      ...(parentProposalId ? { parentAssessmentId: `assessment_${parentProposalId}` } : {}),
+      ...(parentProposalId
+        ? {
+            parentAssessmentId:
+              proposalIds.get(parentProposalId) ??
+              (existingAssessmentIds.has(parentProposalId)
+                ? parentProposalId
+                : (() => {
+                    throw new MaterializeError("PARENT_PROPOSAL_MISSING");
+                  })())
+          }
+        : {}),
       role,
       kind: oneOf<AssessmentRecord["kind"]>(proposal.type, ASSESSMENT_KINDS, "other"),
       name,
@@ -438,7 +561,7 @@ export function materializeTaskB(
       .map((entry) => evidence(entry, context, collected))
       .filter((entry): entry is EvidenceDraft => entry !== null);
     constraints.push({
-      constraintId: `constraint_${proposalId}`,
+      constraintId: existingConstraintIds.has(proposalId) ? proposalId : `constraint_${proposalId}`,
       courseId: context.course.courseId,
       content,
       evidenceRefs: refs.map((ref) => ({
@@ -483,7 +606,9 @@ export function materializeTaskB(
         excerpt: entry.excerpt,
         ...(entry.page !== undefined ? { page: entry.page } : {}),
         ...(entry.region ? { region: entry.region } : {}),
-        capturedAt: context.now
+        ...(entry.origin ? { origin: entry.origin } : {}),
+        ...(entry.representationHash ? { representationHash: entry.representationHash } : {}),
+        capturedAt: entry.capturedAt ?? context.now
       }))
     }
   };
@@ -546,12 +671,27 @@ export function materializeTaskC(
       changeType: raw.changeType,
       currentEvidenceIds: currentRefs.map((entry) => entry.evidenceId),
       newEvidenceIds: newRefs.map((entry) => entry.evidenceId),
+      ...(context.sourceRecords
+        ? {
+            reviewSourceDependencies: [
+              ...new Set([...currentRefs, ...newRefs].map((e) => e.sourceId))
+            ].map((sourceId) => {
+              const source = context.sourceRecords?.find((s) => s.sourceId === sourceId);
+              return {
+                sourceId,
+                present: Boolean(source),
+                contentHash: source?.machine?.contentHash ?? null
+              };
+            })
+          }
+        : {}),
       createdAt: context.now,
       updatedAt: context.now
     };
     if (raw.affectedFieldOrRequirement) change.field = raw.affectedFieldOrRequirement;
     if (currentValue) change.currentValue = currentValue;
     if (latestValue) change.latestValue = latestValue;
+    if (raw.proposedFact) change.proposedFact = structuredClone(raw.proposedFact);
     if (raw.judgmentBasis) change.judgmentBasis = raw.judgmentBasis;
     if (typeof rawChange.relevantUserState === "string") {
       change.relevantUserState = rawChange.relevantUserState;
@@ -570,7 +710,9 @@ export function materializeTaskC(
         excerpt: entry.excerpt,
         ...(entry.page !== undefined ? { page: entry.page } : {}),
         ...(entry.region ? { region: entry.region } : {}),
-        capturedAt: context.now
+        ...(entry.origin ? { origin: entry.origin } : {}),
+        ...(entry.representationHash ? { representationHash: entry.representationHash } : {}),
+        capturedAt: entry.capturedAt ?? context.now
       }))
     }
   };
@@ -660,7 +802,11 @@ export function coverageFromObservations(
       failed.push(observation.sourceId);
       continue;
     }
-    if (observation.fetchStatus === "ok" && observation.parseStatus === "ok") {
+    if (
+      observation.fetchStatus === "ok" &&
+      observation.parseStatus === "ok" &&
+      observation.understandingStatus !== "partial"
+    ) {
       succeeded.push(observation.sourceId);
       if (observation.machineComparison === "missing-after-successful-coverage") {
         missing.push(observation.sourceId);
@@ -693,7 +839,12 @@ export function rebuildFailureSources(
 ): Array<{ sourceId: string; errorCode: string }> {
   const failures = new Map(taskAFailedSources.map((item) => [item.sourceId, item]));
   for (const observation of observations) {
-    if (observation.fetchStatus === "ok" && observation.parseStatus === "ok") continue;
+    if (
+      observation.fetchStatus === "ok" &&
+      observation.parseStatus === "ok" &&
+      observation.understandingStatus !== "partial"
+    )
+      continue;
     if (failures.has(observation.sourceId)) continue;
     failures.set(observation.sourceId, {
       sourceId: observation.sourceId,

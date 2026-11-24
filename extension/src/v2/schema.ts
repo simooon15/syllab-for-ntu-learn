@@ -1,4 +1,14 @@
-import type { EvidenceReference } from "@syllab/contracts";
+import type { CourseDraftArchive } from "./course-draft-archive";
+import type { ProductProposition, ProductDisposition } from "./course-product";
+import type { NativeSignal } from "./native-signal";
+import type { CompatibilityRepair } from "./contract-registry";
+import type { TaskASemanticCoverage } from "./semantic-coverage";
+import type { TeachingCheckpoint } from "./teaching-deferral";
+import type { ExhaustiveRoutingCheckpoint } from "./exhaustive-routing";
+import type { PlannerCheckpoint } from "./retrieval-planner";
+import type { TriageCheckpoint } from "./source-triage";
+import type { ParseResult, ParsedTextUnit } from "../parser/domain";
+import type { DiscoveredSource, EvidenceReference } from "@syllab/contracts";
 
 export type KnowledgeState = "KNOWN" | "EXPLICITLY_UNKNOWN" | "UNCERTAIN";
 export type AssessmentRole = "assessment" | "component" | "series" | "series_instance";
@@ -139,12 +149,15 @@ export interface CourseRecord {
 }
 
 export interface CourseStateRecord {
+  sourceInterpretation?: CourseDraftArchive;
   courseId: string;
   revision: number;
   updatedAt: string;
 }
 
 export interface AssessmentRecord {
+  productDisposition?: "CURRENT" | "ISSUE" | "REFERENCE";
+  dispositionBasis?: string;
   assessmentId: string;
   courseId: string;
   parentAssessmentId?: string;
@@ -160,6 +173,7 @@ export interface AssessmentRecord {
 }
 
 export interface ConstraintRecord {
+  productDisposition?: "CURRENT" | "ISSUE" | "REFERENCE";
   constraintId: string;
   courseId: string;
   content: string;
@@ -171,7 +185,19 @@ export interface ConstraintRecord {
   updatedAt: string;
 }
 
+export interface FactSemantics {
+  modality: string;
+  conditions: string[];
+  exceptions: string[];
+}
+
 export interface FactRecord {
+  /** Explicit Human override; captured product/semanticClause and Evidence remain immutable. */
+  humanSemantics?: FactSemantics;
+  product?: Omit<ProductProposition, "value" | "ownerRef"> & {
+    disposition: ProductDisposition;
+    sourceVersions: Array<{ sourceId: string; contentHash?: string }>;
+  };
   factId: string;
   courseId: string;
   assessmentId?: string;
@@ -181,11 +207,27 @@ export interface FactRecord {
   evidenceRefs: EvidenceReference[];
   marks: CurrentMark[];
   userEdited?: boolean;
+  /** AI current meaning and immutable reader provenance, retained through staging/Review/backup. */
+  semanticClause?: {
+    clauseId: string;
+    content: string;
+    modality: string;
+    conditions: string[];
+    exceptions: string[];
+    applicability: "CURRENT" | "HISTORICAL" | "UNCERTAIN";
+    judgmentBasis: string;
+    context?: string;
+    originalState?: FactValue["state"];
+    originalContent?: string;
+    canonicalStatement?: true;
+  };
   superseded?: boolean;
   updatedAt: string;
 }
 
 export interface EvidenceRecord {
+  origin?: "native" | "visual" | "unverified";
+  representationHash?: string;
   evidenceId: string;
   courseId: string;
   sourceId: string;
@@ -197,6 +239,16 @@ export interface EvidenceRecord {
 }
 
 export interface SourceRecord {
+  nativeSignal?: NativeSignal;
+  /** Derived scope; policy/index changes invalidate it, never a permanent blacklist. */
+  retrieval?: PlannerCheckpoint;
+  /** DA-003 historical checkpoint; no longer production routing. */
+  routing?: ExhaustiveRoutingCheckpoint;
+  teaching?: TeachingCheckpoint;
+  /** Legacy DA-001 history only; not production routing. */
+  triage?: TriageCheckpoint;
+  /** Durable fetch metadata for service-worker recovery; derived, not user state. */
+  discovery?: DiscoveredSource;
   sourceId: string;
   courseId: string;
   nativeItemId: string;
@@ -211,7 +263,17 @@ export interface SourceRecord {
    * Evidence and to re-run Task A without re-fetching; schema-migrated, not Backup-durable
    * (it is Source-derived, not user state).
    */
-  parsed?: { text: string; structure: string[]; pageLocators?: string[] };
+  parsed?: {
+    text: string;
+    structure: string[];
+    pageLocators?: string[];
+    units?: ParsedTextUnit[];
+    contentHash?: string;
+    visualCoverageHash?: string;
+    visualEvidenceLocators?: string[];
+    understanding?: { contentHash: string; status: "complete" | "partial" };
+    canonicalization?: ParseResult["canonicalization"];
+  };
   removedFromNative?: boolean;
   updatedAt: string;
 }
@@ -222,13 +284,14 @@ export interface SourceObservationRecord {
   sourceId: string;
   courseId: string;
   fetchStatus: "ok" | "failed" | "not-attempted" | "permission-denied";
-  parseStatus: "ok" | "failed" | "not-attempted" | "unsupported";
+  parseStatus: "ok" | "partial" | "failed" | "not-attempted" | "unsupported";
   machineComparison?:
     | "unchanged"
     | "machine-different"
     | "new-source"
     | "missing-after-successful-coverage"
     | "incomparable";
+  understandingStatus?: "complete" | "partial";
   comparability: "comparable" | "incomparable" | "not-attempted";
   errorCode?: string;
   recordedAt: string;
@@ -272,7 +335,8 @@ export type ReviewDecisionKind =
   | "DifferentIdentity"
   | "UseRebuilt"
   | "KeepCurrentCourse"
-  | "ManualAdd";
+  | "ManualAdd"
+  | "UndoExclude";
 
 export interface ReviewDecisionRecord {
   decisionId: string;
@@ -293,6 +357,12 @@ export interface ExclusionMemoryRecord {
 }
 
 export interface ChangeRecord {
+  /** Source versions when this pending proposal was created, not when it is approved. */
+  reviewSourceDependencies?: Array<{
+    sourceId: string;
+    present: boolean;
+    contentHash: string | null;
+  }>;
   changeId: string;
   courseId: string;
   workflowId: string;
@@ -301,6 +371,8 @@ export interface ChangeRecord {
   changeType: TaskCChangeType;
   currentValue?: FactValue;
   latestValue?: FactValue;
+  /** Exact locally resolved latest clause, retained until the Human decision. */
+  proposedFact?: FactRecord;
   currentEvidenceIds: string[];
   newEvidenceIds: string[];
   competingValues?: FactValue[];
@@ -321,6 +393,9 @@ export interface HistoryRecord {
     | "CHANGE_ACCEPTED"
     | "CHANGE_KEPT_CURRENT"
     | "FIELD_EDITED"
+    | "CONSTRAINT_CONFIRMED"
+    | "CONSTRAINT_EXCLUDED"
+    | "CONSTRAINT_REMOVED"
     | "ASSESSMENT_CONFIRMED"
     | "ASSESSMENT_EXCLUDED"
     | "ASSESSMENT_MERGED"
@@ -335,6 +410,8 @@ export interface HistoryRecord {
     | "MIGRATED";
   fromValue?: FactValue;
   toValue?: FactValue;
+  fromSemantics?: FactSemantics;
+  toSemantics?: FactSemantics;
   note?: string;
   recordedAt: string;
 }
@@ -360,6 +437,15 @@ export type WaitingReason =
   "api-key" | "privacy-authorization" | "api-usage-authorization" | "host-permission" | "review";
 
 export interface WorkflowRecord {
+  /** New workflows only; historical workflows retain their saved semantic pipeline. */
+  directCoursePolicy?:
+    "native-global/1" | "selective-draft/1" | "selective-draft/2" | "selective-draft/3";
+  semanticPolicy?:
+    | "assessment-relevance/1"
+    | "assessment-relevance/2"
+    | "assessment-relevance/3"
+    | "assessment-relevance/4";
+  architecturePolicy?: "source_registry_group/1";
   workflowId: string;
   courseId: string;
   kind: WorkflowKind;
@@ -368,14 +454,19 @@ export interface WorkflowRecord {
   phaseCursor: string;
   attempt: number;
   baseCourseRevision: number;
+  /** Acceptance harness only; persists isolation across worker recovery. */
+  qaSemanticClean?: true;
   stagingRevision?: number;
+  taskASemanticCoverage?: TaskASemanticCoverage;
+  physicalWorkPolicy?: "logical_physical_v1";
   waitingReason?: WaitingReason;
   errorCode?: string;
   lastErrorDetail?: string;
   paidRetryAvailable?: boolean;
+  userRetryAuthorized?: true;
   retryConsumesApi?: boolean;
   returnContext?: Record<string, unknown>;
-  lease?: { token: string; expiresAt: string };
+  lease?: { token: string; expiresAt?: string; sessionId?: string };
   createdAt: string;
   updatedAt: string;
 }
@@ -384,7 +475,18 @@ export interface AiRunRecord {
   aiRunId: string;
   workflowId: string;
   courseId: string;
-  task: "task-a" | "task-a-consolidate" | "task-b" | "task-b-expand" | "task-c" | "repair";
+  task:
+    | "retrieval-planner"
+    | "coverage-audit"
+    | "exhaustive-routing"
+    | "teaching-classification"
+    | "source-triage"
+    | "task-a"
+    | "task-a-consolidate"
+    | "task-b"
+    | "task-b-expand"
+    | "task-c"
+    | "repair";
   schemaVersion: string;
   promptVersion: string;
   idempotencyKey: string;
@@ -396,6 +498,12 @@ export interface AiRunRecord {
   outputTokens?: number;
   reasoningTokens?: number;
   chunkIndex?: number;
+  /** File outcome checkpoint attached to an existing physical success; no additional API call. */
+  taskAPackage?: { fingerprint: string; result: unknown };
+  compatibilityRepair?: CompatibilityRepair;
+  invocationRole?: "physical" | "logical-checkpoint";
+  triageProfiles?: Array<{ sourceId: string; fingerprint: string }>;
+  durationMs?: number;
   sourceId?: string;
   attempt: number;
   payload?: unknown;
